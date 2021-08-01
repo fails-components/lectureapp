@@ -18,7 +18,7 @@
 */
 
 import React, { Component } from 'react';
-import {NetworkSource, NetworkSink, Dispatcher, Collection, MemContainer,DrawObjectGlyph, DrawObjectPicture } from 'fails-components-data';
+import {NetworkSource, NetworkSink, Dispatcher, Collection, MemContainer,DrawObjectGlyph, DrawObjectPicture } from '@martenrichter/fails-components-data';
 import {SHA1} from 'jshashes';
 import Color from 'color';
 
@@ -825,6 +825,13 @@ export class Blackboard extends Component {
         }
     };
 
+    setblocked(isblocked){
+        if (this.outgodispatcher) {
+            this.outgodispatcher.blocked = isblocked;
+            console.log("dispatcher blocked",this.outgodispatcher.blocked);
+        }
+    };
+
     render() {
 
         
@@ -944,6 +951,8 @@ export class BlackboardNotepad extends Component {
     setblocked(isblocked){
         if (this.realblackboard && this.realblackboard.current) this.realblackboard.current.setblocked(isblocked);
     }
+
+
 
     toolbox()
     {
@@ -1210,12 +1219,7 @@ export class BlackboardNotepad extends Component {
 
     };
 
-    setblocked(isblocked){
-        if (this.outgodispatcher) {
-            this.outgodispatcher.blocked = isblocked;
-            console.log("dispatcher blocked",this.outgodispatcher.blocked);
-        }
-    };
+
 
 
 

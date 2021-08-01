@@ -41,7 +41,7 @@ import jwt_decode from "jwt-decode";
 import katex from "katex";
 import 'katex/dist/katex.min.css';
 import { v4 as uuidv4 } from 'uuid';
-import {FailsConfig} from 'fails-components-config';
+import {FailsConfig} from '@martenrichter/fails-components-config';
 
 let cfg=new FailsConfig({react: true});
 
