@@ -1,0 +1,1371 @@
+/*
+    Fails Components (Fancy Automated Internet Lecture System - Components)
+    Copyright (C)  2015-2017 (original FAILS), 
+                   2021- (FAILS Components)  Marten Richter <marten.richter@freenet.de>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import React, { Component } from 'react';
+import {NetworkSource, NetworkSink, Dispatcher, Collection, MemContainer,DrawObjectGlyph, DrawObjectPicture } from 'fails-components-data';
+import {SHA1} from 'jshashes';
+import Color from 'color';
+
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.js'
+import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry'
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+
+export class SVGWriting extends Component {
+    
+
+    render() {
+        /*{ color:  this.state.workcolor, alpha: , objnum: this.state.workobjnum ,
+                 path: path ,
+                 startradius: this.state.workstartradius, endpoint: {x: wx-sx, y: wy-sy },
+                endradius: this.curpenwidth   }*/
+        //<svg viewBox="-20 -20 40 40" width="100%" height="100%">
+       // console.log(this.props.glyph);
+        let glyph=this.props.glyph;
+        let viewbox=Math.round(glyph.workarea.left)+" "+ Math.round(glyph.workarea.top)+" "
+                    + Math.round(glyph.workarea.right-glyph.workarea.left)+" "+ Math.round(glyph.workarea.bottom-glyph.workarea.top)+" ";
+                   // svgscale={this.svgscale} pixelwidth={this.pixelwidth}
+        //console.log("svgscale",this.props.svgscale);
+        //console.log("pixelwidth",this.props.pixelwidth);
+        let style={position:"absolute", zIndex: this.props.zIndex,
+        left: Math.round((glyph.workarea.left+glyph.startpoint.x)*this.props.pixelwidth/this.props.svgscale)+"px",
+        width: Math.round((glyph.workarea.right-glyph.workarea.left)*this.props.pixelwidth/this.props.svgscale)+"px",
+        top: Math.round((glyph.workarea.top+glyph.startpoint.y)*this.props.pixelwidth/this.props.svgscale)+"px",
+        height: Math.round((glyph.workarea.bottom-glyph.workarea.top)*this.props.pixelwidth/this.props.svgscale)+"px",
+        pointerEvents: "none"};
+       // console.log("tyle",style);
+        //console.log("workarea",glyph.workarea);
+   
+
+        return <svg viewBox={viewbox}  style={style}>
+        <circle cx={0} cy={0} r={glyph.startradius} stroke="none"  fill={glyph.color} fillOpacity={glyph.alpha} ></circle>
+        {glyph.endpoint &&<circle cx={glyph.endpoint.x} cy={glyph.endpoint.y} r={glyph.endradius} stroke="none"  fill={glyph.color} fillOpacity={glyph.alpha} ></circle> }
+
+        {glyph.path && <path d={glyph.path} stroke="none"  fill={glyph.color} fillOpacity={glyph.alpha}></path>}
+        </svg>
+
+    }
+
+
+}
+
+export class SVGWriting2 extends Component {
+   
+
+
+    render() {
+        /*{ color:  this.state.workcolor, alpha: , objnum: this.state.workobjnum ,
+                 path: path ,
+                 startradius: this.state.workstartradius, endpoint: {x: wx-sx, y: wy-sy },
+                endradius: this.curpenwidth   }*/
+        //<svg viewBox="-20 -20 40 40" width="100%" height="100%">
+       // console.log(this.props.glyph);
+        let glyph=this.props.glyph;
+        let viewbox=Math.round(glyph.area.left)+" "+ Math.round(glyph.area.top)+" "
+                    + Math.round(glyph.area.right-glyph.area.left)+" "+ Math.round(glyph.area.bottom-glyph.area.top)+" ";
+
+        let stroke="none";
+
+        let scolor=glyph.color;
+        let alpha=1.;
+        if (glyph.gtype===1) alpha=0.3;
+        else if (glyph.gtype===2) {
+            //console.log("Eraser",this.props.backcolor);
+            scolor=this.props.backcolor;
+            alpha=0.95;
+        }
+        if (glyph.gtype===0)
+        {
+            //console.log("color check", glyph.color, this.props.backcolor);
+            if (this.props.backcolor===glyph.color) {
+                stroke="black";
+                //console.log("stroke changed to black");
+            }
+        }
+
+
+        var firstpoint=null;
+        if (glyph.pathpoints && glyph.pathpoints.length>0) firstpoint=glyph.pathpoints[0];
+
+        let pathstring=glyph.SVGPath();
+        let sx=(firstpoint?firstpoint.x:0);
+        let sy=(firstpoint?firstpoint.y:0);
+
+               
+        let style={position:"absolute", zIndex: this.props.zIndex,
+            left: Math.round((glyph.area.left+sx)*this.props.pixelwidth/glyph.svgscale)+"px",
+            width: Math.round((glyph.area.right-glyph.area.left)*this.props.pixelwidth/glyph.svgscale)+"px",
+            top: Math.round((glyph.area.top+sy)*this.props.pixelwidth/glyph.svgscale)+"px",
+            height: Math.round((glyph.area.bottom-glyph.area.top)*this.props.pixelwidth/glyph.svgscale)+"px",
+            pointerEvents: "none" //deactive this option , if you like to pick an svg element by cursor for debugging
+        };
+       
+        return <svg viewBox={viewbox}  style={style}>
+        
+        {pathstring && <path d={pathstring} stroke={stroke}  fill={scolor} fillOpacity={alpha}></path>}
+        </svg>
+
+    }
+
+
+}
+
+export class SVGSpotlight extends Component {
+
+
+    render() {
+       
+        let viewbox="0 0 20 20";
+        let style={position:"absolute", zIndex: this.props.zIndex,
+             left: (this.props.x-10)+"px",
+            width: "20px",
+            top: (this.props.y-10)+"px",
+            height: "20px", cursor: "none",
+            pointerEvents: "none"};
+       // console.log("tyle",style);
+        //console.log("workarea",glyph.workarea);
+
+        return  <svg viewBox={viewbox}  style={style} >
+            <circle cx="10" cy="10" r="10"  fill="#ff0000" />
+        </svg>
+   
+
+       /* return  <svg viewBox={viewbox}  style={style} >
+            <defs>
+            <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                <stop offset="0%" style="stop-color:rgb(255,0,0);
+                stop-opacity:1" />
+                <stop offset="100%" style="stop-color:rgb(255,255,255);stop-opacity:0" />
+            </radialGradient>
+            </defs>
+            <ellipse cx="25" cy="25" rx="25" ry="25" fill="url(#grad1)" />
+        </svg>*/
+        
+
+    }
+
+
+}
+
+export class ImageHelper extends Component {
+    constructor(props) {
+        super(props);
+        this.imageLoaded=this.imageLoaded.bind(this);
+        this.state={ height: 100, width: 100};
+    }
+
+    imageLoaded(img)
+    {
+        this.setState({height:img.target.naturalHeight,
+            width:img.target.naturalWidth});
+    }
+
+    Aspect()
+    {
+        return this.state.width/this.state.height;
+    }
+
+  
+
+
+    render() {
+       
+        let style={position:"absolute", zIndex: this.props.zIndex,
+             left: (this.props.x)+"px",
+            top: (this.props.y)+"px", userSelect: "none",
+            pointerEvents: "none"};
+
+        if (this.props.width) style.width=this.props.width+"px";
+        if (this.props.height) style.height=this.props.height+"px";
+    
+
+        return  <img src={this.props.url} alt={this.props.uuid} style={style} onLoad={this.imageLoaded}  ></img>
+   
+        
+
+    }
+
+
+}
+
+export class BackgroundPDFPage extends Component {
+    constructor(props) {
+        super(props);
+        this.state={};
+        this.canvas=React.createRef();
+    }
+
+    componentDidMount()
+    {
+        this.renderPage();
+    }
+
+    componentDidUpdate()
+    {
+        this.renderPage();
+        
+    }
+
+    async renderPage() {
+        //if (this.state.rendered) return;
+        if (this.state.page===this.props.page && this.state.bbwidth===this.props.bbwidth) return;
+
+        if (!this.canvas.current) return;
+        if (this.inrendering) return;
+        this.inrendering = true;
+
+        let canvas = this.canvas.current;
+
+        let page=this.props.page;
+        let bbwidth=this.props.bbwidth;
+        //console.log("props page",this.props.page);
+
+        //console.log("page height debug ",this.props.bbwidth , this.props.page.height);
+        console.log("getvp width bbwidth",page.pageobj.getViewport({scale: 1.0}).width,bbwidth );
+        let viewport = page.pageobj.getViewport({scale: bbwidth/ page.pageobj.getViewport({scale: 1.0}).width});
+        console.log("viewport",viewport);
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        let context = canvas.getContext('2d');
+
+        let renderContext = {
+            canvasContext: context,
+            viewport: viewport
+        };
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        //console.log("render page before ", page.pagenum);
+        let renderTask = page.pageobj.render(renderContext);
+        try {
+            await renderTask.promise;
+            console.log("Render pdf page ",page.pagenum);
+            this.inrendering = false;
+
+            this.setState({ page: page, bbwidth: bbwidth });
+        } catch (error) {
+            console.log("problem pdf page render", error);
+            this.inrendering = false;
+        }
+    }
+
+    render() {
+        let style={position:"absolute", zIndex: this.props.zIndex, left: (0)+"px",
+        top: ((this.props.page.from-this.props.ystart)*this.props.bbwidth)+"px", userSelect: "none",
+        pointerEvents: "none"};
+
+        return <canvas ref={this.canvas} key={this.props.page.pagenum+"cpage"} style={style}> </canvas>
+    }
+};
+
+export class BackgroundPDF extends Component {
+    constructor(props)
+    {
+        super(props);
+        this.state={};
+
+    }
+
+    async loadPDF()
+    {
+        if (this.props.url!==this.state.url)
+        {
+            try {
+            // ok we have to load 
+            let pdf= await pdfjs.getDocument(this.props.url).promise;
+            //console.log("pdf", pdf);
+            if (pdf) this.pdf=pdf;
+            // now we have the pdf, we have to get information about the available pages
+            let pageinfo=[];
+            for (let pagenum=1; pagenum<=pdf.numPages; pagenum++) 
+            {
+                let helpfunc= async (pn) => {
+                    let page=await pdf.getPage(pn);
+                    let dimen=page.getViewport({scale: 2000});
+
+                    return {pagenum: pn, pageobj: page, height: dimen.height/dimen.width };
+                }
+                pageinfo.push(helpfunc(pagenum));
+            }
+            pageinfo=await Promise.all(pageinfo);
+            // perfect now we can calculate from tos
+            let curpos=0.;
+            for (let pidx=0;pidx<pageinfo.length;pidx++)
+            {
+                pageinfo[pidx].from=curpos;
+                curpos+=pageinfo[pidx].height;
+                pageinfo[pidx].to=curpos;
+            }
+            this.setState({pageinfo: pageinfo, url: this.props.url});
+
+
+            } catch (error) {
+                console.log("loadPDF failed", error);
+            }
+        }
+
+    }
+
+    componentDidMount()
+    {
+        this.loadPDF();
+    }
+
+
+    render() {
+        this.loadPDF();
+       
+
+        let pages=this.state.pageinfo;
+
+        let curpages=[];
+        //console.log("background pdf render", pages);
+        if (pages) {
+            //console.log("pages",pages);
+            //console.log("ystart, yend",this.props.ystart, this.props.yend );
+        
+            curpages=pages.filter((el)=> ( !((el.from> this.props.yend &&  el.to >this.props.yend  ) 
+                                     || (el.from< this.props.ystart &&  el.to < this.props.ystart  ))));
+            
+            //console.log("curpages",curpages);
+            curpages=curpages.map( (el)=>(<BackgroundPDFPage page={el} ystart={this.props.ystart} key={el.pagenum+"page"} bbwidth={this.props.bbwidth} zIndex={this.props.zIndex}></BackgroundPDFPage>));
+        }
+
+        return <div>
+            {curpages}
+        </div>;
+    }
+
+}
+
+
+
+
+
+export class Blackboard extends Component {
+
+
+    constructor(props) //(stage, width, height,backcolor, notepadscreen)
+    {
+        super(props);
+
+
+        this.state={};
+        this.state.objects=[];
+        this.state.pathstarted=false;
+        this.state.curscrollpos=0;
+
+        this.state.redrawing=false;
+
+        this.work={}; //handles drawing, now only objects
+        this.work.objects=[];
+        this.workobj={};
+
+        this.addpictimage=React.createRef();
+
+        this.redrawing=false; //not to be confused with the state
+
+        this.recpathstarted=false;
+
+        this.replay=false; // during a replay state updates are handled differently!
+        
+        
+
+        this.lastpos=0;
+
+
+        this.temppoints = [];
+        this.curcolor = 0; //properties of the drawing surface
+        this.curpenwidth = 0;
+        this.curtype =0;
+
+        this.touchOn = 0; // are touchevents recognized for drawing
+
+   
+
+
+        this.rendermin=0.;
+        this.rendermax=props.bbheight/props.bbwidth;
+        this.forceredraw=false;
+
+        this.curkeyscroll=0;
+        this.lastkeyscrolltime=new Date(0);
+
+
+
+        this.pictures={};
+
+
+
+        this.notepadscreen = props.notepadscreen;
+
+  
+
+
+        this.state.scrolloffset = 0;
+
+   
+        this.incomdispatcher = new Dispatcher();
+        this.incomdispatcher.addSink(this); // we also want to draw everything
+        this.collection = new Collection(function(id,data) {
+            return new MemContainer(id,data);},{});
+        this.incomdispatcher.addSink(this.collection);
+
+
+        //this.outgodispatcher.addSink(this.incomdispatcher); //short cut
+         this.networkreceive = new NetworkSource(this.incomdispatcher);
+
+
+
+         this.lastbbtemp=null;
+
+
+        //stage.addChild(this.blackboardtemp);
+
+        this.pathstarted = this.pathupdated = false;
+  
+
+    
+        this.elapsed= new Date();
+        this.fogtime= new Date();
+        this.lastfogpos= null;
+        this.fogmeanvel=0;
+
+
+        this.stage=props.stage;
+        console.log("Blackboard start up completed!");
+
+
+
+
+    };
+
+    componentDidUpdate(prevprops) {
+        if (prevprops.pageoffset!==this.props.pageoffset)
+            this.checkRedraw();
+    }
+
+    toolbox()
+    {
+        if (this.props.notepadscreen && this.props.notepadscreen.toolbox) return this.props.notepadscreen.toolbox.current;
+    }
+
+    scrollheight()
+    {
+        return this.props.bbheight/this.props.bbwidth;
+    }
+
+    curPictAspect()
+    {
+        let aspect=1;
+        if (this.addpictimage.current) aspect=this.addpictimage.current.Aspect();
+        return aspect;
+    }
+
+
+
+
+
+   setScrollOffset(scrolloffset)
+    {
+        this.setState({scrolloffset: scrolloffset});
+        console.log("setScrollOffset", scrolloffset);
+        this.scrollBoard(0,0,this.getCurScrollPos());
+    };
+
+    //dead code?
+    /*
+    resize(width,height)
+    {
+        console.log("blackboard resize! %d %d",width,height);
+        
+        //this.hitArea=new PIXI.Rectangle(0,0,width,height);
+        
+       
+        this.rendermin=this.rendermax=this.state.curscrollpos;
+        this.forceredraw=true;
+        console.log("resize scrollboard",this.getCurScrollPos());
+        this.scrollBoard(0,0,this.getCurScrollPos());
+        console.log("Redraw! resize");
+    }*/
+
+
+    updateRenderArea(x,y) {
+        this.rendermin=Math.min(y,this.rendermin);
+        this.rendermax=Math.max(y,this.rendermax);
+
+    }
+
+    addPicture(time,objnum,curclient,x,y,width,height,uuid) {
+        this.updateRenderArea(x,y);
+        this.updateRenderArea(x+width,y+height);
+        console.log("addpicture",x,y,width,height,uuid);
+        var pictinfo=this.pictures[uuid];
+        console.log("pictinfo",pictinfo);
+        if (pictinfo) {
+            let addpict=new DrawObjectPicture(objnum);
+
+
+
+            addpict.addPicture(x,y,width,height,uuid,pictinfo.url,pictinfo.mimetype); 
+
+            
+            this.work.objects.push(addpict);
+
+            this.setState({objects: this.work.objects.concat()});
+
+        }
+
+
+        //resubmitpath
+    }
+
+
+   startPath(time,objnum,curclient,x,y,type,color,width,pressure) {
+    //console.log("startPath",x,y,type,color,width, pressure);
+      
+
+       if (this.workobj[objnum]) {//in case of lost messages
+            console.log("lost case");
+       }
+
+       /* if (this.recpathstarted) {
+           /* this.submitPath(this.needresubmit);
+            this.needresubmit=false;*
+            this.finishPath(); // ok finish the stuff really
+
+        }*/
+
+        this.workobj[objnum]= new DrawObjectGlyph(objnum);
+        this.workobj[objnum].startPath(x,y,type,color,width,pressure);
+        
+
+        
+
+        //this.partemitter.emit = false;
+        this.updateRenderArea(x,y);
+
+        
+       if (!this.redrawing) this.setState((state) => {
+           let version={...state.workobjversion};
+           version[objnum]=this.workobj[objnum].version;
+        return {
+           workobjversion: version,
+           fogpos: false
+       };});
+            
+        //} 
+        this.recpathstarted=true;
+    
+
+    };
+
+    addToPath(time, objid, curclient, x, y, pressure) {
+
+       
+    
+
+        if (this.workobj[objid]) { //TODO handle objid
+            this.workobj[objid].addToPath(x, y, pressure);
+
+            //console.log("addtopath rs",x,y,pressure);
+
+
+            if (!this.redrawing) this.setState((state) => {
+                let version={...state.workobjversion};
+                version[objid]=this.workobj[objid].version;
+                return {
+                    workobjversion: version,
+                    fogpos: false
+                };});
+            if (this.toolbox() && !this.redrawing) { //this is quite expensive, do not do this during a redraw
+                //console.log("redrawinf", this.redrawing, !this.redrawing);
+                this.toolbox().reportDrawPos(x,
+                    y - this.state.curscrollpos - this.state.scrolloffset);
+            }
+
+
+            this.updateRenderArea(x, y);
+
+
+        }
+        //console.log("addToPath",time,curclient,x,y,x*this.props.bbwidth,y*this.props.bbwidth);
+    };
+
+    finishPath(time,objid,curclient) {
+
+       
+
+        if (this.workobj[objid]) {
+            
+    
+            this.workobj[objid].finishPath();
+            this.work.objects.push(this.workobj[objid]);
+            delete this.workobj[objid];
+    
+            if (!this.redrawing) this.setState((state) => {
+                let version={...state.workobjversion};
+                delete version[objid];
+             return {
+                workobjversion: version,
+                fogpos: false,
+                objects: this.work.objects.concat()
+            };});
+        }
+        this.recpathstarted=false; //tracks the process outside the state 
+       
+    };
+
+
+
+
+
+
+    scrollBoard(time,x,y)
+    {
+        if (x!==0) {
+            // implement
+        }
+      
+       
+        if (y!==0 && true) {
+            //console.log("scrollboard",y,this.state.scrolloffset);
+            var newpos =/*this.curscrollpos+*/y;
+            if (newpos<0) newpos=0;
+            this.setState({curscrollpos: newpos});
+
+           /* this.setState((state)=>{
+            return {position: {x: state.position.x,
+                y: -(state.curscrollpos+state.scrolloffset)}};});*/
+            
+            
+            ///*this.blackboardtemp.y=*/this.position.y=-newpos*this.props.bbwidth;
+           // this.hitArea.y=newpos*this.props.bbwidth;
+        }
+        if (x!==0 || y!==0 || this.forceredraw) {
+           // console.log("scrollboard",x,y,this.position.x,this.blackboardtemp.y,this.hitArea);
+      //     console.log("Redrawcheck", this.rendermin,this.rendermax,
+        //                scrollpos,scrollpos+this.scrollheight());
+
+            this.checkRedraw();
+            
+
+
+        }
+        
+        
+
+    };
+
+    calcCurpos()
+    {
+        //console.log("calcCurpos pre",this.props.pageoffsetabsolute, this.props.pageoffset );
+        if (this.props.pageoffsetabsolute) return this.props.pageoffset;
+        let pageoffset=0;
+        if (this.props.pageoffset) pageoffset=this.props.pageoffset;
+        //console.log("calcCurpos", this.state.curscrollpos+pageoffset+this.state.scrolloffset,this.state.curscrollpos,pageoffset,this.state.scrolloffset);
+        return this.state.curscrollpos+pageoffset+this.state.scrolloffset;
+    }
+
+    checkRedraw()
+    {
+        
+        if (this.collection.suggestRedraw(this.rendermin,this.rendermax,
+            this.calcCurpos(), this.calcCurpos()+this.scrollheight()) || this.forceredraw) {
+           // console.log("check redraw start 2");
+
+            this.doRedraw();
+        }
+    }
+
+    doRedraw()
+    {
+        
+
+        this.forceredraw = false;
+        this.rendermin = this.rendermax = this.state.curscrollpos + this.state.scrolloffset;
+        //this.clear();
+        this.work.objects = [];
+        this.setState({ objects: [], pathstarted: false, redrawing: true });
+        console.log("Redraw!");
+        this.redrawing = true; //not to be confused with the state
+        this.collection.redrawTo(this, this.calcCurpos() - 1.5,
+            this.calcCurpos() + this.scrollheight() + 1.5);
+        this.redrawing = false;
+        this.setState({ redrawing: false, objects: [...this.work.objects] });
+
+
+        console.log("redraw done");
+
+    }
+    
+
+
+    getCurScrollPos()
+    {
+        return this.state.curscrollpos;
+    }
+
+    getCalcScrollPos()
+    {
+        return this.state.curscrollpos+this.state.scrolloffset;
+    }
+
+
+    receiveData(data) {
+        //console.log("receivedata!");
+        if (typeof data.timeSet != 'undefined') {
+            if (data.timeSet) {
+                console.log("initialscroll",data);
+                if (this.outgodispatcher) this.outgodispatcher.setTimeandScrollPos(data.time);
+            }
+        }
+        //console.log("Blackboard receive data",data);
+        this.networkreceive.receiveData(data);
+    };
+
+    replaceData(data) {
+        if (data.data) {
+            this.collection.replaceStoredData(data.number,data.data); // also do this only if the container is non empty
+            console.log("replace data", data.number,data);
+            if (data.number==="command") {
+                let cs=this.collection.commandcontainer.getCurCommandState();
+                if (this.outgodispatcher) this.outgodispatcher.setTimeandScrollPos(cs.time, cs.scrollx, cs.scrolly);
+                console.log("replace data command",cs);
+                if (cs.scrollx && cs.scrolly) this.scrollBoard(cs.time, cs.scrollx, cs.scrolly);
+            }
+        }
+        this.rendermin=Math.min(data.number,this.rendermin);
+        this.rendermax=Math.max(data.number+1,this.rendermax);
+        if (data.last) {
+            this.rendermin=this.rendermax=this.state.curscrollpos+this.state.scrolloffset;
+            //this.clear();
+            
+            
+           
+            this.work.objects=[]; // clear them
+            this.setState((state)=>({objects: [...this.work.objects], pathstarted: false })); //flushForRedraw
+            this.recpathstarted=false;
+            this.setState({redrawing:true});
+            this.redrawing=true; //not to be confused with the state
+            this.collection.redrawTo(this,this.calcCurpos()-1.5,
+                    this.calcCurpos()+this.scrollheight()+1.5);
+            this.redrawing=false; //not to be confused with the state
+            this.setState({redrawing:false,objects: [...this.work.objects]});
+            
+            
+            console.log("Redraw! replace Data");
+        }
+    };
+    receivePictInfo(data) {
+        console.log("receivepictureinfo",data);
+       this.pictures[data.uuid]=data;
+    };
+
+    receiveBgpdfInfo(data) {
+        console.log("receivebgpdfinfo",data);
+        if (data.none) this.setState({bgpdf: null});
+        else if (data.url) this.setState({bgpdf: data.url});
+
+    }
+
+    receiveFoG(data) {
+        //this.partemitter.updateOwnerPos(data.x*this.props.bbwidth,
+         //                               (data.y-this.scrolloffset-this.state.curscrollpos)*this.props.bbwidth);
+        // Now decide according to velocity if we emit
+        var newtime=new Date();
+        var timeelapsed=(newtime.getTime()-this.fogtime.getTime())/1000;
+
+
+        if (timeelapsed>0.05) { //
+          this.fogtime= newtime;
+
+
+          var lfp=this.lastfogpos;
+          var distance=0;
+          if (lfp) distance= (data.x-lfp.x)*(data.x-lfp.x)+(data.y-lfp.y)*(data.y-lfp.y);
+          this.lastfogpos=data;
+
+
+          var velocity=Math.sqrt(distance/timeelapsed/timeelapsed); //this is velocity squared
+          this.fogmeanvel=this.fogmeanvel*0.66+0.33*velocity;
+
+          //console.log("fog "+this.fogmeanvel);
+          //console.log("FoG scrolloffset",data.y,this.state.curscrollpos,this.state.scrolloffset);
+          if (this.fogmeanvel > 0.7 ) {
+            this.fogontime=newtime;
+            this.setState((state)=> ({ fogpos: {x: data.x, y: (data.y/*+state.curscrollpos*/)}})  );
+            
+          } else {
+            if ((newtime-this.fogontime)>2000) {
+                this.setState({ fogpos: false}  ); 
+            } else if (this.state.fogpos) {
+                this.setState((state)=> ({ fogpos: {x: data.x, y: (data.y/*+state.curscrollpos*/)}})  );
+            }
+            
+          }
+        }
+    };
+
+    render() {
+
+        
+        
+
+       
+        let cursor="auto";
+
+        if (this.state.fogpos && !this.props.addpict && this.props.isnotepad) cursor="none";
+        //console.log("render ob", this.state.objects);
+        let written=this.state.objects.map((el,index)=>{
+            //console.log("obj",el);
+            if (el.type==='glyph') {
+                return <SVGWriting2 glyph={el} key={el.objnum+":"+index} backcolor={this.props.backcolor} pixelwidth={this.props.bbwidth} zIndex={10}></SVGWriting2>; 
+            } else if (el.type==='image') {
+                return <ImageHelper x={el.posx*this.props.bbwidth} y={el.posy*this.props.bbwidth} zIndex={10} 
+                width={el.width*this.props.bbwidth} height={el.height*this.props.bbwidth}
+                url={el.url} uuid={el.uuid} key={el.objnum+":"+index} ></ImageHelper>;
+            } else {
+               return <React.Fragment></React.Fragment>;
+            }
+        }
+        );
+        let wobj=[];
+        for (let prop in this.workobj) {
+            wobj.push(<SVGWriting2 glyph={this.workobj[prop]} backcolor={this.props.backcolor}  pixelwidth={this.props.bbwidth} zIndex={50}> </SVGWriting2>  );
+        }
+        
+        let stylespan={position:"absolute", left: 0.0*this.props.bbwidth+"px", top: (-this.calcCurpos())*this.props.bbwidth+"px"};
+
+        let ystart=this.calcCurpos();
+        let yend=this.calcCurpos()+this.scrollheight();
+      
+        
+        return <div  style={{backgroundColor: this.props.backcolor, width: "100%", height:"100%", cursor: cursor, overscrollBehavior: "none", touchAction: "none"}}> 
+        {this.state.bgpdf && <BackgroundPDF url={this.state.bgpdf} ystart={ystart} yend={yend} bbwidth={this.props.bbwidth} zIndex={9}  > </BackgroundPDF>
+            }
+        {(!this.state.redrawing) && <span style={stylespan}>
+        {written}
+        {wobj}
+         {this.props.addpict && <ImageHelper x={this.props.addpict.posx*this.props.bbwidth} y={this.props.addpict.posy*this.props.bbwidth} zIndex={50} 
+                                        width={this.props.addpict.width*this.props.bbwidth} height={this.props.addpict.height*this.props.bbwidth}
+                                        url={this.props.addpict.url} uuid={this.props.addpict.uuid} ref={this.addpictimage} ></ImageHelper>}
+
+         {this.state.fogpos && <SVGSpotlight x={this.state.fogpos.x*this.props.bbwidth} y={this.state.fogpos.y*this.props.bbwidth} zIndex={51}></SVGSpotlight>}
+         </span>}
+         </div>
+
+
+
+
+    }
+}
+
+export class BlackboardNotepad extends Component {
+
+    constructor(props) // (stage, width, height,backcolor, notepadscreen)
+    {
+        super(props);
+         //interactive class
+         this.state={};
+         
+         
+         this.curkeyscroll=0;
+
+         this.realblackboard = React.createRef();
+
+        this.outgodispatcher = new Dispatcher();
+        this.outgodispatcher.blocked = true; // we block initially
+     
+        var locnotepadscreen = this.props.notepadscreen;
+        this.networksender = new NetworkSink(function(data) {
+            locnotepadscreen.netSend('drawcommand',data);
+        });
+        this.outgodispatcher.addSink(this.networksender);
+
+
+        this.pointerobjids={}; //count obj
+        this.pointerobjnum={};
+        this.pointerdraw={};
+        this.objnum=1;
+
+        this.lastpos={};
+        this.pictobjid=0;
+        this.clientId=Math.random().toString(36).substr(2, 9); // randomly create clientId
+
+
+
+
+        this.interactive = true;
+        //props.stage.interactive=true;
+
+        this.mousepathstarted = false;
+
+        this.lastkeyscrolltime=new Date();
+
+
+        this.rightmousescroll = false;
+        this.rightmousescrollx = 0;
+        this.rightmousescrolly = 0;
+
+        //properties of the current tool
+        this.toolcolor = 0;
+        this.toolsize = 10;
+        this.tooltype = 0;
+
+        this.addpictmode=0; //stage of adding picture
+        this.addpictuuid=null;
+        this.addpictsprite=null;
+
+        this.pointerdown=this.pointerdown.bind(this);
+        this.pointermove=this.pointermove.bind(this);
+        this.pointerup=this.pointerup.bind(this);
+        this.curPictAspect=this.curPictAspect.bind(this);
+    };
+
+    setblocked(isblocked){
+        if (this.realblackboard && this.realblackboard.current) this.realblackboard.current.setblocked(isblocked);
+    }
+
+    toolbox()
+    {
+        if (this.props.notepadscreen && this.props.notepadscreen.toolbox) return this.props.notepadscreen.toolbox.current;
+    }
+
+    confirmbox()
+    {
+        if (this.props.notepadscreen && this.props.notepadscreen.confirmbox) return this.props.notepadscreen.confirmbox.current;
+    }
+
+    curPictAspect()
+    {
+        if (this.realblackboard && this.realblackboard.current) return this.realblackboard.current.curPictAspect();
+        return 1;
+    }
+
+    scrollheight()
+    {
+        if (this.realblackboard && this.realblackboard.current) return this.realblackboard.current.scrollheight();
+        return null;
+    }
+
+    setScrollOffset(scrolloffset)
+    {
+        if (this.realblackboard && this.realblackboard.current) this.realblackboard.current.setScrollOffset(scrolloffset);
+        //this.scrolloffset=scrolloffset; // I believe we will need this for incoming pointer events no it is already delegated to realblackboard uff
+    };
+
+
+
+    calcObjId(pointerId )
+    {
+
+        let res= parseInt("0x"+new SHA1().hex(this.clientId+this.pointerobjnum[pointerId].toString(36)+pointerId).substr(0,8));
+        return res;
+         
+    }
+
+
+
+    
+
+
+
+    async pointerdown(event) {
+        console.log("pointerdown",event);
+        console.log("pointerId:",event.pointerId,
+                "pointerType",event.pointerType,
+                "isPrimary",event.isPrimary,
+                "width",event.width,
+                "height",event.height,
+                "button",event.button,
+                "cX",event.clientX,
+                "cY",event.clientY);
+        if (event.button===2 && event.pointerType==="mouse") {
+            this.rightdown(event);
+            return;
+        }
+        if (event.pointerType==="touch" && !this.touchOn) return; // no touchy touchy
+        var pos={x: event.clientX, y: event.clientY};
+        this.rightmousescroll = false;
+
+        if ((event.pointerId in this.pointerdraw) === false) {
+            this.pointerdraw[event.pointerId]=true;
+
+            if (this.addpictmode!==0) {
+                switch (this.addpictmode) {
+                case 4: 
+                    //this.addpictsprite.
+                    //this.addpictsprite.position=pos;
+                    this.setState({addpictposx: pos.x/this.props.bbwidth, addpictposy: pos.y/this.props.bbwidth+this.getCalcScrollPos()});
+                    this.addpictmode=3;
+                break;
+                case 3: 
+                    this.addpictmode=2;
+                    this.confirmbox().reactivate({x: (this.state.addpictposx+this.state.addpictwidth) ,
+                                            y: (this.state.addpictposy+this.state.addpictheight-this.getCalcScrollPos())});
+                break;
+                default: 
+                    // do nothing
+                break;
+                };
+            } else {
+               // console.log( "startpath check",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth );
+                //console.log("startpath tool check", this.toolcolor, this.toolsize,this.props.bbwidth);
+                // ok we have to generate an objid
+                this.objnum++;
+                this.pointerobjnum[event.pointerId]=this.objnum;
+                this.lastpos[event.pointerId]=pos;
+                let objid=this.calcObjId(event.pointerId ); 
+                this.pointerobjids[event.pointerId]=objid;
+                //console.log("objid",objid);
+                this.outgodispatcher.startPath(null,objid,null,
+                                  pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCalcScrollPos(),
+                                  this.tooltype,
+                                  Color(this.toolcolor).rgbNumber(),this.toolsize/this.props.bbwidth*this.props.devicePixelRatio,event.pressure);
+                //console.log("props.devicePixelRatio", this.props.devicePixelRatio);
+                
+                this.mousepathstarted = true;
+                //console.log("mousedownbb");
+            }
+        }
+    };
+
+    rightdown(event) {
+          //console.log("rightdown1");
+      
+        this.rightmousescrollx = event.screenX;
+        this.rightmousescrolly = event.screenY;
+        this.rightmousescroll = true;
+        this.rightmousescrollpos =  this.getCalcScrollPos();
+          //console.log("rightdown");
+        this.mouseidentifier=null;
+
+    };
+
+
+   
+
+    pointermove(event) {
+        /*console.log("pointermove",event);
+        console.log("pointerId:",event.pointerId,
+                "pointerType",event.pointerType,
+                "isPrimary",event.isPrimary,
+                "width",event.width,
+                "height",event.height,
+                "button",event.button,
+                "cX",event.clientX,
+                "cY",event.clientY);*/
+
+        var pos={x: event.clientX, y: event.clientY};
+        
+        if (event.pointerType==="touch" && !this.touchOn) return; // no touchy touchy
+
+
+        if (!this.rightmousescroll) {
+           
+            if ((event.pointerId in this.pointerdraw) === true ) {
+               /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
+                console.log("last pos",this.lastpos );
+                console.log("pointer id", event.pointerId);
+                console.log("lastpos",this.lastpos[event.pointerId]);*/
+                let lastpos= this.lastpos[event.pointerId];
+                let distance =(lastpos.x-pos.x)*(lastpos.x-pos.x)+(lastpos.y-pos.y)*(lastpos.y-pos.y);
+                if (distance>0) {
+                    let objid=this.pointerobjids[event.pointerId];
+                    // console.log("distance check,",distance,pos.x,pos.y,pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCurScrollPos()  );
+                    this.outgodispatcher.addToPath(null,objid,null,
+                                                   pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCalcScrollPos(),event.pressure);
+                    this.lastpos[event.pointerId]=pos;
+                }
+                
+            } else if (this.addpictmode!==0) {
+                switch (this.addpictmode) {
+                case 4: 
+                    
+
+                    console.log("createmousemovement", pos);
+                    this.setState({addpictposx: pos.x/this.props.bbwidth, addpictposy: pos.y/this.props.bbwidth+this.getCalcScrollPos()});
+                break;
+                case 3: 
+                    this.setState((state)=> {
+                    var aspectratio=this.curPictAspect();
+                    var nx=pos.x/this.props.bbwidth-state.addpictposx;
+                    var ny=pos.y/this.props.bbwidth+this.getCalcScrollPos()-state.addpictposy;
+                    if (nx===0) nx=0.001;
+                    if (ny===0) ny=0.001;
+                    if (nx>ny) {
+                        nx=ny*aspectratio;
+                    } else {
+                        ny=nx/aspectratio;
+                    }
+                    
+
+                    return {addpictwidth: nx, addpictheight: ny }});
+                break;
+                default: break;
+                };
+            }  else /*if (!this.mousepathstarted)*/ {
+                //console.log("Fog out BB",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth,event.data,this);
+                this.props.notepadscreen.reportFoG(pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCalcScrollPos());
+            }
+            //console.log("mousemove");
+        } else {
+            this.outgodispatcher.scrollBoard(null,0, this.rightmousescrollpos+(-event.screenY+this.rightmousescrolly)/this.props.bbwidth);
+            //console.log("rightmove");
+        }
+    };
+
+    
+
+  
+
+    pointerup(event) {
+        if (event.button===2 && event.pointerType==="mouse") {
+            this.rightup(event);
+            return;
+        }
+        if (event.pointerType==="touch" && !this.touchOn) return; // no touchy touchy
+
+        var pos={x: event.clientX, y: event.clientY};
+
+        if ((event.pointerId in this.pointerdraw) === true ) {
+            let objid=this.pointerobjids[event.pointerId];
+            console.log("pu event", event);
+            console.log("pointerup",pos.x,pos.y,pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCalcScrollPos());
+            if (event.clientX!==0 && event.clientY!==0) {
+                this.outgodispatcher.addToPath(null,objid,null,
+                                  pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCalcScrollPos(),event.pressure);
+            }
+            this.outgodispatcher.finishPath(null,objid,null);
+            
+            delete this.pointerdraw[event.pointerId];
+            delete this.pointerobjids[event.pointerId];
+        }
+        
+    };
+
+   
+
+    rightup(event) {
+        if (this.rightmousescroll) {
+            this.outgodispatcher.scrollBoard(null,0,this.rightmousescrollpos+(-event.screenY+this.rightmousescrolly)/this.props.bbwidth);
+            this.rightmousescroll = false;
+        }
+           //console.log("rightup");
+    };
+
+    scrollboardTB(x,y,reference)
+    {
+        //console.log("scrollboardTB",x,y,reference);
+        if (this.outgodispatcher) this.outgodispatcher.scrollBoard(null,0,
+                                         reference+y);
+
+    };
+
+    scrollboardKeys(x,y)
+    {
+       // console.log("scrollboardKeys",x,y,this.getCurScrollPos(),this.state.curkeyscroll);
+        var time=new Date();
+
+        let resetkeyscroll=null;
+
+        if ((time-this.lastkeyscrolltime)>1000) { // This prevents weird effects
+            // if network has a hickup
+            resetkeyscroll=this.getCurScrollPos();
+        }
+        
+        this.lastkeyscrolltime=time;
+
+     
+        
+
+        let curkeyscroll=this.curkeyscroll;
+        if (resetkeyscroll) curkeyscroll=resetkeyscroll;
+
+        curkeyscroll+=y;
+        if (curkeyscroll<=0) curkeyscroll=0.0001;
+        if (this.outgodispatcher) this.outgodispatcher.scrollBoard(null,0,
+                                         curkeyscroll);
+        this.curkeyscroll=curkeyscroll;
+
+
+    };
+
+    setblocked(isblocked){
+        if (this.outgodispatcher) {
+            this.outgodispatcher.blocked = isblocked;
+            console.log("dispatcher blocked",this.outgodispatcher.blocked);
+        }
+    };
+
+
+
+    setPenTool(color,size)
+    {
+        
+        this.tooltype = 0;
+        this.toolsize = size;
+        this.toolcolor = color;
+        //console.log("sPT",this.tooltype, this.toolsize,this.toolcolor );
+    };
+
+    setMarkerTool(color,size)
+    {
+       
+        this.tooltype = 1;
+        this.toolsize = size;
+        this.toolcolor = color;
+        //console.log("sMT",this.tooltype, this.toolsize,this.toolcolor );
+    };
+
+    setEraserTool(size)
+    {
+       
+        this.tooltype = 2;
+        this.toolsize = size;
+        //console.log("sET",this.tooltype, this.toolsize,this.toolcolor );
+    };
+
+    endButtonPressed()
+    {
+        this.setblocked(true);
+        this.props.notepadscreen.endButtonPressed();
+    };
+
+    pictButtonPressed()
+    {
+        this.setblocked(true);
+        this.props.notepadscreen.pictButtonPressed();
+    };
+
+    okButtonPressed()
+    {
+        if (this.addpictmode!==0) {
+            this.setblocked(false);
+            this.objnum++;
+            this.pointerobjnum["picture"]=this.objnum;
+
+            let objid=this.calcObjId("picture");
+            // todo report about new picture
+            this.outgodispatcher.addPicture(null,objid, null,this.state.addpictposx,
+                                            this.state.addpictposy,
+                                           this.state.addpictwidth,this.state.addpictheight,
+                                            this.state.addpictuuid);
+
+            this.setState({addpictuuid: null, addpicturl: null, addpictheight: null, addpictwidth: null });
+            this.addpictmode=0;
+            this.reactivateToolBox();
+        }
+    };
+
+    cancelButtonPressed()
+    {
+        if (this.addpictmode!==0) {
+            this.setblocked(false);
+            this.setState({addpictuuid: null, addpicturl: null, addpictheight: null, addpictwidth: null });
+            // todo report about new picture
+            this.addpictmode=0;
+            this.reactivateToolBox();
+        }
+    };
+
+    reactivateToolBox() {
+        console.log("reactivate Toolbox called BB!",this.toolbox());
+        if (this.toolbox()) this.toolbox().reactivate();
+    };
+
+    enterAddPictureMode(uuid,url) {
+        this.addpictmode=4; //stage of adding picture
+        this.setState({addpictuuid: uuid, addpicturl: url, addpictheight: null, addpictwidth: 0.1 });
+       // this.addpictsprite=PIXI.Sprite.fromImage((url));
+
+        //this.addChild(this.addpictsprite);
+
+    };
+
+    receiveData(data) {
+        //console.log("rcD",data);
+        if (this.realblackboard && this.realblackboard.current) this.realblackboard.current.receiveData(data);
+    };
+
+    receivePictInfo(data) {
+        if (this.realblackboard && this.realblackboard.current)  this.realblackboard.current.receivePictInfo(data);
+    };
+
+    receiveBgpdfInfo(data) {
+        if (this.realblackboard && this.realblackboard.current)  this.realblackboard.current.receiveBgpdfInfo(data);
+    };
+
+    replaceData(data) {
+        if (this.realblackboard && this.realblackboard.current) this.realblackboard.current.replaceData(data);
+    };
+
+    getStartScrollboardTB()
+    {
+        if (this.realblackboard && this.realblackboard.current) return this.realblackboard.current.getCurScrollPos();
+    }
+
+    getCurScrollPos()
+    {
+        if (this.realblackboard && this.realblackboard.current) return this.realblackboard.current.getCurScrollPos();
+    }
+
+    getCalcScrollPos()
+    {
+        if (this.realblackboard && this.realblackboard.current) return this.realblackboard.current.getCalcScrollPos();
+    }
+
+    receiveFoG(data) {
+        if (this.realblackboard && this.realblackboard.current) return this.realblackboard.current.receiveFoG(data);
+    }
+
+ 
+
+    render() {
+        let addpict=null;
+        if (this.state.addpictuuid) {
+            addpict={
+                uuid: this.state.addpictuuid, 
+                url: this.state.addpicturl,
+                posx: this.state.addpictposx,
+                posy: this.state.addpictposy,
+                width: this.state.addpictwidth,
+                height: this.state.addpictheight
+            };
+        } else {
+            addpict=null;
+        }
+        return <div style={{width:"100%", height:"100%"}}
+        onPointerDown={this.pointerdown}
+        onPointerMove={this.pointermove}
+        onPointerUp={this.pointerup}
+        onPointerLeave={this.pointerup} 
+        >
+        
+          
+         <Blackboard backcolor={this.props.backcolor} bbwidth={this.props.bbwidth} addpict={addpict} bbheight={this.props.bbheight} ref={ this.realblackboard} notepadscreen={this.props.notepadscreen} isnotepad={true} ></Blackboard></div>
+    }
+
+  
+
+};
+
