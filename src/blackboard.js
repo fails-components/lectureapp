@@ -18,7 +18,7 @@
 */
 
 import React, { Component } from 'react';
-import {NetworkSource, NetworkSink, Dispatcher, Collection, MemContainer,DrawObjectGlyph, DrawObjectPicture } from '@martenrichter/fails-components-data';
+import {NetworkSource, NetworkSink, Dispatcher, Collection, MemContainer,DrawObjectGlyph, DrawObjectPicture } from '@fails-components/data';
 import {SHA1} from 'jshashes';
 import Color from 'color';
 

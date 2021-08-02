@@ -24,7 +24,7 @@ import 'primereact/resources/primereact.min.css';
 import { FailsBoard, FailsScreen, FailsNotes } from './main.js'
 import './index.css'
 
-import {FailsConfig} from '@martenrichter/fails-components-config';
+import {FailsConfig} from '@fails-components/config';
 
 let cfg=new FailsConfig({react: true});
 
