@@ -545,6 +545,7 @@ export class FailsBoard extends FailsBasis
       {
          this.socket=io(this.decoded_token().notepadhandler+"/notepads", {
           'auth': this.authCB/*+ sessionStorage.getItem("FailsAuthtoken")*/, 
+          path: '/notepad.io',
           multiplex: false
         });
         this.initializeNotepadSocket(this.socket);
@@ -1013,6 +1014,7 @@ export class FailsScreen extends FailsBasis
       {
          this.socket=io(this.decoded_token().notepadhandler+"/screens", {
           'auth': this.authCB /*+ sessionStorage.getItem("FailsAuthtoken")*/, 
+          path: '/notepad.io',
           multiplex: false
         });
         this.initializeScreenSocket(this.socket);
@@ -1197,6 +1199,7 @@ export class FailsNotes extends FailsBasis
       {
          this.socket=io(this.decoded_token().noteshandler+"/notes", {
           'auth': this.authCB /*+ sessionStorage.getItem("FailsAuthtoken")*/, 
+          path: '/notes.io',
           multiplex: false
         });
         this.initializeNotesSocket(this.socket);
