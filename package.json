@@ -37,7 +37,7 @@
     "uuid": "^8.3.2",
     "pdfjs-dist": "^2.8.335",
     "worker-loader": "^3.0.7",
-    "@fails-components/config": ">=0.0.0"
+    "@fails-components/config": ">=0.0.1"
   },
   "eslintConfig": {
     "extends": [

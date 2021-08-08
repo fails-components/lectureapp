@@ -31,6 +31,7 @@ let cfg=new FailsConfig({react: true});
 let purposesetter=(purpose)=>{console.log("old setter")};
 
 
+let gotmessage=false;
 
 window.addEventListener("message", (event) => {
   console.log("message from",event.origin,"data:",event.data);
@@ -40,8 +41,8 @@ window.addEventListener("message", (event) => {
     return;
   }
 
-  if (event.data && event.data.token && event.data.purpose) {
-    
+  if (event.data && event.data.token && event.data.purpose && !gotmessage) {
+    gotmessage=true;
     sessionStorage.setItem('failspurpose',event.data.purpose);
     sessionStorage.setItem('failstoken',event.data.token);
     console.log("purpose",event.data.purpose );
