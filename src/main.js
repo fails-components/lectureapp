@@ -543,7 +543,10 @@ export class FailsBoard extends FailsBasis
       console.log("Component mount Failsboard");
       if (this.decoded_token().notepadhandler)
       {
-         this.socket=io(this.decoded_token().notepadhandler+"/notepads", {
+        let notepadhandler=this.decoded_token().notepadhandler;
+        if (notepadhandler==='/') notepadhandler=window.location.protocol+'//'+window.location.hostname;
+
+         this.socket=io(notepadhandler+"/notepads", {
           'auth': this.authCB/*+ sessionStorage.getItem("FailsAuthtoken")*/, 
           path: '/notepad.io',
           multiplex: false
@@ -1012,6 +1015,9 @@ export class FailsScreen extends FailsBasis
       console.log("Component mount FailsScreen");
       if (this.decoded_token().notepadhandler)
       {
+        let notepadhandler=this.decoded_token().notepadhandler;
+        if (notepadhandler==='/') notepadhandler=window.location.protocol+'//'+window.location.hostname;;
+
          this.socket=io(this.decoded_token().notepadhandler+"/screens", {
           'auth': this.authCB /*+ sessionStorage.getItem("FailsAuthtoken")*/, 
           path: '/notepad.io',
@@ -1197,7 +1203,10 @@ export class FailsNotes extends FailsBasis
       console.log("decoded token",this.decoded_token() );
       if (this.decoded_token().noteshandler)
       {
-         this.socket=io(this.decoded_token().noteshandler+"/notes", {
+         let noteshandler=this.decoded_token().noteshandler;
+         if (noteshandler==='/') noteshandler=window.location.protocol+'//'+window.location.hostname;
+
+         this.socket=io(noteshandler+"/notes", {
           'auth': this.authCB /*+ sessionStorage.getItem("FailsAuthtoken")*/, 
           path: '/notes.io',
           multiplex: false
