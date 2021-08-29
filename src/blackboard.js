@@ -430,7 +430,6 @@ export class Blackboard extends Component {
         this.incomdispatcher.addSink(this.collection);
 
 
-        //this.outgodispatcher.addSink(this.incomdispatcher); //short cut
          this.networkreceive = new NetworkSource(this.incomdispatcher);
 
 
@@ -732,23 +731,18 @@ export class Blackboard extends Component {
 
     receiveData(data) {
         //console.log("receivedata!");
-        if (typeof data.timeSet != 'undefined') {
-            if (data.timeSet) {
-                console.log("initialscroll",data);
-                if (this.outgodispatcher) this.outgodispatcher.setTimeandScrollPos(data.time);
-            }
-        }
+      
         //console.log("Blackboard receive data",data);
         this.networkreceive.receiveData(data);
     };
 
-    replaceData(data) {
+    replaceData(data,callback) {
         if (data.data) {
             this.collection.replaceStoredData(data.number,data.data); // also do this only if the container is non empty
             console.log("replace data", data.number,data);
             if (data.number==="command") {
                 let cs=this.collection.commandcontainer.getCurCommandState();
-                if (this.outgodispatcher) this.outgodispatcher.setTimeandScrollPos(cs.time, cs.scrollx, cs.scrolly);
+                if (callback) callback(cs); // calls the outgoing dispatcher
                 console.log("replace data command",cs);
                 if (cs.scrollx && cs.scrolly) this.scrollBoard(cs.time, cs.scrollx, cs.scrolly);
             }
@@ -825,12 +819,7 @@ export class Blackboard extends Component {
         }
     };
 
-    setblocked(isblocked){
-        if (this.outgodispatcher) {
-            this.outgodispatcher.blocked = isblocked;
-            console.log("dispatcher blocked",this.outgodispatcher.blocked);
-        }
-    };
+
 
     render() {
 
@@ -949,8 +938,11 @@ export class BlackboardNotepad extends Component {
     };
 
     setblocked(isblocked){
-        if (this.realblackboard && this.realblackboard.current) this.realblackboard.current.setblocked(isblocked);
-    }
+        if (this.outgodispatcher) {
+            this.outgodispatcher.blocked = isblocked;
+            console.log("dispatcher blocked",this.outgodispatcher.blocked);
+        }
+    };
 
 
 
@@ -1089,8 +1081,7 @@ export class BlackboardNotepad extends Component {
         if (event.pointerType==="touch" && !this.touchOn) return; // no touchy touchy
 
 
-        if (!this.rightmousescroll) {
-           
+        if (!this.rightmousescroll) {   
             if ((event.pointerId in this.pointerdraw) === true ) {
                /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
                 console.log("last pos",this.lastpos );
@@ -1307,6 +1298,12 @@ export class BlackboardNotepad extends Component {
     };
 
     receiveData(data) {
+        if (typeof data.timeSet != 'undefined') {
+            if (data.timeSet) {
+                console.log("initialscroll",data);
+                if (this.outgodispatcher) this.outgodispatcher.setTimeandScrollPos(data.time);
+            }
+        }
         //console.log("rcD",data);
         if (this.realblackboard && this.realblackboard.current) this.realblackboard.current.receiveData(data);
     };
@@ -1320,7 +1317,10 @@ export class BlackboardNotepad extends Component {
     };
 
     replaceData(data) {
-        if (this.realblackboard && this.realblackboard.current) this.realblackboard.current.replaceData(data);
+        const callback= (cs)=> {
+            if (this.outgodispatcher) this.outgodispatcher.setTimeandScrollPos(cs.time, cs.scrollx, cs.scrolly);
+        }
+        if (this.realblackboard && this.realblackboard.current) this.realblackboard.current.replaceData(data,callback);
     };
 
     getStartScrollboardTB()
