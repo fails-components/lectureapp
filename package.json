@@ -8,7 +8,7 @@
     "type": "git",
     "url": "git+https://github.com/fails-components/lectureapp.git"
   },
-  "homepage": ".",
+  "homepage": "/static/lecture/",
   "engines": {
     "node": ">=14"
   },
