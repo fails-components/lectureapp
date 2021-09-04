@@ -1033,6 +1033,12 @@ export class FailsBoard extends FailsBasis {
           }
           isnotepad={true}
           pictbuttoncallback={this.pictbuttonCallback}
+          mainstate={{
+            blackbackground: this.state.blackbackground,
+            bgpdf: this.state.bgpdf,
+            showscreennumber: this.state.showscreennumber,
+            casttoscreens: this.state.casttoscreens
+          }}
           backgroundcolor={
             this.state.bgpdf
               ? '#FFFFFF'
@@ -1083,63 +1089,11 @@ export class FailsBoard extends FailsBasis {
           onHide={this.onHideArrangeDialog}
         >
           <div className='p-grid'>
-            <div className='p-col-7'>
-              <ChannelEdit
-                channelinfo={this.state.channelinfo}
-                availscreens={this.state.availscreens}
-                app={this}
-              ></ChannelEdit>
-            </div>
-            <div className='p-col-5'>
-              <div className='p-col-12'>
-                <Checkbox
-                  inputId='casttoscreens'
-                  onChange={(e) =>
-                    this.updateSizes({ casttoscreens: e.checked })
-                  }
-                  checked={this.state.casttoscreens}
-                ></Checkbox>
-                <label
-                  htmlFor='casttoscreens'
-                  className='p-checkbox-label p-m-2'
-                >
-                  Show to screens/students
-                </label>
-              </div>
-              <div className='p-col-12'>
-                <Checkbox
-                  inputId='showscreennumber'
-                  onChange={(e) =>
-                    this.updateSizes({ showscreennumber: e.checked })
-                  }
-                  checked={this.state.showscreennumber}
-                ></Checkbox>
-                <label
-                  htmlFor='showscreennumber'
-                  className='p-checkbox-label p-m-2'
-                >
-                  Show number
-                </label>
-              </div>
-
-              {!this.state.bgpdf && (
-                <div className='p-col-12'>
-                  <Checkbox
-                    inputId='blackbackground'
-                    onChange={(e) =>
-                      this.updateSizes({ blackbackground: e.checked })
-                    }
-                    checked={this.state.blackbackground}
-                  ></Checkbox>
-                  <label
-                    htmlFor='blackbackground'
-                    className='p-checkbox-label p-m-2'
-                  >
-                    Dark background
-                  </label>
-                </div>
-              )}
-            </div>
+            <ChannelEdit
+              channelinfo={this.state.channelinfo}
+              availscreens={this.state.availscreens}
+              app={this}
+            ></ChannelEdit>
           </div>
         </Dialog>
         <Dialog

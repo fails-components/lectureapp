@@ -297,6 +297,8 @@ export class NoteScreenBase extends Component {
             bbheight={this.state.bbheight}
             notepad={this}
             startpoll={this.props.startpoll}
+            updateSizes={this.props.updateSizes}
+            mainstate={this.props.mainstate}
             dispres={this.dispres}
           />
         )}

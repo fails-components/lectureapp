@@ -26,7 +26,11 @@ import {
   faImages,
   faArrowsAltV as faUpdown,
   faBars,
-  faThList
+  faThList,
+  faAdjust,
+  faDesktop,
+  faEye,
+  faEyeSlash
 } from '@fortawesome/free-solid-svg-icons'
 import screenfull from 'screenfull'
 
@@ -70,68 +74,14 @@ class CircleWrap extends Component {
   }
 }
 
-class FilledButton extends Component {
-  constructor(props) {
-    super(props)
-    this.pointerdown = this.pointerdown.bind(this)
-    this.pointerup = this.pointerup.bind(this)
-    this.pointermove = this.pointermove.bind(this)
-  }
-
-  pointerdown(pointer) {
-    if (this.props.buttonid) this.props.toolbox.selectTool(this.props.buttonid)
-    if (this.props.pointerdown) this.props.pointerdown(pointer)
-  }
-
-  pointermove(pointer) {
-    if (this.props.pointermove) this.props.pointermove(pointer)
-  }
-
-  pointerup(pointer) {
-    if (this.props.pointerup) this.props.pointerup(pointer)
-  }
-
-  render() {
-    const radius = this.props.radius ? this.props.radius : 20
-    let background = '#001A00'
-    let bordercolor = '#3d3d3d'
-    if (!this.props.selected) {
-      bordercolor = '#001A00'
-      background = '#3d3d3d'
-    }
-    return (
-      <span
-        style={{
-          width: 2 * radius + 'px',
-          height: 2 * radius + 'px',
-          borderRadius: radius + 'px',
-          backgroundColor: background,
-          borderColor: bordercolor,
-          borderWidth: '1.5px',
-          display: 'inline-block',
-          overscrollBehavior: 'none',
-          touchAction: 'none'
-        }}
-        onPointerDown={this.pointerdown}
-        onPointerMove={this.pointermove}
-        onPointerUp={this.pointerup}
-        onPointerLeave={this.pointerup}
-      >
-        {this.props.children}
-      </span>
-    )
-  }
-}
-
-class ColorPickerButton extends Component {
+class ColorPickerButton2 extends Component {
   constructor(props) {
     super(props)
 
-    this.pointerdown = this.pointerdown.bind(this)
+    this.onClick = this.onClick.bind(this)
   }
 
-  pointerdown(pointer) {
-    console.log('pointer down', pointer)
+  onClick() {
     this.props.toolbox.selectColor(
       this.props.pickerid,
       this.props.color,
@@ -140,35 +90,42 @@ class ColorPickerButton extends Component {
   }
 
   render() {
+    const selbuttonclass = (cond, add) =>
+      cond
+        ? // eslint-disable-next-line no-unneeded-ternary
+          (add ? add : '') +
+          'p-button-primary p-button-raised p-button-rounded p-m-2'
+        : 'p-button-secondary p-button-raised p-button-rounded p-m-2'
+
     return (
-      <FilledButton
-        toolbox={this.props.toolbox}
-        selected={this.props.selected}
-        buttonid={this.props.buttonid}
-        pointerdown={this.pointerdown}
-      >
-        <svg viewBox='-20 -20 40 40' width='100%' height='100%'>
-          {this.props.size * 0.5 < 10 && (
+      <Button
+        icon={
+          <svg viewBox='-20 -20 40 40' width='100%' height='100%'>
+            {this.props.size * 0.5 < 10 && (
+              <circle
+                cx='0'
+                cy='0'
+                r={10}
+                stroke='#001A00'
+                strokeWidth='0'
+                fill='#001A00'
+              />
+            )}
             <circle
               cx='0'
               cy='0'
-              r={10}
+              r={this.props.size * this.props.sizefac * 0.5}
               stroke='#001A00'
               strokeWidth='0'
-              fill='#001A00'
+              fill={this.props.color}
+              fillOpacity={this.props.alpha}
             />
-          )}
-          <circle
-            cx='0'
-            cy='0'
-            r={this.props.size * this.props.sizefac * 0.5}
-            stroke='#001A00'
-            strokeWidth='0'
-            fill={this.props.color}
-            fillOpacity={this.props.alpha}
-          />
-        </svg>
-      </FilledButton>
+          </svg>
+        }
+        key={2}
+        onClick={this.onClick}
+        className={selbuttonclass(this.props.selected)}
+      />
     )
   }
 }
@@ -271,7 +228,7 @@ export class ToolBox extends Component {
     if (newguard)
       this.secondtoolnum = setTimeout(
         () => this.setState({ secondtoolstep: 0 }),
-        3000
+        5000
       )
   }
 
@@ -596,6 +553,8 @@ export class ToolBox extends Component {
     )
     settingswheel.push(fsbutton)
 
+    const mainstate = this.props.mainstate
+
     const pollbutton = (
       <Button
         icon='pi pi-chart-bar'
@@ -607,6 +566,51 @@ export class ToolBox extends Component {
       />
     )
     settingswheel.push(pollbutton)
+    const backbwbutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faAdjust} />}
+        key={2}
+        onClick={(e) => {
+          this.props.updateSizes({
+            blackbackground: !mainstate.blackbackground
+          })
+        }}
+        className={selbuttonclass(mainstate.blackbackground)}
+      />
+    )
+    if (!mainstate.bgpdf) settingswheel.push(backbwbutton)
+
+    const screennumbutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faDesktop} />}
+        key={2}
+        onClick={(e) => {
+          this.props.updateSizes({
+            showscreennumber: !mainstate.showscreennumber
+          })
+        }}
+        className={selbuttonclass(mainstate.showscreennumber)}
+      />
+    )
+    settingswheel.push(screennumbutton)
+
+    const casttoscreenbutton = (
+      <Button
+        icon={
+          <FontAwesomeIcon
+            icon={mainstate.casttoscreens ? faEye : faEyeSlash}
+          />
+        }
+        key={2}
+        onClick={(e) => {
+          this.props.updateSizes({
+            casttoscreens: !mainstate.casttoscreens
+          })
+        }}
+        className={selbuttonclass(mainstate.casttoscreens)}
+      />
+    )
+    settingswheel.push(casttoscreenbutton)
 
     const arrangebutton = (
       <Button
@@ -653,7 +657,7 @@ export class ToolBox extends Component {
           cpos={cwheelcpos}
           clength={this.colorwheelcolors.length}
         >
-          <ColorPickerButton
+          <ColorPickerButton2
             toolbox={this}
             color={this.colorwheelcolors[it]}
             pickerid={1}
@@ -681,7 +685,7 @@ export class ToolBox extends Component {
           key={it}
           clength={this.pensizesizes.length}
         >
-          <ColorPickerButton
+          <ColorPickerButton2
             toolbox={this}
             color={'#ffffff'}
             pickerid={2}
@@ -711,7 +715,7 @@ export class ToolBox extends Component {
           key={it}
           clength={this.tmcolorwheelcolors.length}
         >
-          <ColorPickerButton
+          <ColorPickerButton2
             toolbox={this}
             color={this.tmcolorwheelcolors[it]}
             pickerid={3}
