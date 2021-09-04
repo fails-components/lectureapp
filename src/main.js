@@ -17,7 +17,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import React, { Component } from 'react'
+import React, { Component, Fragment } from 'react'
 import { Dialog } from 'primereact/dialog'
 import { Checkbox } from 'primereact/checkbox'
 import { Button } from 'primereact/button'
@@ -34,6 +34,13 @@ import { ListBox } from 'primereact/listbox'
 import { Chart } from 'primereact/chart'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  faArrowsAlt,
+  faDesktop,
+  faNotesMedical,
+  faPlus
+} from '@fortawesome/free-solid-svg-icons'
 import { NoteScreenBase } from './notepad.js'
 import { io } from 'socket.io-client'
 // eslint-disable-next-line camelcase
@@ -41,9 +48,6 @@ import jwt_decode from 'jwt-decode'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
-import { FailsConfig } from '@fails-components/config'
-
-const cfg = new FailsConfig({ react: true })
 
 class ChannelEdit extends Component {
   constructor(props) {
@@ -68,23 +72,6 @@ class ChannelEdit extends Component {
               this.props.app.addNotescreenToChannel(this.selchannel, el.uuid)
           }
         })
-      },
-      {
-        label: 'New...',
-        items: [
-          {
-            label: ' Notepad',
-            command: () => this.props.app.onOpenNewNotepad()
-          },
-          {
-            label: ' Screen',
-            command: () => this.props.app.onOpenNewScreen()
-          },
-          {
-            label: ' Writing',
-            command: () => this.props.app.onNewWriting()
-          }
-        ]
       }
     ]
 
@@ -127,17 +114,6 @@ class ChannelEdit extends Component {
           <div className='p-d-flex p-flex-column p-jc-center'>
             <div className='p-m-2 p-p-1'>
               <h3>
-                <Button
-                  icon='pi pi-bars'
-                  className='p-button-rounded p-button-text p-button-sm'
-                  iconPos='right'
-                  onClick={(event) => {
-                    this.selchannel = el.channeluuid
-                    this.availscreensmenu.current.toggle(event)
-                  }}
-                  aria-controls='availscreen_menu'
-                  aria-haspopup
-                ></Button>
                 {ind + 1 + '. ' + type}
                 {ind !== 0 && el.notescreens.length === 0 && (
                   <Button
@@ -151,21 +127,92 @@ class ChannelEdit extends Component {
               </h3>
             </div>
             {notescreens}
-            <div className='p-m-2 p-p-1'></div>
+            <div className='p-m-2 p-p-2'>
+              <div className='p-d-flex'>
+                <div className='p-mr-2'>
+                  <Button
+                    icon={<FontAwesomeIcon icon={faArrowsAlt} />}
+                    className='p-button-rounded p-button-text p-button-sm'
+                    onClick={(event) => {
+                      this.selchannel = el.channeluuid
+                      this.availscreensmenu.current.toggle(event)
+                    }}
+                    aria-controls='availscreen_menu'
+                    aria-haspopup
+                  ></Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )
     })
 
+    channels.push(
+      <div className='p-mr-2 p-shadow-1' key='newwriting'>
+        <div
+          className='p-d-flex p-flex-column p-jc-center p-ai-center'
+          style={{ height: '100%' }}
+        >
+          <div className='p-mr-2'>
+            <Button
+              icon='pi pi-plus'
+              className='p-button-rounded p-button-text p-button-sm'
+              iconPos='right'
+              onClick={(event) => {
+                this.props.app.onNewWriting()
+              }}
+            ></Button>
+          </div>
+        </div>
+      </div>
+    )
+
     return (
-      <div className='p-d-flex'>
-        <Menu
-          model={availscreensitems}
-          popup
-          ref={this.availscreensmenu}
-          id='availscreen_menu'
-        />
-        {channels}
+      <div className='p-d-flex p-flex-column'>
+        <div className='p-mb-2'>
+          <div className='p-d-flex'>
+            <Menu
+              model={availscreensitems}
+              popup
+              ref={this.availscreensmenu}
+              id='availscreen_menu'
+            />
+            {channels}
+          </div>
+        </div>
+        <div className='p-mb-2'>
+          <div className='p-d-flex'>
+            <div className='p-mr-2'>
+              <Button
+                icon={
+                  <Fragment>
+                    <FontAwesomeIcon icon={faPlus} className='p-m-1' />
+                    <FontAwesomeIcon icon={faNotesMedical} className='p-m-1' />
+                  </Fragment>
+                }
+                className='p-button-rounded p-button-text p-button-sm'
+                onClick={() => {
+                  this.props.app.onOpenNewNotepad()
+                }}
+              ></Button>
+            </div>
+            <div className='p-mr-2'>
+              <Button
+                icon={
+                  <Fragment>
+                    <FontAwesomeIcon icon={faPlus} className='p-m-1' />
+                    <FontAwesomeIcon icon={faDesktop} className='p-m-1' />
+                  </Fragment>
+                }
+                className='p-button-rounded p-button-text p-button-sm'
+                onClick={() => {
+                  this.props.app.onOpenNewScreen()
+                }}
+              ></Button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -533,7 +580,7 @@ export class FailsBoard extends FailsBasis {
   constructor(props) {
     super(props)
     this.state = {}
-    this.state.arrangebuttondialog = true
+    this.state.arrangebuttondialog = false
     this.state.pictbuttondialog = false
     this.state.casttoscreens = false
     this.state.showscreennumber = false
@@ -773,8 +820,15 @@ export class FailsBoard extends FailsBasis {
     this.socket.emit('createscreen', function (ret) {
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
+
+      let targeturl = ret.screenurl
+      if (targeturl[0] === '/')
+        targeturl =
+          window.location.protocol + '//' + window.location.hostname + targeturl
+      console.log('debug target url', targeturl)
+
       const newscreen = window.open(
-        ret.screenurl,
+        targeturl,
         uuidv4(),
         'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
       )
@@ -783,12 +837,15 @@ export class FailsBoard extends FailsBasis {
 
       if (!newscreen) console.log('Opening window failed')
       else {
-        setTimeout(() => {
+        let postcount = 0
+        const intervalId = setInterval(() => {
           newscreen.postMessage(
             { token: ret.token, purpose: 'screen' },
-            cfg.getURL('web')
+            targeturl
           )
-        }, 1000)
+          if (postcount === 50) window.clearInterval(intervalId) // if it was not loaded after 10 seconds forget about it
+          postcount++
+        }, 200)
       }
       console.log('createscreen answer ', ret)
     })
@@ -798,8 +855,15 @@ export class FailsBoard extends FailsBasis {
     this.socket.emit('createnotepad', function (ret) {
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
+
+      let targeturl = ret.notepadurl
+      if (targeturl[0] === '/')
+        targeturl =
+          window.location.protocol + '//' + window.location.hostname + targeturl
+      console.log('debug target url', targeturl)
+
       const newnotepad = window.open(
-        ret.notepadurl,
+        targeturl,
         uuidv4(),
         'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
       )
@@ -808,12 +872,15 @@ export class FailsBoard extends FailsBasis {
 
       if (!newnotepad) console.log('Opening window failed')
       else {
-        setTimeout(() => {
+        let postcount = 0
+        const intervalId = setInterval(() => {
           newnotepad.postMessage(
             { token: ret.token, purpose: 'lecture' },
-            cfg.getURL('web')
+            targeturl
           )
-        }, 1000)
+          if (postcount === 50) window.clearInterval(intervalId) // if it was not loaded after 10 seconds forget about it
+          postcount++
+        }, 200)
       }
       console.log('createnotepad answer ', ret)
     })
@@ -885,7 +952,7 @@ export class FailsBoard extends FailsBasis {
 
   onStartPoll() {
     this.setState({ polltask: 0 })
-    this.onHideMainDialog()
+    this.onHideArrangeDialog()
 
     this.socket.emit(
       'getPolls',
@@ -1203,7 +1270,7 @@ export class FailsScreen extends FailsBasis {
         notepadhandler =
           window.location.protocol + '//' + window.location.hostname
 
-      this.socket = io(this.decodedToken().notepadhandler + '/screens', {
+      this.socket = io(notepadhandler + '/screens', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
         path: '/notepad.io',
         multiplex: false
@@ -1308,7 +1375,7 @@ export class FailsScreen extends FailsBasis {
     switch (this.state.screenmode) {
       case 'connected':
         return (
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ textAlign: 'center', zIndex: 100 }}>
             {' '}
             {lectinfo && lectinfo}
             {screenunassigned && (
@@ -1324,7 +1391,7 @@ export class FailsScreen extends FailsBasis {
 
       case 'disconnected':
         return (
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ textAlign: 'center', zIndex: 100 }}>
             {' '}
             {lectinfo && lectinfo}
             <h2> Screen disconnected: </h2>{' '}
@@ -1335,7 +1402,7 @@ export class FailsScreen extends FailsBasis {
 
       case 'removed':
         return (
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ textAlign: 'center', zIndex: 100 }}>
             {' '}
             {lectinfo && lectinfo}
             {screenunassigned && (

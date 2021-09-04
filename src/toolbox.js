@@ -34,46 +34,6 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import screenfull from 'screenfull'
 
-class CircleElement extends Component {
-  render() {
-    const offset = 0
-    const dangle = (2 * Math.PI * this.props.cpos) / this.props.clength
-    const radius = this.props.radius * this.props.cpos
-    const x = -Math.cos(offset + dangle * this.props.id) * radius + radius
-    const y = Math.sin(offset + dangle * this.props.id) * radius + radius
-
-    return (
-      <div style={{ position: 'absolute', top: x, left: y }}>
-        {this.props.children}
-      </div>
-    )
-  }
-}
-
-class CircleWrap extends Component {
-  render() {
-    const radius = this.props.radius * this.props.cpos + 20
-    return (
-      <span
-        style={{
-          left: -radius + 'px',
-          top: -radius + 'px',
-          width: 2 * radius + 'px',
-          height: 2 * radius + 'px',
-          borderRadius: radius + 'px',
-          backgroundColor: '#3d3d3d',
-          borderColor: '#001A00',
-          borderWidth: '1.5px',
-          display: 'inline-block',
-          position: 'absolute' /*, opacity: "0.8" */
-        }}
-      >
-        {this.props.children}
-      </span>
-    )
-  }
-}
-
 class ColorPickerButton2 extends Component {
   constructor(props) {
     super(props)
@@ -93,9 +53,8 @@ class ColorPickerButton2 extends Component {
     const selbuttonclass = (cond, add) =>
       cond
         ? // eslint-disable-next-line no-unneeded-ternary
-          (add ? add : '') +
-          'p-button-primary p-button-raised p-button-rounded p-m-2'
-        : 'p-button-secondary p-button-raised p-button-rounded p-m-2'
+          (add ? add : '') + 'p-button-primary p-button-raised p-button-rounded'
+        : 'p-button-secondary p-button-raised p-button-rounded'
 
     return (
       <Button
@@ -139,6 +98,7 @@ export class ToolBox extends Component {
     this.state = {}
 
     this.state.posy = 0.1
+    this.state.activated = true
 
     console.log('bbwidth in tb', this.props.bbwidth)
     this.state.scalefac = (1.2 * 0.45 * this.props.bbwidth) / 1000
@@ -152,7 +112,7 @@ export class ToolBox extends Component {
     this.state.secondtoolstep = false
     this.state.selectedPickerid = 1
 
-    this.tbx = 0.87 // constant toolbox pos
+    this.tbx = 0.83 // constant toolbox pos
     this.lastpostime = Date.now()
 
     this.secondtoolnum = 0
@@ -429,10 +389,10 @@ export class ToolBox extends Component {
     const selbuttonclass = (cond, add) =>
       cond
         ? // eslint-disable-next-line no-unneeded-ternary
-          (add ? add : '') +
-          'p-button-primary p-button-raised p-button-rounded p-m-2'
-        : 'p-button-secondary p-button-raised p-button-rounded p-m-2'
+          (add ? add : '') + 'p-button-primary p-button-raised p-button-rounded'
+        : 'p-button-secondary p-button-raised p-button-rounded'
 
+    const setclass = 'p-button-secondary p-button-raised p-button-rounded'
     let maintools = []
 
     const endbutton = (
@@ -443,7 +403,6 @@ export class ToolBox extends Component {
         className={selbuttonclass(this.state.selectedButtonid === 1)}
       />
     )
-    maintools.push(endbutton)
 
     const pictbutton = (
       <Button
@@ -455,7 +414,6 @@ export class ToolBox extends Component {
         className={selbuttonclass(this.state.selectedButtonid === 6)}
       />
     )
-    maintools.push(pictbutton)
 
     const scrollbutton = (
       <Button
@@ -471,7 +429,6 @@ export class ToolBox extends Component {
         className={selbuttonclass(this.state.scrollmodeactiv, 'p-button-lg ')}
       />
     )
-    maintools.push(scrollbutton)
 
     const eraserbutton = (
       <Button
@@ -481,7 +438,6 @@ export class ToolBox extends Component {
         className={selbuttonclass(this.state.selectedButtonid === 3)}
       />
     )
-    maintools.push(eraserbutton)
 
     const markerbutton = (
       <Button
@@ -493,7 +449,6 @@ export class ToolBox extends Component {
         className={selbuttonclass(this.state.selectedButtonid === 4)}
       />
     )
-    maintools.push(markerbutton)
 
     const penbutton = (
       <Button
@@ -505,41 +460,50 @@ export class ToolBox extends Component {
         className={selbuttonclass(this.state.selectedButtonid === 5)}
       />
     )
+    const pollbutton = (
+      <Button
+        icon='pi pi-chart-bar'
+        key={2}
+        onClick={(e) => {
+          this.props.startpoll()
+        }}
+        className={setclass}
+      />
+    )
+
     maintools.push(penbutton)
+    maintools.push(markerbutton)
+    maintools.push(eraserbutton)
+    maintools.push(scrollbutton)
+    maintools.push(endbutton)
+    maintools.push(pictbutton)
+    maintools.push(pollbutton)
 
     maintools = maintools.map((ele, it) => (
-      <CircleElement
-        radius={45}
-        id={it}
-        key={it}
-        cpos={1}
-        clength={maintools.length}
-      >
-        {' '}
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
         {ele}
-      </CircleElement>
+      </div>
     ))
 
     // maintools.arrangeButtons();
 
-    let cwheelcpos = 0
-    let pswheelcpos = 0
+    let cwheelcpos = false
+    let pswheelcpos = false
     if (this.state.selectedButtonid === 5) {
       if (this.state.secondtoolstep === 1) {
-        cwheelcpos = 1
+        cwheelcpos = true
       } else if (this.state.secondtoolstep === 2) {
-        pswheelcpos = 1
+        pswheelcpos = true
       }
     }
-    let tmcwheelpcpos = 0
+    let tmcwheelpcpos = false
     if (this.state.selectedButtonid === 4) {
       if (this.state.secondtoolstep === 1) {
-        tmcwheelpcpos = 1
+        tmcwheelpcpos = true
       }
     }
 
     let settingswheel = []
-    const setclass = 'p-button-secondary p-button-raised p-button-rounded p-m-2'
 
     const fsbutton = (
       <Button
@@ -551,21 +515,9 @@ export class ToolBox extends Component {
         className={setclass}
       />
     )
-    settingswheel.push(fsbutton)
 
     const mainstate = this.props.mainstate
 
-    const pollbutton = (
-      <Button
-        icon='pi pi-chart-bar'
-        key={2}
-        onClick={(e) => {
-          this.props.startpoll()
-        }}
-        className={setclass}
-      />
-    )
-    settingswheel.push(pollbutton)
     const backbwbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faAdjust} />}
@@ -578,7 +530,6 @@ export class ToolBox extends Component {
         className={selbuttonclass(mainstate.blackbackground)}
       />
     )
-    if (!mainstate.bgpdf) settingswheel.push(backbwbutton)
 
     const screennumbutton = (
       <Button
@@ -592,7 +543,6 @@ export class ToolBox extends Component {
         className={selbuttonclass(mainstate.showscreennumber)}
       />
     )
-    settingswheel.push(screennumbutton)
 
     const casttoscreenbutton = (
       <Button
@@ -610,7 +560,6 @@ export class ToolBox extends Component {
         className={selbuttonclass(mainstate.casttoscreens)}
       />
     )
-    settingswheel.push(casttoscreenbutton)
 
     const arrangebutton = (
       <Button
@@ -622,26 +571,24 @@ export class ToolBox extends Component {
         className={setclass}
       />
     )
-    settingswheel.push(arrangebutton)
 
-    let setwheelpcpos = 0
+    settingswheel.push(arrangebutton)
+    settingswheel.push(fsbutton)
+    settingswheel.push(screennumbutton)
+    settingswheel.push(casttoscreenbutton)
+    if (!mainstate.bgpdf) settingswheel.push(backbwbutton)
+
+    let setwheelpcpos = false
     if (this.state.selectedButtonid === 1) {
       if (this.state.secondtoolstep === 1) {
-        setwheelpcpos = 1
+        setwheelpcpos = true
       }
     }
 
     settingswheel = settingswheel.map((ele, it) => (
-      <CircleElement
-        radius={88}
-        id={it}
-        key={it}
-        cpos={setwheelpcpos}
-        clength={settingswheel.length}
-      >
-        {' '}
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
         {ele}
-      </CircleElement>
+      </div>
     ))
 
     const colorwheel = []
@@ -650,13 +597,7 @@ export class ToolBox extends Component {
     let it = 0
     for (it = 0; it < this.colorwheelcolors.length; it++) {
       const newcolorbutton = (
-        <CircleElement
-          radius={85}
-          id={it}
-          key={it}
-          cpos={cwheelcpos}
-          clength={this.colorwheelcolors.length}
-        >
+        <div className='p-mr-2 p-mb-2' id={it} key={it}>
           <ColorPickerButton2
             toolbox={this}
             color={this.colorwheelcolors[it]}
@@ -667,7 +608,7 @@ export class ToolBox extends Component {
             key={it}
             selected={this.state.pencolor === this.colorwheelcolors[it]}
           />
-        </CircleElement>
+        </div>
       )
       colorwheel.push(newcolorbutton)
     }
@@ -678,13 +619,7 @@ export class ToolBox extends Component {
 
     for (it = 0; it < this.pensizesizes.length; it++) {
       const newcolorbutton = (
-        <CircleElement
-          radius={85 + 16 * 0.001 * this.props.bbwidth}
-          cpos={pswheelcpos}
-          id={it}
-          key={it}
-          clength={this.pensizesizes.length}
-        >
+        <div className='p-mr-2 p-mb-2' id={it} key={it}>
           <ColorPickerButton2
             toolbox={this}
             color={'#ffffff'}
@@ -696,7 +631,7 @@ export class ToolBox extends Component {
             alpha={1}
             key={it}
           />
-        </CircleElement>
+        </div>
       )
 
       pensizewheel.push(newcolorbutton)
@@ -708,13 +643,7 @@ export class ToolBox extends Component {
 
     for (it = 0; it < this.tmcolorwheelcolors.length; it++) {
       const newcolorbutton = (
-        <CircleElement
-          radius={88}
-          cpos={tmcwheelpcpos}
-          id={it}
-          key={it}
-          clength={this.tmcolorwheelcolors.length}
-        >
+        <div className='p-mr-2 p-mb-2' id={it} key={it}>
           <ColorPickerButton2
             toolbox={this}
             color={this.tmcolorwheelcolors[it]}
@@ -726,7 +655,7 @@ export class ToolBox extends Component {
             key={it}
             selected={this.state.markercolor === this.tmcolorwheelcolors[it]}
           />
-        </CircleElement>
+        </div>
       )
       tmcolorwheel.push(newcolorbutton)
     }
@@ -736,33 +665,41 @@ export class ToolBox extends Component {
 
     return (
       <div
+        className='toolboxMove'
         style={{
           position: 'absolute',
           top: this.state.posy * this.props.bbwidth + 'px',
           left: this.tbx * this.props.bbwidth + 'px',
+          width: '190px',
           zIndex: 200
         }}
       >
         {this.state.activated && (
           <Fragment>
-            <CircleWrap radius={85} cpos={cwheelcpos}>
-              {colorwheel}
-            </CircleWrap>
-            <CircleWrap
-              radius={85 + 16 * 0.001 * this.props.bbwidth}
-              cpos={pswheelcpos}
-            >
-              {pensizewheel}
-            </CircleWrap>
-            <CircleWrap radius={88} cpos={tmcwheelpcpos}>
-              {tmcolorwheel}
-            </CircleWrap>
-            <CircleWrap radius={92} cpos={setwheelpcpos}>
-              {settingswheel}
-            </CircleWrap>
-            <CircleWrap radius={45} cpos={1}>
+            <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
               {maintools}
-            </CircleWrap>
+            </div>
+            {cwheelcpos && (
+              <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                {colorwheel}
+              </div>
+            )}
+            {pswheelcpos && (
+              <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                {pensizewheel}
+              </div>
+            )}
+            {tmcwheelpcpos && (
+              <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                {tmcolorwheel}
+              </div>
+            )}
+
+            {setwheelpcpos && (
+              <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                {settingswheel}
+              </div>
+            )}
           </Fragment>
         )}
       </div>
@@ -809,7 +746,7 @@ export class ConfirmBox extends Component {
         icon='pi pi-check'
         key={1}
         onClick={(e) => this.okButtonPressed()}
-        className='p-button-success p-button-raised p-button-rounded p-m-2'
+        className='p-button-success p-button-raised p-button-rounded'
       />
     )
 
@@ -820,22 +757,15 @@ export class ConfirmBox extends Component {
         icon='pi pi-times'
         key={2}
         onClick={(e) => this.cancelButtonPressed()}
-        className='p-button-danger p-button-raised p-button-rounded p-m-2'
+        className='p-button-danger p-button-raised p-button-rounded'
       />
     )
     okcancel.push(cancelbutton)
 
     okcancel = okcancel.map((ele, it) => (
-      <CircleElement
-        radius={20}
-        id={it}
-        key={it}
-        cpos={1}
-        clength={okcancel.length}
-      >
-        {' '}
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
         {ele}
-      </CircleElement>
+      </div>
     ))
 
     return (
@@ -849,9 +779,9 @@ export class ConfirmBox extends Component {
       >
         {this.state.activated && (
           <Fragment>
-            <CircleWrap radius={20} cpos={1}>
+            <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
               {okcancel}
-            </CircleWrap>
+            </div>
           </Fragment>
         )}
       </div>

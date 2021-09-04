@@ -986,7 +986,7 @@ export class BlackboardNotepad extends Component {
     this.realblackboard = React.createRef()
 
     this.outgodispatcher = new Dispatcher()
-    this.outgodispatcher.blocked = true // we block initially
+    // this.outgodispatcher.blocked = true // we block initially, not any more
 
     const locnotepadscreen = this.props.notepadscreen
     this.networksender = new NetworkSink(function (data) {
