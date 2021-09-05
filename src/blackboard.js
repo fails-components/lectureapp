@@ -905,6 +905,7 @@ export class Blackboard extends Component {
           backcolor={this.props.backcolor}
           pixelwidth={this.props.bbwidth}
           zIndex={50}
+          key={prop}
         >
           {' '}
         </SVGWriting2>
