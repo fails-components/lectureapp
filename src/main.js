@@ -102,7 +102,7 @@ class ChannelEdit extends Component {
         else if (el2.purpose === 'screen') purpose = 'Screen'
 
         return (
-          <div className='p-m-2 p-shadow-1 p-p-2'>
+          <div className='p-m-2 p-shadow-1 p-p-2' key={el2.uuid}>
             {' '}
             {index + 1 + '. ' + purpose}{' '}
           </div>
@@ -114,7 +114,7 @@ class ChannelEdit extends Component {
       return (
         <div className='p-mr-2 p-shadow-1'>
           <div className='p-d-flex p-flex-column p-jc-center'>
-            <div className='p-m-2 p-p-1'>
+            <div className='p-m-2 p-p-1' key='haeding'>
               <h3>
                 {ind + 1 + '. ' + type}
                 {ind !== 0 && el.notescreens.length === 0 && (
@@ -129,7 +129,7 @@ class ChannelEdit extends Component {
               </h3>
             </div>
             {notescreens}
-            <div className='p-m-2 p-p-2'>
+            <div className='p-m-2 p-p-2' key='footer'>
               <div className='p-d-flex'>
                 <div className='p-mr-2'>
                   <Button
@@ -172,7 +172,7 @@ class ChannelEdit extends Component {
 
     return (
       <div className='p-d-flex p-flex-column'>
-        <div className='p-mb-2'>
+        <div className='p-mb-2' key='channels'>
           <div className='p-d-flex'>
             <Menu
               model={availscreensitems}
@@ -183,9 +183,9 @@ class ChannelEdit extends Component {
             {channels}
           </div>
         </div>
-        <div className='p-mb-2'>
+        <div className='p-mb-2' key='buttons'>
           <div className='p-d-flex'>
-            <div className='p-mr-2'>
+            <div className='p-mr-2' key='newnotepad'>
               <Button
                 icon={
                   <Fragment>
@@ -199,7 +199,7 @@ class ChannelEdit extends Component {
                 }}
               ></Button>
             </div>
-            <div className='p-mr-2'>
+            <div className='p-mr-2' key='newscreen'>
               <Button
                 icon={
                   <Fragment>
@@ -213,7 +213,7 @@ class ChannelEdit extends Component {
                 }}
               ></Button>
             </div>
-            <div className='p-mr-2 p-ml-auto'>
+            <div className='p-mr-2 p-ml-auto' key='showscreen'>
               <Button
                 icon={
                   <Fragment>
@@ -1496,7 +1496,7 @@ export class FailsScreen extends FailsBasis {
         <Sidebar
           visible={!this.state.casttoscreens}
           position='top'
-          style={{ width: '100%', height: '90%', zIndex: 0 }}
+          style={{ width: '100%', height: '90%', zIndex: 100 }}
           showCloseIcon={false}
           onHide={() => {}}
         >
