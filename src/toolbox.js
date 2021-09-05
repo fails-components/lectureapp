@@ -290,7 +290,6 @@ export class ToolBox extends Component {
 
   reportDrawPos(x, y) {
     const now = Date.now()
-    const elapsed = Math.min(now - this.lastpostime, 100)
     this.lastpostime = now
 
     let finaly = 0
@@ -329,17 +328,7 @@ export class ToolBox extends Component {
           //   console.log("second finaly",finaly);
         }
       }
-
-      const timefac = Math.min(elapsed / 1000, 1.0)
-      // console.log("reportDrawPos", timefac, this.state.posy,finaly);
-
-      let desty = state.posy * (1 - timefac) + timefac * finaly
-      if (Math.abs(desty - y) < Math.abs(finaly - y)) {
-        // in this case jump
-        desty = finaly
-      }
-
-      return { posy: desty }
+      return { posy: finaly }
     })
   }
 
