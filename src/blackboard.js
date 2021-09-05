@@ -491,8 +491,6 @@ export class Blackboard extends Component {
     this.curpenwidth = 0
     this.curtype = 0
 
-    this.touchOn = 0 // are touchevents recognized for drawing
-
     this.rendermin = 0
     this.rendermax = props.bbheight / props.bbwidth
     this.forceredraw = false
@@ -1179,7 +1177,13 @@ export class BlackboardNotepad extends Component {
       this.rightdown(event)
       return
     }
-    if (event.pointerType === 'touch' && !this.touchOn) return // no touchy touchy
+    if (event.pointerType === 'pen') this.lastPenEvent = Date.now()
+    if (
+      event.pointerType === 'touch' &&
+      (Date.now() - this.lastPenEvent < 5 * 1000 || !event.isPrimary)
+    )
+      return // no touchy touchy
+
     const pos = { x: event.clientX, y: event.clientY }
     this.rightmousescroll = false
 
@@ -1277,10 +1281,15 @@ export class BlackboardNotepad extends Component {
 
     const pos = { x: event.clientX, y: event.clientY }
 
-    if (event.pointerType === 'touch' && !this.touchOn) return // no touchy touchy
+    if (
+      event.pointerType === 'touch' &&
+      Date.now() - this.lastPenEvent < 5 * 1000
+    )
+      return // no touchy touchy
 
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true) {
+        if (event.pointerType === 'pen') this.lastPenEvent = Date.now()
         /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
                 console.log("last pos",this.lastpos );
                 console.log("pointer id", event.pointerId);
@@ -1378,7 +1387,11 @@ export class BlackboardNotepad extends Component {
       this.rightup(event)
       return
     }
-    if (event.pointerType === 'touch' && !this.touchOn) return // no touchy touchy
+    if (
+      event.pointerType === 'touch' &&
+      Date.now() - this.lastPenEvent < 5 * 1000
+    )
+      return // no touchy touchy
 
     const pos = { x: event.clientX, y: event.clientY }
 

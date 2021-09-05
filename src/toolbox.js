@@ -111,7 +111,7 @@ export class ToolBox extends Component {
     this.state.secondtoolstep = false
     this.state.selectedPickerid = 1
 
-    this.tbx = 0.83 // constant toolbox pos
+    this.tbx = 0.75 // constant toolbox pos
     this.lastpostime = Date.now()
 
     this.secondtoolnum = 0
@@ -157,6 +157,8 @@ export class ToolBox extends Component {
     this.scrollPointerdown = this.scrollPointerdown.bind(this)
     this.scrollPointerup = this.scrollPointerup.bind(this)
     this.scrollPointermove = this.scrollPointermove.bind(this)
+
+    this.scrollButtonRef = React.createRef()
   }
 
   blackboard() {
@@ -358,28 +360,38 @@ export class ToolBox extends Component {
   }
 
   scrollPointerdown(event) {
+    // if (this.scrollmodeactiv && this.scrollid !== event.pointerId) return
+
+    if (this.scrollButtonRef.current) {
+      this.scrollButtonRef.current.setPointerCapture(event.pointerId)
+    }
     this.setState({
-      mousescrollx: event.clientX,
-      mousescrolly: event.clientY,
       scrollmodeactiv: true
     })
     this.scrollboardSetReference()
     this.scrollmodeactiv = true
+    this.scrollid = event.pointerId
     this.lastscrolltime = Date.now() - 50
+    this.mousescrollx = event.clientX
+    this.mousescrolly = event.clientY
   }
 
   scrollPointermove(event) {
     // by pass for better smoothness
     const now = Date.now()
-    if (this.scrollmodeactiv && now - this.lastscrolltime > 16) {
-      this.scrollboard(0, -event.clientY + this.state.mousescrolly)
+    if (
+      this.scrollmodeactiv &&
+      this.scrollid === event.pointerId &&
+      now - this.lastscrolltime > 16
+    ) {
+      this.scrollboard(0, -event.clientY + this.mousescrolly)
       this.lastscrolltime = now
     }
   }
 
   scrollPointerup(event) {
-    if (this.scrollmodeactiv) {
-      this.scrollboard(0, -event.clientY + this.state.mousescrolly)
+    if (this.scrollmodeactiv && this.scrollid === event.pointerId) {
+      if (event.clientY) this.scrollboard(0, -event.clientY + this.mousescrolly)
       this.setState({
         scrollmodeactiv: false
       })
@@ -419,12 +431,13 @@ export class ToolBox extends Component {
       />
     )
 
+    //   onPointerLeave={this.scrollPointerup}
     const scrollbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faUpdown} />}
         key={2}
+        ref={this.scrollButtonRef}
         onPointerDown={this.scrollPointerdown}
-        onPointerLeave={this.scrollPointerup}
         onPointerMove={this.scrollPointermove}
         onPointerUp={this.scrollPointerup}
         onClick={(e) => {
@@ -662,7 +675,7 @@ export class ToolBox extends Component {
           position: 'absolute',
           top: this.state.posy * this.props.bbwidth + 'px',
           left: this.tbx * this.props.bbwidth + 'px',
-          width: '190px',
+          width: '15vx',
           zIndex: 200
         }}
       >
