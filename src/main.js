@@ -50,6 +50,7 @@ import jwt_decode from 'jwt-decode'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
+import screenfull from 'screenfull'
 
 class ChannelEdit extends Component {
   constructor(props) {
@@ -1291,6 +1292,13 @@ export class FailsScreen extends FailsBasis {
     this.state.lectdetail = null
 
     this.notepaduuid = null
+
+    // handles fade in and out of the fullscreen button
+    setInterval(() => {
+      if (Date.now() - this.state.lastpointermove > 5000) {
+        this.setState({ lastpointermove: 0 })
+      }
+    }, 1000)
   }
 
   componentDidMount() {
@@ -1469,8 +1477,13 @@ export class FailsScreen extends FailsBasis {
 
   render() {
     console.log('current states', this.state)
+    const pointermove = () => {
+      this.setState({
+        lastpointermove: Date.now()
+      })
+    }
     return (
-      <div>
+      <div onPointerMove={pointermove}>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
         <NoteScreenBase
           isnotepad={false}
@@ -1502,6 +1515,22 @@ export class FailsScreen extends FailsBasis {
         >
           {this.state.screenmode && this.renderScreenText()}
         </Sidebar>
+        {this.state.lastpointermove !== 0 && (
+          <Button
+            icon='pi pi-window-maximize'
+            style={{
+              position: 'absolute',
+              top: '90vh',
+              left: '90vw',
+              zIndex: 101
+            }}
+            key={1}
+            onClick={(e) => {
+              screenfull.toggle()
+            }}
+            className='p-button-primary p-button-raised p-button-rounded fadeMenu'
+          />
+        )}
       </div>
     )
   }
