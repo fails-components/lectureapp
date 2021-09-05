@@ -364,21 +364,26 @@ export class ToolBox extends Component {
       scrollmodeactiv: true
     })
     this.scrollboardSetReference()
+    this.scrollmodeactiv = true
+    this.lastscrolltime = Date.now() - 50
   }
 
   scrollPointermove(event) {
     // by pass for better smoothness
-    if (this.state.scrollmodeactiv) {
+    const now = Date.now()
+    if (this.scrollmodeactiv && now - this.lastscrolltime > 16) {
       this.scrollboard(0, -event.clientY + this.state.mousescrolly)
+      this.lastscrolltime = now
     }
   }
 
   scrollPointerup(event) {
-    if (this.state.scrollmodeactiv) {
+    if (this.scrollmodeactiv) {
       this.scrollboard(0, -event.clientY + this.state.mousescrolly)
       this.setState({
         scrollmodeactiv: false
       })
+      this.scrollmodeactiv = false
     }
   }
 
@@ -425,7 +430,7 @@ export class ToolBox extends Component {
         onClick={(e) => {
           this.selectTool(2)
         }}
-        className={selbuttonclass(this.state.scrollmodeactiv, 'p-button-lg ')}
+        className={selbuttonclass(this.state.scrollmodeactiv, 'p-button-lg')}
       />
     )
 
@@ -647,10 +652,12 @@ export class ToolBox extends Component {
 
     // this.tmcolorwheel.arrangeButtons();
     //  this.tmcolorwheel.filters = [this.BloomFilter];
+    let tbclass = 'toolboxMove'
+    if (this.state.scrollmodeactiv) tbclass = ''
 
     return (
       <div
-        className='toolboxMove'
+        className={tbclass}
         style={{
           position: 'absolute',
           top: this.state.posy * this.props.bbwidth + 'px',

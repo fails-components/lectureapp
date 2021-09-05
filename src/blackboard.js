@@ -552,24 +552,8 @@ export class Blackboard extends Component {
   setScrollOffset(scrolloffset) {
     this.setState({ scrolloffset: scrolloffset })
     console.log('setScrollOffset', scrolloffset)
-    this.scrollBoard(0, 0, this.getCurScrollPos())
+    this.scrollBoard(0, 'myself', 0, this.getCurScrollPos())
   }
-
-  // dead code?
-  /*
-    resize(width,height)
-    {
-        console.log("blackboard resize! %d %d",width,height);
-        
-        //this.hitArea=new PIXI.Rectangle(0,0,width,height);
-        
-       
-        this.rendermin=this.rendermax=this.state.curscrollpos;
-        this.forceredraw=true;
-        console.log("resize scrollboard",this.getCurScrollPos());
-        this.scrollBoard(0,0,this.getCurScrollPos());
-        console.log("Redraw! resize");
-    } */
 
   updateRenderArea(x, y) {
     this.rendermin = Math.min(y, this.rendermin)
@@ -751,7 +735,8 @@ export class Blackboard extends Component {
     this.prerecpathstarted = false // tracks the process outside the state */
   }
 
-  scrollBoard(time, x, y) {
+  scrollBoard(time, clientnum, x, y) {
+    if (this.myclientnum && clientnum === this.myclientnum) return // only scrolls from other people
     if (x !== 0) {
       // implement
     }
@@ -761,19 +746,25 @@ export class Blackboard extends Component {
       let newpos = /* this.curscrollpos+ */ y
       if (newpos < 0) newpos = 0
       this.setState({ curscrollpos: newpos })
-
-      /* this.setState((state)=>{
-            return {position: {x: state.position.x,
-                y: -(state.curscrollpos+state.scrolloffset)}};}); */
-
-      /// *this.blackboardtemp.y=*/this.position.y=-newpos*this.props.bbwidth;
-      // this.hitArea.y=newpos*this.props.bbwidth;
     }
     if (x !== 0 || y !== 0 || this.forceredraw) {
-      // console.log("scrollboard",x,y,this.position.x,this.blackboardtemp.y,this.hitArea);
-      //     console.log("Redrawcheck", this.rendermin,this.rendermax,
-      //                scrollpos,scrollpos+this.scrollheight());
+      this.checkRedraw()
+    }
+  }
 
+  preScrollBoard(time, clientnum, x, y) {
+    if (x !== 0) {
+      // implement
+    }
+
+    if (y !== 0 && true) {
+      this.myclientnum = clientnum
+      // console.log("scrollboard",y,this.state.scrolloffset);
+      let newpos = /* this.curscrollpos+ */ y
+      if (newpos < 0) newpos = 0
+      this.setState({ curscrollpos: newpos })
+    }
+    if (x !== 0 || y !== 0 || this.forceredraw) {
       this.checkRedraw()
     }
   }
@@ -847,7 +838,7 @@ export class Blackboard extends Component {
         if (callback) callback(cs) // calls the outgoing dispatcher
         console.log('replace data command', cs)
         if (cs.scrollx && cs.scrolly)
-          this.scrollBoard(cs.time, cs.scrollx, cs.scrolly)
+          this.scrollBoard(cs.time, 'data', cs.scrollx, cs.scrolly)
       }
     }
     this.rendermin = Math.min(data.number, this.rendermin)
@@ -1365,10 +1356,19 @@ export class BlackboardNotepad extends Component {
     } else {
       this.outgodispatcher.scrollBoard(
         null,
+        this.clientId,
         0,
         this.rightmousescrollpos +
           (-event.screenY + this.rightmousescrolly) / this.props.bbwidth
       )
+      if (this.realblackboard && this.realblackboard.current)
+        this.realblackboard.current.preScrollBoard(
+          null,
+          this.clientId,
+          0,
+          this.rightmousescrollpos +
+            (-event.screenY + this.rightmousescrolly) / this.props.bbwidth
+        )
       // console.log("rightmove");
     }
   }
@@ -1424,10 +1424,19 @@ export class BlackboardNotepad extends Component {
     if (this.rightmousescroll) {
       this.outgodispatcher.scrollBoard(
         null,
+        this.clientId,
         0,
         this.rightmousescrollpos +
           (-event.screenY + this.rightmousescrolly) / this.props.bbwidth
       )
+      if (this.realblackboard && this.realblackboard.current)
+        this.realblackboard.current.preScrollBoard(
+          null,
+          this.clientId,
+          0,
+          this.rightmousescrollpos +
+            (-event.screenY + this.rightmousescrolly) / this.props.bbwidth
+        )
       this.rightmousescroll = false
     }
     // console.log("rightup");
@@ -1436,7 +1445,14 @@ export class BlackboardNotepad extends Component {
   scrollboardTB(x, y, reference) {
     // console.log("scrollboardTB",x,y,reference);
     if (this.outgodispatcher)
-      this.outgodispatcher.scrollBoard(null, 0, reference + y)
+      this.outgodispatcher.scrollBoard(null, this.clientId, 0, reference + y)
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.preScrollBoard(
+        null,
+        this.clientId,
+        0,
+        reference + y
+      )
   }
 
   scrollboardKeys(x, y) {
@@ -1459,7 +1475,14 @@ export class BlackboardNotepad extends Component {
     curkeyscroll += y
     if (curkeyscroll <= 0) curkeyscroll = 0.0001
     if (this.outgodispatcher)
-      this.outgodispatcher.scrollBoard(null, 0, curkeyscroll)
+      this.outgodispatcher.scrollBoard(null, this.clientId, 0, curkeyscroll)
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.preScrollBoard(
+        null,
+        this.clientId,
+        0,
+        curkeyscroll
+      )
     this.curkeyscroll = curkeyscroll
   }
 
