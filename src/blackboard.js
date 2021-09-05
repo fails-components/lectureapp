@@ -189,6 +189,8 @@ export class SVGWriting2 extends Component {
       pointerEvents: 'none' // deactive this option , if you like to pick an svg element by cursor for debugging
     }
 
+    if (this.props.preview) stroke = 'purple'
+
     return (
       <svg viewBox={viewbox} style={style}>
         {pathstring && (
@@ -472,6 +474,8 @@ export class Blackboard extends Component {
     this.work.objects = []
     this.workobj = {}
 
+    this.preworkobj = {}
+
     this.addpictimage = React.createRef()
 
     this.redrawing = false // not to be confused with the state
@@ -607,17 +611,9 @@ export class Blackboard extends Component {
       console.log('lost case')
     }
 
-    /* if (this.recpathstarted) {
-           /* this.submitPath(this.needresubmit);
-            this.needresubmit=false;*
-            this.finishPath(); // ok finish the stuff really
-
-        } */
-
     this.workobj[objnum] = new DrawObjectGlyph(objnum)
     this.workobj[objnum].startPath(x, y, type, color, width, pressure)
 
-    // this.partemitter.emit = false;
     this.updateRenderArea(x, y)
 
     if (!this.redrawing)
@@ -625,41 +621,93 @@ export class Blackboard extends Component {
         const version = { ...state.workobjversion }
         version[objnum] = this.workobj[objnum].version
         return {
-          workobjversion: version,
-          fogpos: false
+          workobjversion: version
         }
       })
 
     // }
     this.recpathstarted = true
+    this.lastrender = Date.now()
+  }
+
+  preStartPath(time, objnum, curclient, x, y, type, color, width, pressure) {
+    // console.log("startPath",x,y,type,color,width, pressure);
+
+    if (this.preworkobj[objnum]) {
+      // in case of lost messages
+      console.log('lost case preview')
+    }
+
+    this.preworkobj[objnum] = new DrawObjectGlyph(objnum)
+    this.preworkobj[objnum].startPath(x, y, type, color, width, pressure)
+
+    this.setState((state) => {
+      const version = { ...state.preworkobjversion }
+      version[objnum] = this.preworkobj[objnum].version
+      return {
+        preworkobjversion: version,
+        fogpos: false
+      }
+    })
+
+    // }
+    this.prerecpathstarted = true
+    this.prelastrender = Date.now()
   }
 
   addToPath(time, objid, curclient, x, y, pressure) {
     if (this.workobj[objid]) {
       // TODO handle objid
       this.workobj[objid].addToPath(x, y, pressure)
+      const now = Date.now()
 
       // console.log("addtopath rs",x,y,pressure);
 
-      if (!this.redrawing)
+      if (!this.redrawing && now - this.lastrender > 100) {
         this.setState((state) => {
           const version = { ...state.workobjversion }
           version[objid] = this.workobj[objid].version
           return {
-            workobjversion: version,
-            fogpos: false
+            workobjversion: version
           }
         })
-      if (this.toolbox() && !this.redrawing) {
-        // this is quite expensive, do not do this during a redraw
-        // console.log("redrawinf", this.redrawing, !this.redrawing);
-        this.toolbox().reportDrawPos(
-          x,
-          y - this.state.curscrollpos - this.state.scrolloffset
-        )
+        this.prelastrender = now
       }
 
       this.updateRenderArea(x, y)
+    }
+    // console.log("addToPath",time,curclient,x,y,x*this.props.bbwidth,y*this.props.bbwidth);
+  }
+
+  preAddToPath(time, objid, curclient, x, y, pressure) {
+    if (this.preworkobj[objid]) {
+      // TODO handle objid
+      this.preworkobj[objid].addToPath(x, y, pressure)
+
+      // console.log("addtopath rs",x,y,pressure);
+      const now = Date.now()
+
+      if (now - this.prelastrender > 100) {
+        this.setState((state) => {
+          const version = { ...state.preworkobjversion }
+          version[objid] = this.preworkobj[objid].version
+          return {
+            preworkobjversion: version,
+            fogpos: false
+          }
+        })
+        if (this.toolbox()) {
+          // this is quite expensive, do not do this during a redraw, but this is never a redraw
+          // console.log("redrawinf", this.redrawing, !this.redrawing);
+          this.toolbox().reportDrawPos(
+            x,
+            y - this.state.curscrollpos - this.state.scrolloffset
+          )
+        }
+        this.prelastrender = now
+      }
+
+      // this.updateRenderArea(x, y)
     }
     // console.log("addToPath",time,curclient,x,y,x*this.props.bbwidth,y*this.props.bbwidth);
   }
@@ -669,6 +717,7 @@ export class Blackboard extends Component {
       this.workobj[objid].finishPath()
       this.work.objects.push(this.workobj[objid])
       delete this.workobj[objid]
+      delete this.preworkobj[objid] // also remove preview
 
       if (!this.redrawing)
         this.setState((state) => {
@@ -676,12 +725,30 @@ export class Blackboard extends Component {
           delete version[objid]
           return {
             workobjversion: version,
-            fogpos: false,
             objects: this.work.objects.concat()
           }
         })
     }
     this.recpathstarted = false // tracks the process outside the state
+  }
+
+  preFinishPath(time, objid, curclient) {
+    if (this.preworkobj[objid]) {
+      this.preworkobj[objid].finishPath()
+      // this.work.objects.push(this.workobj[objid])
+      // delete this.workobj[objid]
+
+      if (!this.redrawing)
+        this.setState((state) => {
+          const version = { ...state.preworkobjversion }
+          delete version[objid]
+          return {
+            preworkobjversion: version,
+            fogpos: false
+          }
+        })
+    }
+    this.prerecpathstarted = false // tracks the process outside the state */
   }
 
   scrollBoard(time, x, y) {
@@ -899,13 +966,30 @@ export class Blackboard extends Component {
     })
     const wobj = []
     for (const prop in this.workobj) {
-      wobj.push(
+      if (!this.preworkobj[prop])
+        wobj.push(
+          <SVGWriting2
+            glyph={this.workobj[prop]}
+            backcolor={this.props.backcolor}
+            pixelwidth={this.props.bbwidth}
+            zIndex={50}
+            key={prop}
+          >
+            {' '}
+          </SVGWriting2>
+        )
+    }
+
+    const pwobj = []
+    for (const prop in this.preworkobj) {
+      pwobj.push(
         <SVGWriting2
-          glyph={this.workobj[prop]}
+          glyph={this.preworkobj[prop]}
           backcolor={this.props.backcolor}
           pixelwidth={this.props.bbwidth}
           zIndex={50}
-          key={prop}
+          preview={true}
+          key={'pre' + prop}
         >
           {' '}
         </SVGWriting2>
@@ -947,6 +1031,7 @@ export class Blackboard extends Component {
           <span style={stylespan}>
             {written}
             {wobj}
+            {pwobj}
             {this.props.addpict && (
               <ImageHelper
                 x={this.props.addpict.posx * this.props.bbwidth}
@@ -1156,6 +1241,19 @@ export class BlackboardNotepad extends Component {
           (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
           event.pressure
         )
+        if (this.realblackboard && this.realblackboard.current)
+          this.realblackboard.current.preStartPath(
+            null,
+            objid,
+            null,
+            pos.x / this.props.bbwidth,
+            pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+            this.tooltype,
+            Color(this.toolcolor).rgbNumber(),
+            (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
+            event.pressure
+          )
+
         // console.log("props.devicePixelRatio", this.props.devicePixelRatio);
 
         this.mousepathstarted = true
@@ -1212,6 +1310,16 @@ export class BlackboardNotepad extends Component {
               pos.y / this.props.bbwidth + this.getCalcScrollPos(),
               event.pressure
             )
+            if (this.realblackboard && this.realblackboard.current)
+              // preview
+              this.realblackboard.current.preAddToPath(
+                null,
+                objid,
+                null,
+                pos.x / this.props.bbwidth,
+                pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+                event.pressure
+              )
             this.lastpos[event.pointerId] = pos
           }
         }
@@ -1293,8 +1401,19 @@ export class BlackboardNotepad extends Component {
           pos.y / this.props.bbwidth + this.getCalcScrollPos(),
           event.pressure
         )
+        if (this.realblackboard && this.realblackboard.current)
+          this.realblackboard.current.preAddToPath(
+            null,
+            objid,
+            null,
+            pos.x / this.props.bbwidth,
+            pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+            event.pressure
+          )
       }
       this.outgodispatcher.finishPath(null, objid, null)
+      if (this.realblackboard && this.realblackboard.current)
+        this.realblackboard.current.preFinishPath(null, objid, null)
 
       delete this.pointerdraw[event.pointerId]
       delete this.pointerobjids[event.pointerId]
