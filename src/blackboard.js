@@ -35,6 +35,12 @@ import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry'
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
+window.addEventListener('contextmenu', function (e) {
+  e.preventDefault()
+  e.stopPropagation()
+  return false
+})
+
 export class SVGWriting extends Component {
   render() {
     /* { color:  this.state.workcolor, alpha: , objnum: this.state.workobjnum ,

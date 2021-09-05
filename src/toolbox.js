@@ -435,6 +435,9 @@ export class ToolBox extends Component {
     const scrollbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faUpdown} />}
+        style={{
+          touchAction: 'none'
+        }}
         key={2}
         ref={this.scrollButtonRef}
         onPointerDown={this.scrollPointerdown}
@@ -676,7 +679,8 @@ export class ToolBox extends Component {
           top: this.state.posy * this.props.bbwidth + 'px',
           left: this.tbx * this.props.bbwidth + 'px',
           width: '15vx',
-          zIndex: 200
+          zIndex: 200,
+          touchAction: 'none'
         }}
       >
         {this.state.activated && (
