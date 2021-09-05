@@ -846,6 +846,7 @@ export class FailsBoard extends FailsBasis {
   }
 
   onOpenNewScreen() {
+    const authtoken = this.myauthtoken
     this.socket.emit('createscreen', function (ret) {
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
@@ -861,7 +862,7 @@ export class FailsBoard extends FailsBasis {
         uuidv4(),
         'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
       )
-      sessionStorage.setItem('failstoken', this.myauthtoken)
+      sessionStorage.setItem('failstoken', authtoken)
       sessionStorage.setItem('failpurpose', 'lecture')
 
       if (!newscreen) console.log('Opening window failed')
@@ -881,6 +882,7 @@ export class FailsBoard extends FailsBasis {
   }
 
   onOpenNewNotepad() {
+    const authtoken = this.myauthtoken
     this.socket.emit('createnotepad', function (ret) {
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
@@ -896,7 +898,7 @@ export class FailsBoard extends FailsBasis {
         uuidv4(),
         'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
       )
-      sessionStorage.setItem('failstoken', this.myauthtoken)
+      sessionStorage.setItem('failstoken', authtoken)
       sessionStorage.setItem('failpurpose', 'lecture')
 
       if (!newnotepad) console.log('Opening window failed')
