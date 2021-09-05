@@ -39,7 +39,9 @@ import {
   faArrowsAlt,
   faDesktop,
   faNotesMedical,
-  faPlus
+  faPlus,
+  faEye,
+  faEyeSlash
 } from '@fortawesome/free-solid-svg-icons'
 import { NoteScreenBase } from './notepad.js'
 import { io } from 'socket.io-client'
@@ -208,6 +210,33 @@ class ChannelEdit extends Component {
                 className='p-button-rounded p-button-text p-button-sm'
                 onClick={() => {
                   this.props.app.onOpenNewScreen()
+                }}
+              ></Button>
+            </div>
+            <div className='p-mr-2 p-ml-auto'>
+              <Button
+                icon={
+                  <Fragment>
+                    <FontAwesomeIcon
+                      icon={
+                        this.props.app.state.showscreennumber
+                          ? faEye
+                          : faEyeSlash
+                      }
+                      className='p-m-1'
+                    />
+                    <FontAwesomeIcon
+                      icon={faDesktop}
+                      size='xs'
+                      className='p-m-1'
+                    />
+                  </Fragment>
+                }
+                className='p-button-rounded p-button-text p-button-sm'
+                onClick={() => {
+                  this.props.app.updateSizes({
+                    showscreennumber: !this.props.app.state.showscreennumber
+                  })
                 }}
               ></Button>
             </div>

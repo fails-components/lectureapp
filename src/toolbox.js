@@ -28,7 +28,6 @@ import {
   faBars,
   faThList,
   faAdjust,
-  faDesktop,
   faEye,
   faEyeSlash
 } from '@fortawesome/free-solid-svg-icons'
@@ -531,19 +530,6 @@ export class ToolBox extends Component {
       />
     )
 
-    const screennumbutton = (
-      <Button
-        icon={<FontAwesomeIcon icon={faDesktop} />}
-        key={2}
-        onClick={(e) => {
-          this.props.updateSizes({
-            showscreennumber: !mainstate.showscreennumber
-          })
-        }}
-        className={selbuttonclass(mainstate.showscreennumber)}
-      />
-    )
-
     const casttoscreenbutton = (
       <Button
         icon={
@@ -574,7 +560,6 @@ export class ToolBox extends Component {
 
     settingswheel.push(arrangebutton)
     settingswheel.push(fsbutton)
-    settingswheel.push(screennumbutton)
     settingswheel.push(casttoscreenbutton)
     if (!mainstate.bgpdf) settingswheel.push(backbwbutton)
 
