@@ -18,6 +18,7 @@
 */
 import React, { Component, Fragment } from 'react'
 import { Button } from 'primereact/button'
+import { OverlayPanel } from 'primereact/overlaypanel'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faEraser,
@@ -29,7 +30,8 @@ import {
   faThList,
   faAdjust,
   faEye,
-  faEyeSlash
+  faEyeSlash,
+  faInfo
 } from '@fortawesome/free-solid-svg-icons'
 import screenfull from 'screenfull'
 
@@ -568,10 +570,22 @@ export class ToolBox extends Component {
       />
     )
 
+    const infobutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faInfo} />}
+        key={4}
+        onClick={(e) => {
+          if (this.ossinfo) this.ossinfo.toggle(e)
+        }}
+        className={setclass}
+      />
+    )
+
     settingswheel.push(arrangebutton)
     settingswheel.push(fsbutton)
     settingswheel.push(casttoscreenbutton)
     if (!mainstate.bgpdf) settingswheel.push(backbwbutton)
+    settingswheel.push(infobutton)
 
     let setwheelpcpos = false
     if (this.state.selectedButtonid === 1) {
@@ -672,6 +686,24 @@ export class ToolBox extends Component {
           touchAction: 'none'
         }}
       >
+        <OverlayPanel
+          ref={(el) => {
+            this.ossinfo = el
+          }}
+          showCloseIcon
+        >
+          <h4>
+            Fancy automated internet lecture system (<b>FAILS </b>) - components{' '}
+          </h4>
+          <p>
+            Copyright (C) 2015-2017 (original FAILS), <br />
+            2021- (FAILS Components) Marten Richter <br /> <br />
+            Released under GNU Affero General Public License Version 3<br />{' '}
+            <br />
+            Build upon the shoulders of giants, see{' '}
+            <a href='/static/oss'> OSS attribution and licensing.</a>
+          </p>
+        </OverlayPanel>
         {this.state.activated && (
           <Fragment>
             <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>

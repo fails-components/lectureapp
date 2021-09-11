@@ -41,7 +41,8 @@ import {
   faNotesMedical,
   faPlus,
   faEye,
-  faEyeSlash
+  faEyeSlash,
+  faInfo
 } from '@fortawesome/free-solid-svg-icons'
 import { NoteScreenBase } from './notepad.js'
 import { io } from 'socket.io-client'
@@ -309,6 +310,16 @@ export class FailsBasis extends Component {
         }
       }.bind(this)
     )
+
+    commonsocket.on('presinfo', (data) => {
+      console.log('data presinfo', data)
+      const setstate = {}
+      // #error TODO assure that notepads are always within positive range and make sure that changes are immediately
+      setstate.casttoscreens = data.casttoscreens === 'true'
+      setstate.blackbackground = data.backgroundbw === 'true'
+      setstate.showscreennumber = data.showscreennumber === 'true'
+      this.setState(setstate)
+    })
 
     commonsocket.on('channelinfo', (data) => {
       console.log('data channelinfo', data)
@@ -1264,11 +1275,15 @@ export class FailsBoard extends FailsBasis {
                     onClick={() =>
                       navigator.clipboard &&
                       navigator.clipboard.writeText(
-                        JSON.stringify({
-                          ballots: this.state.pollballots,
-                          poll: this.state.curpoll,
-                          votes: this.state.pollvotes
-                        })
+                        JSON.stringify(
+                          {
+                            ballots: this.state.pollballots,
+                            poll: this.state.curpoll,
+                            votes: this.state.pollvotes
+                          },
+                          null,
+                          2
+                        )
                       )
                     }
                   />{' '}
@@ -1746,6 +1761,24 @@ export class FailsNotes extends FailsBasis {
     return (
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
+        <OverlayPanel
+          ref={(el) => {
+            this.ossinfo = el
+          }}
+          showCloseIcon
+        >
+          <h4>
+            Fancy automated internet lecture system (<b>FAILS </b>) - components{' '}
+          </h4>
+          <p>
+            Copyright (C) 2015-2017 (original FAILS), <br />
+            2021- (FAILS Components) Marten Richter <br /> <br />
+            Released under GNU Affero General Public License Version 3<br />{' '}
+            <br />
+            Build upon the shoulders of giants, see{' '}
+            <a href='/static/oss'> OSS attribution and licensing.</a>
+          </p>
+        </OverlayPanel>
 
         <NoteScreenBase
           isnotepad={false}
@@ -1767,8 +1800,22 @@ export class FailsNotes extends FailsBasis {
           height={this.props.height}
           noteref={this.getNoteRef}
           updateSizes={this.updateSizes}
+          hidden={!this.state.casttoscreens}
         ></NoteScreenBase>
-        <div style={{ position: 'absolute', top: '2vh', left: '1vw' }}>
+        {!this.state.casttoscreens && (
+          <div
+            className='p-d-flex p-jc-center p-ai-center'
+            style={{ height: '100vh', width: '100vw' }}
+          >
+            <div className='p-mr-2'>
+              <h1>The screencast is currently deactivated!</h1>
+              <h2>Ask the docent for activation, when ready!</h2>
+            </div>
+          </div>
+        )}
+        <div
+          style={{ position: 'absolute', top: '2vh', left: '1vw', zIndex: 150 }}
+        >
           <div>
             <Button
               icon={this.state.scrollunlock ? 'pi pi-lock-open' : 'pi pi-lock'}
@@ -1808,6 +1855,14 @@ export class FailsNotes extends FailsBasis {
               onClick={(e) => this.chatop.toggle(e)}
               aria-haspopup
               aria-controls='overlay_panel'
+            />
+            <Button
+              icon={<FontAwesomeIcon icon={faInfo} />}
+              key={4}
+              onClick={(e) => {
+                if (this.ossinfo) this.ossinfo.toggle(e)
+              }}
+              className='p-button-raised p-button-rounded p-m-2'
             />
 
             <OverlayPanel ref={(el) => (this.chatop = el)}>

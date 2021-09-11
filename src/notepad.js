@@ -249,7 +249,8 @@ export class NoteScreenBase extends Component {
           width: this.props.width,
           height: this.props.height,
           overflow: 'hidden',
-          position: 'relative'
+          position: 'relative',
+          display: this.props.hidden ? 'none' : null
         }}
       >
         {this.props.showscreennumber && (

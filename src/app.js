@@ -37,7 +37,7 @@ let gotmessage = false
 window.addEventListener(
   'message',
   (event) => {
-    console.log('message from', event.origin, 'data:', event.data)
+    console.log('message from', event.origin /* , 'data:', event.data */)
     if (
       event.origin !== cfg.getURL('appweb') &&
       event.origin !== cfg.getURL('web') &&
