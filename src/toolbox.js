@@ -113,7 +113,7 @@ export class ToolBox extends Component {
     this.state.secondtoolstep = false
     this.state.selectedPickerid = 1
 
-    this.tbx = 0.75 // constant toolbox pos
+    this.tbx = 0.8 // constant toolbox pos
     this.lastpostime = Date.now()
 
     this.secondtoolnum = 0
@@ -672,7 +672,7 @@ export class ToolBox extends Component {
     // this.tmcolorwheel.arrangeButtons();
     //  this.tmcolorwheel.filters = [this.BloomFilter];
     let tbclass = 'toolboxMove'
-    if (this.state.scrollmodeactiv) tbclass = ''
+    if (this.state.scrollmodeactiv) tbclass = 'toolboxStatic'
 
     return (
       <div

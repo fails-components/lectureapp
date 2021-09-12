@@ -1285,8 +1285,6 @@ export class BlackboardNotepad extends Component {
                 "cX",event.clientX,
                 "cY",event.clientY); */
 
-    const pos = { x: event.clientX, y: event.clientY }
-
     if (
       event.pointerType === 'touch' &&
       Date.now() - this.lastPenEvent < 5 * 1000
@@ -1297,39 +1295,50 @@ export class BlackboardNotepad extends Component {
       if (event.pointerId in this.pointerdraw === true) {
         if (event.pointerType === 'pen') this.lastPenEvent = Date.now()
         /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
-                console.log("last pos",this.lastpos );
-                console.log("pointer id", event.pointerId);
-                console.log("lastpos",this.lastpos[event.pointerId]); */
-        const lastpos = this.lastpos[event.pointerId]
-        if (lastpos) {
-          const distance =
-            (lastpos.x - pos.x) * (lastpos.x - pos.x) +
-            (lastpos.y - pos.y) * (lastpos.y - pos.y)
-          if (distance > 0) {
-            const objid = this.pointerobjids[event.pointerId]
-            // console.log("distance check,",distance,pos.x,pos.y,pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCurScrollPos()  );
-            this.outgodispatcher.addToPath(
-              null,
-              objid,
-              null,
-              pos.x / this.props.bbwidth,
-              pos.y / this.props.bbwidth + this.getCalcScrollPos(),
-              event.pressure
-            )
-            if (this.realblackboard && this.realblackboard.current)
-              // preview
-              this.realblackboard.current.preAddToPath(
+           console.log("last pos",this.lastpos );
+           console.log("pointer id", event.pointerId);
+           console.log("lastpos",this.lastpos[event.pointerId]); */
+        const processEvent = (mevent) => {
+          const pos = { x: mevent.clientX, y: mevent.clientY }
+
+          const lastpos = this.lastpos[mevent.pointerId]
+          if (lastpos) {
+            const distance =
+              (lastpos.x - pos.x) * (lastpos.x - pos.x) +
+              (lastpos.y - pos.y) * (lastpos.y - pos.y)
+            if (distance > 0) {
+              const objid = this.pointerobjids[mevent.pointerId]
+              // console.log("distance check,",distance,pos.x,pos.y,pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCurScrollPos()  );
+              this.outgodispatcher.addToPath(
                 null,
                 objid,
                 null,
                 pos.x / this.props.bbwidth,
                 pos.y / this.props.bbwidth + this.getCalcScrollPos(),
-                event.pressure
+                mevent.pressure
               )
-            this.lastpos[event.pointerId] = pos
+              if (this.realblackboard && this.realblackboard.current)
+                // preview
+                this.realblackboard.current.preAddToPath(
+                  null,
+                  objid,
+                  null,
+                  pos.x / this.props.bbwidth,
+                  pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+                  mevent.pressure
+                )
+              this.lastpos[mevent.pointerId] = pos
+            }
           }
+        } // end process event
+        if (typeof event.nativeEvent.getCoalescedEvents === 'function') {
+          // are coalesced events supported, yes now process them all
+          event.nativeEvent.getCoalescedEvents().forEach(processEvent)
+        } else {
+          processEvent(event)
         }
       } else if (this.addpictmode !== 0) {
+        const pos = { x: event.clientX, y: event.clientY }
         switch (this.addpictmode) {
           case 4:
             console.log('createmousemovement', pos)
@@ -1361,6 +1370,7 @@ export class BlackboardNotepad extends Component {
             break
         }
       } /* if (!this.mousepathstarted) */ else {
+        const pos = { x: event.clientX, y: event.clientY }
         // console.log("Fog out BB",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth,event.data,this);
         this.props.notepadscreen.reportFoG(
           pos.x / this.props.bbwidth,

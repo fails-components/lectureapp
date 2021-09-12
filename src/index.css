@@ -27,4 +27,9 @@ code {
 
 .toolboxMove {
   transition: top 0.5s ease-in-out 0.4s;
+  transform: translate(-50%, -50%);
+}
+
+.toolboxStatic {
+  transform: translate(-50%, -50%);
 }
