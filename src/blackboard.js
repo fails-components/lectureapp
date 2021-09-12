@@ -651,7 +651,11 @@ export class Blackboard extends Component {
 
       // console.log("addtopath rs",x,y,pressure);
 
-      if (!this.redrawing && now - this.lastrender > 100) {
+      if (
+        !this.redrawing &&
+        now - this.lastrender > 100 &&
+        !this.preworkobj[objid]
+      ) {
         this.setState((state) => {
           const version = { ...state.workobjversion }
           version[objid] = this.workobj[objid].version
@@ -659,7 +663,7 @@ export class Blackboard extends Component {
             workobjversion: version
           }
         })
-        this.prelastrender = now
+        this.lastrender = now
       }
 
       this.updateRenderArea(x, y)
@@ -705,6 +709,12 @@ export class Blackboard extends Component {
       this.workobj[objid].finishPath()
       this.work.objects.push(this.workobj[objid])
       delete this.workobj[objid]
+      /* if (this.preworkobj[objid])
+        console.log(
+          'finish pathdelay',
+          (Date.now() - this.preworkobj[objid].finishtime) / 1000,
+          'seconds'
+        ) */
       delete this.preworkobj[objid] // also remove preview
 
       if (!this.redrawing)
@@ -723,6 +733,7 @@ export class Blackboard extends Component {
   preFinishPath(time, objid, curclient) {
     if (this.preworkobj[objid]) {
       this.preworkobj[objid].finishPath()
+      // this.preworkobj[objid].finishtime = Date.now()
       // this.work.objects.push(this.workobj[objid])
       // delete this.workobj[objid]
 
