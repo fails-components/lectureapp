@@ -287,7 +287,7 @@ export class FailsBasis extends Component {
         console.log('reloadboard', data, this.noteref)
         if (this.noteref) {
           this.noteref.replaceData(data)
-          if (data.last) this.noteref.setHasControl(true)
+          // if (data.last) this.noteref.setHasControl(true)
         }
       }.bind(this)
     )
@@ -734,7 +734,7 @@ export class FailsBoard extends FailsBasis {
     notepadsocket.on(
       'connect',
       function (data) {
-        if (this.noteref) this.noteref.setHasControl(false) // do not emit while reloading!
+        // if (this.noteref) this.noteref.setHasControl(false) // do not emit while reloading!
         setTimeout(function () {
           notepadsocket.emit('sendboards', {})
         }, 500)
