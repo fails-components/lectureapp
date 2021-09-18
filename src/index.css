@@ -27,9 +27,20 @@ code {
 
 .toolboxMove {
   transition: top 0.5s ease-in-out 0.4s;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, 0%);
 }
 
 .toolboxStatic {
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, 0%);
+}
+
+.teal-tooltip.p-tooltip.p-tooltip-top .p-tooltip-arrow {
+  border-top-color: var(--teal-500);
+}
+
+.teal-tooltip.p-tooltip .p-tooltip-arrow {
+  border-top-color: var(--teal-500);
+}
+.teal-tooltip.p-tooltip .p-tooltip-text {
+  background-color: var(--teal-500);
 }

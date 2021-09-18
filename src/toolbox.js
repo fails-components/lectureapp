@@ -394,6 +394,12 @@ export class ToolBox extends Component {
   render() {
     // move to state ?
 
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top',
+      showDelay: 1000
+    }
+
     const selbuttonclass = (cond, add) =>
       cond
         ? // eslint-disable-next-line no-unneeded-ternary
@@ -406,6 +412,8 @@ export class ToolBox extends Component {
     const endbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faBars} />}
+        tooltip='Options'
+        tooltipOptions={ttopts}
         key={1}
         onClick={(e) => this.selectTool(1)}
         className={selbuttonclass(this.state.selectedButtonid === 1)}
@@ -415,6 +423,8 @@ export class ToolBox extends Component {
     const pictbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faImages} />}
+        tooltip='Add picture'
+        tooltipOptions={ttopts}
         key={6}
         onClick={(e) => {
           this.pictButtonPressed()
@@ -445,6 +455,8 @@ export class ToolBox extends Component {
     const eraserbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faEraser} />}
+        tooltip='Erase'
+        tooltipOptions={ttopts}
         key={3}
         onClick={(e) => this.selectTool(3)}
         className={selbuttonclass(this.state.selectedButtonid === 3)}
@@ -454,6 +466,8 @@ export class ToolBox extends Component {
     const markerbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faHighlighter} />}
+        tooltip='Use marker'
+        tooltipOptions={ttopts}
         key={4}
         onClick={(e) => {
           this.selectTool(4)
@@ -465,6 +479,8 @@ export class ToolBox extends Component {
     const penbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faPen} />}
+        tooltip='Use pen, click twice for pen sizes'
+        tooltipOptions={ttopts}
         key={5}
         onClick={(e) => {
           this.selectTool(5)
@@ -475,6 +491,8 @@ export class ToolBox extends Component {
     const pollbutton = (
       <Button
         icon='pi pi-chart-bar'
+        tooltip='Start poll'
+        tooltipOptions={ttopts}
         key={2}
         onClick={(e) => {
           this.props.startpoll()
@@ -520,6 +538,8 @@ export class ToolBox extends Component {
     const fsbutton = (
       <Button
         icon='pi pi-window-maximize'
+        tooltip='Toggle fullscreen'
+        tooltipOptions={ttopts}
         key={1}
         onClick={(e) => {
           screenfull.toggle()
@@ -533,6 +553,8 @@ export class ToolBox extends Component {
     const backbwbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faAdjust} />}
+        tooltip='Toggle white background'
+        tooltipOptions={ttopts}
         key={2}
         onClick={(e) => {
           this.props.updateSizes({
@@ -550,6 +572,8 @@ export class ToolBox extends Component {
             icon={mainstate.casttoscreens ? faEye : faEyeSlash}
           />
         }
+        tooltip='Show/hide lecture to screen and students'
+        tooltipOptions={ttopts}
         key={2}
         onClick={(e) => {
           this.props.updateSizes({
@@ -563,6 +587,8 @@ export class ToolBox extends Component {
     const arrangebutton = (
       <Button
         icon={<FontAwesomeIcon icon={faThList} />}
+        tooltip='Arrange notepads and screens'
+        tooltipOptions={ttopts}
         key={3}
         onClick={(e) => {
           this.arrangeButtonPressed()
@@ -574,6 +600,8 @@ export class ToolBox extends Component {
     const infobutton = (
       <Button
         icon={<FontAwesomeIcon icon={faInfo} />}
+        tooltip='Info about fails'
+        tooltipOptions={ttopts}
         key={4}
         onClick={(e) => {
           if (this.ossinfo) this.ossinfo.toggle(e)
