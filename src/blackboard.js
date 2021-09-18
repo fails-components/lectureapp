@@ -1071,7 +1071,7 @@ export class BlackboardNotepad extends Component {
   ) {
     super(props)
     // interactive class
-    this.state = {}
+    this.state = { addpictmode: 0 }
 
     this.curkeyscroll = 0
 
@@ -1119,6 +1119,7 @@ export class BlackboardNotepad extends Component {
     this.pointermove = this.pointermove.bind(this)
     this.pointerup = this.pointerup.bind(this)
     this.curPictAspect = this.curPictAspect.bind(this)
+    this.calcAddPictSize = this.calcAddPictSize.bind(this)
   }
 
   setblocked(isblocked) {
@@ -1214,19 +1215,17 @@ export class BlackboardNotepad extends Component {
             // this.addpictsprite.position=pos;
             this.setState({
               addpictposx: pos.x / this.props.bbwidth,
-              addpictposy: pos.y / this.props.bbwidth + this.getCalcScrollPos()
+              addpictposy: pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+              addpictmode: 3 /* for drawing */
             })
             this.addpictmode = 3
+            this.lastpictmovetime = Date.now()
             break
           case 3:
             this.addpictmode = 2
-            this.confirmbox().reactivate({
-              x: this.state.addpictposx + this.state.addpictwidth,
-              y:
-                this.state.addpictposy +
-                this.state.addpictheight -
-                this.getCalcScrollPos()
-            })
+            this.setState({ addpictmode: 2 })
+            this.addPictureMovePos(pos, true)
+
             break
           default:
             // do nothing
@@ -1283,6 +1282,45 @@ export class BlackboardNotepad extends Component {
     this.rightmousescrollpos = this.getCalcScrollPos()
     // console.log("rightdown");
     this.mouseidentifier = null
+  }
+
+  calcAddPictSize(state, pos) {
+    const aspectratio = this.curPictAspect()
+    let nx = pos.x / this.props.bbwidth - state.addpictposx
+    let ny =
+      pos.y / this.props.bbwidth + this.getCalcScrollPos() - state.addpictposy
+    if (nx === 0) nx = 0.001
+    if (ny === 0) ny = 0.001
+    if (nx > ny) {
+      nx = ny * aspectratio
+    } else {
+      ny = nx / aspectratio
+    }
+    return { nx: nx, ny: ny }
+  }
+
+  addPictureMovePos(pos, reactivate) {
+    this.setState((state) => {
+      const size = this.calcAddPictSize(state, pos)
+      if (reactivate) {
+        this.confirmbox().reactivate({
+          x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
+          y:
+            state.addpictposy +
+            /* this.state.addpictheight */ size.ny -
+            this.getCalcScrollPos()
+        })
+      } else {
+        this.confirmbox().setPosition({
+          x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
+          y:
+            state.addpictposy +
+            /* this.state.addpictheight */ size.ny -
+            this.getCalcScrollPos()
+        })
+      }
+      return { addpictwidth: size.nx, addpictheight: size.ny }
+    })
   }
 
   pointermove(event) {
@@ -1350,35 +1388,23 @@ export class BlackboardNotepad extends Component {
         }
       } else if (this.addpictmode !== 0) {
         const pos = { x: event.clientX, y: event.clientY }
-        switch (this.addpictmode) {
-          case 4:
-            console.log('createmousemovement', pos)
-            this.setState({
-              addpictposx: pos.x / this.props.bbwidth,
-              addpictposy: pos.y / this.props.bbwidth + this.getCalcScrollPos()
-            })
-            break
-          case 3:
-            this.setState((state) => {
-              const aspectratio = this.curPictAspect()
-              let nx = pos.x / this.props.bbwidth - state.addpictposx
-              let ny =
-                pos.y / this.props.bbwidth +
-                this.getCalcScrollPos() -
-                state.addpictposy
-              if (nx === 0) nx = 0.001
-              if (ny === 0) ny = 0.001
-              if (nx > ny) {
-                nx = ny * aspectratio
-              } else {
-                ny = nx / aspectratio
-              }
-
-              return { addpictwidth: nx, addpictheight: ny }
-            })
-            break
-          default:
-            break
+        if (Date.now() - this.lastpictmovetime > 25) {
+          // console.log('createmousemovement', pos)
+          switch (this.addpictmode) {
+            case 4:
+              this.setState({
+                addpictposx: pos.x / this.props.bbwidth,
+                addpictposy:
+                  pos.y / this.props.bbwidth + this.getCalcScrollPos()
+              })
+              break
+            case 3:
+              this.addPictureMovePos(pos)
+              break
+            default:
+              break
+          }
+          this.lastpictmovetime = Date.now()
         }
       } /* if (!this.mousepathstarted) */ else {
         const pos = { x: event.clientX, y: event.clientY }
@@ -1580,7 +1606,8 @@ export class BlackboardNotepad extends Component {
         addpictuuid: null,
         addpicturl: null,
         addpictheight: null,
-        addpictwidth: null
+        addpictwidth: null,
+        addpictmode: 0
       })
       this.addpictmode = 0
       this.reactivateToolBox()
@@ -1594,7 +1621,8 @@ export class BlackboardNotepad extends Component {
         addpictuuid: null,
         addpicturl: null,
         addpictheight: null,
-        addpictwidth: null
+        addpictwidth: null,
+        addpictmode: 0
       })
       // todo report about new picture
       this.addpictmode = 0
@@ -1613,7 +1641,8 @@ export class BlackboardNotepad extends Component {
       addpictuuid: uuid,
       addpicturl: url,
       addpictheight: null,
-      addpictwidth: 0.1
+      addpictwidth: 0.1,
+      addpictmode: 4
     })
     // this.addpictsprite=PIXI.Sprite.fromImage((url));
 
@@ -1690,6 +1719,14 @@ export class BlackboardNotepad extends Component {
     } else {
       addpict = null
     }
+    const addpictmessstyle = {
+      position: 'absolute',
+      top: '5px',
+      left: '20px',
+      color: 'red',
+      textShadow: '0 0 3px #FF0000',
+      zIndex: 200
+    }
     return (
       <div
         style={{ width: '100%', height: '100%' }}
@@ -1698,6 +1735,16 @@ export class BlackboardNotepad extends Component {
         onPointerUp={this.pointerup}
         onPointerLeave={this.pointerup}
       >
+        {this.state.addpictmode === 4 && (
+          <div style={addpictmessstyle}>
+            <h3> Select upper left corner of picture </h3>
+          </div>
+        )}
+        {this.state.addpictmode === 3 && (
+          <div style={addpictmessstyle}>
+            <h3> Select lower right corner of picture</h3>
+          </div>
+        )}
         <Blackboard
           backcolor={this.props.backcolor}
           bbwidth={this.props.bbwidth}

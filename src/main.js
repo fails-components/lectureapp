@@ -1043,7 +1043,13 @@ export class FailsBoard extends FailsBasis {
       <img
         src={item.itemImageSrc}
         alt={item.alt}
-        style={{ width: '100%', display: 'block' }}
+        style={{
+          width: 'auto',
+          height: 'auto',
+          display: 'block',
+          maxHeight: '50vh',
+          maxWidth: '75vw'
+        }}
       />
     )
   }

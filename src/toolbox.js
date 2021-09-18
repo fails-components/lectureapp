@@ -25,6 +25,7 @@ import {
   faPen,
   faHighlighter,
   faImages,
+  faArrowsAlt,
   faArrowsAltV as faUpdown,
   faBars,
   faThList,
@@ -743,10 +744,15 @@ export class ConfirmBox extends Component {
 
     this.state = { activated: false }
 
+    this.moveButtonRef = React.createRef()
+
     this.state.posx = 0
     this.state.posy = 0
     this.okButtonPressed = this.okButtonPressed.bind(this)
     this.cancelButtonPressed = this.cancelButtonPressed.bind(this)
+    this.movePointerdown = this.movePointerdown.bind(this)
+    this.movePointermove = this.movePointermove.bind(this)
+    this.movePointerup = this.movePointerup.bind(this)
   }
 
   blackboard() {
@@ -755,7 +761,19 @@ export class ConfirmBox extends Component {
   }
 
   reactivate(position) {
-    this.setState({ posx: position.x, posy: position.y, activated: true })
+    this.setState({
+      posx: position.x,
+      posy: position.y,
+      activated: true,
+      activationTime: Date.now()
+    })
+  }
+
+  setPosition(position) {
+    this.setState({
+      posx: position.x,
+      posy: position.y
+    })
   }
 
   okButtonPressed() {
@@ -768,6 +786,44 @@ export class ConfirmBox extends Component {
     this.setState({ activated: false })
   }
 
+  movePointerdown(event) {
+    // if (this.scrollmodeactiv && this.scrollid !== event.pointerId) return
+
+    if (this.moveButtonRef.current) {
+      this.moveButtonRef.current.setPointerCapture(event.pointerId)
+    }
+    this.setState({
+      movemodeactiv: true
+    })
+    this.movemodeactiv = true
+    this.moveid = event.pointerId
+    this.lastmovetime = Date.now() - 50
+  }
+
+  movePointermove(event) {
+    // by pass for better smoothness
+    const now = Date.now()
+    if (
+      this.movemodeactiv &&
+      this.moveid === event.pointerId &&
+      now - this.lastmovetime > 25
+    ) {
+      const pos = { x: event.clientX, y: event.clientY }
+      this.blackboard().addPictureMovePos(pos)
+      this.lastmovetime = now
+    }
+  }
+
+  movePointerup(event) {
+    if (this.movemodeactiv && this.moveid === event.pointerId) {
+      // if (event.clientY) this.scrollboard(0, -event.clientY + this.mousescrolly)
+      this.setState({
+        movemodeactiv: false
+      })
+      this.movemodeactiv = false
+    }
+  }
+
   render() {
     let okcancel = []
 
@@ -775,18 +831,41 @@ export class ConfirmBox extends Component {
       <Button
         icon='pi pi-check'
         key={1}
-        onClick={(e) => this.okButtonPressed()}
+        onClick={(e) => {
+          if (Date.now() - this.state.activationTime > 1000)
+            this.okButtonPressed()
+        }}
         className='p-button-success p-button-raised p-button-rounded'
       />
     )
 
     okcancel.push(okbutton)
 
+    const movebutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faArrowsAlt} />}
+        style={{
+          touchAction: 'none'
+        }}
+        key={3}
+        selected={this.state.movemodeactiv}
+        onPointerDown={this.movePointerdown}
+        onPointerMove={this.movePointermove}
+        onPointerUp={this.movePointerup}
+        ref={this.moveButtonRef}
+        className='p-button-primary p-button-raised p-button-rounded'
+      />
+    )
+    okcancel.push(movebutton)
+
     const cancelbutton = (
       <Button
         icon='pi pi-times'
         key={2}
-        onClick={(e) => this.cancelButtonPressed()}
+        onClick={(e) => {
+          if (Date.now() - this.state.activationTime > 1000)
+            this.cancelButtonPressed()
+        }}
         className='p-button-danger p-button-raised p-button-rounded'
       />
     )
@@ -800,6 +879,7 @@ export class ConfirmBox extends Component {
 
     return (
       <div
+        className='toolboxStatic'
         style={{
           position: 'absolute',
           top: this.state.posy * this.props.bbwidth + 'px',
