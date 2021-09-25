@@ -1334,11 +1334,11 @@ export class BlackboardNotepad extends Component {
                 "cX",event.clientX,
                 "cY",event.clientY); */
 
-    if (
+    /* if (
       event.pointerType === 'touch' &&
       Date.now() - this.lastPenEvent < 5 * 1000
     )
-      return // no touchy touchy
+      return // no touchy touchy */ // this is handled in pointer down already
 
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true) {
@@ -1440,11 +1440,13 @@ export class BlackboardNotepad extends Component {
       this.rightup(event)
       return
     }
+    /*
     if (
       event.pointerType === 'touch' &&
       Date.now() - this.lastPenEvent < 5 * 1000
     )
       return // no touchy touchy
+    */ // this is handled in pointer down already !, would otherwise result in stale drawings...
 
     const pos = { x: event.clientX, y: event.clientY }
 
