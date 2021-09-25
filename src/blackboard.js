@@ -1216,15 +1216,16 @@ export class BlackboardNotepad extends Component {
             this.setState({
               addpictposx: pos.x / this.props.bbwidth,
               addpictposy: pos.y / this.props.bbwidth + this.getCalcScrollPos(),
-              addpictmode: 3 /* for drawing */
+              // addpictmode: 3 /* for drawing */
+              addpictmode: 2 /* for drawing */
             })
-            this.addpictmode = 3
+            // this.addpictmode = 3
             this.lastpictmovetime = Date.now()
-            break
-          case 3:
+            // break
+            // case 3:
             this.addpictmode = 2
-            this.setState({ addpictmode: 2 })
-            this.addPictureMovePos(pos, true)
+            // this.setState({ addpictmode: 2 })
+            this.addPictureMovePos({ x: pos.x + 200, y: pos.y + 200 }, true)
 
             break
           default:
