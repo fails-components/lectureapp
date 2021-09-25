@@ -112,6 +112,7 @@ class ChannelEdit extends Component {
       })
       console.log('notescreen', el)
       console.log('avail screens', this.props.availscreens)
+      notescreens.reverse()
 
       return (
         <div className='p-mr-2 p-shadow-1'>
@@ -130,12 +131,12 @@ class ChannelEdit extends Component {
                 )}
               </h3>
             </div>
-            {notescreens}
-            <div className='p-m-2 p-p-2' key='footer'>
+            <div className='p-m-2 p-p-2' key='header'>
               <div className='p-d-flex'>
                 <div className='p-mr-2'>
                   <Button
                     icon={<FontAwesomeIcon icon={faArrowsAlt} />}
+                    label={'Move to top'}
                     className='p-button-rounded p-button-text p-button-sm'
                     onClick={(event) => {
                       this.selchannel = el.channeluuid
@@ -147,6 +148,7 @@ class ChannelEdit extends Component {
                 </div>
               </div>
             </div>
+            {notescreens}
           </div>
         </div>
       )
@@ -189,6 +191,7 @@ class ChannelEdit extends Component {
           <div className='p-d-flex'>
             <div className='p-mr-2' key='newnotepad'>
               <Button
+                label='Notepad'
                 icon={
                   <Fragment>
                     <FontAwesomeIcon icon={faPlus} className='p-m-1' />
@@ -203,6 +206,7 @@ class ChannelEdit extends Component {
             </div>
             <div className='p-mr-2' key='newscreen'>
               <Button
+                label='Screen'
                 icon={
                   <Fragment>
                     <FontAwesomeIcon icon={faPlus} className='p-m-1' />
@@ -217,6 +221,7 @@ class ChannelEdit extends Component {
             </div>
             <div className='p-mr-2 p-ml-auto' key='showscreen'>
               <Button
+                label='Numbers'
                 icon={
                   <Fragment>
                     <FontAwesomeIcon
@@ -558,7 +563,8 @@ export class FailsBasis extends Component {
       console.log('update sizes2', data, args)
       if (!this.isscreen) {
         // data.isalsoscreen=this.state.notepadisscreen;
-        data.casttoscreens = this.state.casttoscreens
+        if (this.state.casttoscreens)
+          data.casttoscreens = this.state.casttoscreens
         // data.showscreennumber=this.state.showscreennumber;
         // if (args && typeof args.notepadisscreen!== 'undefined') data.isalsoscreen=args.notepadisscreen;
         if (args && typeof args.casttoscreens !== 'undefined')
@@ -623,8 +629,8 @@ export class FailsBoard extends FailsBasis {
     this.state = {}
     this.state.arrangebuttondialog = false
     this.state.pictbuttondialog = false
-    this.state.casttoscreens = false
-    this.state.showscreennumber = false
+    // this.state.casttoscreens = false // no initial definition, wait for network
+    // this.state.showscreennumber = false // no initial definition, wait for network
     this.state.notepadisscreen = true
     this.state.blackbackground = true
     this.state.screens = [{ name: 'Loading...' }]
