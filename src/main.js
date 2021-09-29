@@ -692,7 +692,10 @@ export class FailsBoard extends FailsBasis {
       let notepadhandler = this.decodedToken().notepadhandler
       if (notepadhandler === '/')
         notepadhandler =
-          window.location.protocol + '//' + window.location.hostname
+          window.location.protocol +
+          '//' +
+          window.location.hostname +
+          (window.location.port !== '' ? ':' + window.location.port : '')
 
       this.socket = io(notepadhandler + '/notepads', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
@@ -872,7 +875,11 @@ export class FailsBoard extends FailsBasis {
       let targeturl = ret.screenurl
       if (targeturl[0] === '/')
         targeturl =
-          window.location.protocol + '//' + window.location.hostname + targeturl
+          window.location.protocol +
+          '//' +
+          window.location.hostname +
+          (window.location.port !== '' ? ':' + window.location.port : '') +
+          targeturl
       console.log('debug target url', targeturl)
 
       const newscreen = window.open(
@@ -908,7 +915,11 @@ export class FailsBoard extends FailsBasis {
       let targeturl = ret.notepadurl
       if (targeturl[0] === '/')
         targeturl =
-          window.location.protocol + '//' + window.location.hostname + targeturl
+          window.location.protocol +
+          '//' +
+          window.location.hostname +
+          (window.location.port !== '' ? ':' + window.location.port : '') +
+          targeturl
       console.log('debug target url', targeturl)
 
       const newnotepad = window.open(
@@ -1334,7 +1345,10 @@ export class FailsScreen extends FailsBasis {
       let notepadhandler = this.decodedToken().notepadhandler
       if (notepadhandler === '/')
         notepadhandler =
-          window.location.protocol + '//' + window.location.hostname
+          window.location.protocol +
+          '//' +
+          window.location.hostname +
+          (window.location.port !== '' ? ':' + window.location.port : '')
 
       this.socket = io(notepadhandler + '/screens', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
@@ -1591,7 +1605,10 @@ export class FailsNotes extends FailsBasis {
       let noteshandler = this.decodedToken().noteshandler
       if (noteshandler === '/')
         noteshandler =
-          window.location.protocol + '//' + window.location.hostname
+          window.location.protocol +
+          '//' +
+          window.location.hostname +
+          (window.location.port !== '' ? ':' + window.location.port : '')
 
       this.socket = io(noteshandler + '/notes', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
