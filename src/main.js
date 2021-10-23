@@ -1152,6 +1152,10 @@ export class FailsBoard extends FailsBasis {
       { label: 'Poll' },
       { label: 'Results' }
     ]
+    const blackbackground =
+      typeof this.state.blackbackground === 'undefined'
+        ? true
+        : this.state.blackbackground
 
     // console.log("pictures",this.state.pictures);
     return (
@@ -1167,7 +1171,7 @@ export class FailsBoard extends FailsBasis {
           isnotepad={true}
           pictbuttoncallback={this.pictbuttonCallback}
           mainstate={{
-            blackbackground: this.state.blackbackground,
+            blackbackground: blackbackground,
             bgpdf: this.state.bgpdf,
             showscreennumber: this.state.showscreennumber,
             casttoscreens: this.state.casttoscreens
@@ -1175,11 +1179,11 @@ export class FailsBoard extends FailsBasis {
           backgroundcolor={
             this.state.bgpdf
               ? '#FFFFFF'
-              : this.state.blackbackground
+              : blackbackground
               ? '#505050'
               : '#efefef'
           }
-          screennumbercolor={this.state.blackbackground ? '#FFFFFF' : '#000000'}
+          screennumbercolor={blackbackground ? '#FFFFFF' : '#000000'}
           screennumber={this.state.notescreenid}
           startpoll={this.onStartPoll}
           width={this.props.width}
@@ -1267,8 +1271,10 @@ export class FailsBoard extends FailsBasis {
             <React.Fragment>
               <h3>
                 {' '}
-                {this.state.curpoll.name +
-                  (this.state.curpoll.multi ? ' (multi)' : ' (single)')}
+                {this.state.curpoll
+                  ? this.state.curpoll.name +
+                    (this.state.curpoll.multi ? ' (multi)' : ' (single)')
+                  : 'Current poll'}
               </h3>
               <Chart
                 type='bar'
@@ -1937,28 +1943,33 @@ export class FailsNotes extends FailsBasis {
             <React.Fragment>
               <h3>
                 {' '}
-                {this.state.curpoll.name +
-                  (this.state.curpoll.multi ? ' (multi)' : ' (single)')}
+                {this.state.curpoll
+                  ? this.state.curpoll.name +
+                    (this.state.curpoll.multi ? ' (multi)' : ' (single)')
+                  : 'Current poll'}
               </h3>
               {pollsels}
-              {(this.state.curpoll.multi
-                ? this.state.votesel.length > 0
-                : this.state.votesel) && (
-                <Button
-                  label='Cast vote'
-                  icon='pi pi-chart-bar'
-                  className='p-m-2'
-                  onClick={this.onCastvote}
-                />
-              )}
+              {this.state.curpoll &&
+                (this.state.curpoll.multi
+                  ? this.state.votesel.length > 0
+                  : this.state.votesel) && (
+                  <Button
+                    label='Cast vote'
+                    icon='pi pi-chart-bar'
+                    className='p-m-2'
+                    onClick={this.onCastvote}
+                  />
+                )}
             </React.Fragment>
           )}
           {this.state.polltask === 2 && (
             <React.Fragment>
               <h3>
                 {' '}
-                {this.state.curpoll.name +
-                  (this.state.curpoll.multi ? ' (multi)' : ' (single)')}
+                {this.state.curpoll
+                  ? this.state.curpoll.name +
+                    (this.state.curpoll.multi ? ' (multi)' : ' (single)')
+                  : 'Current poll'}
               </h3>
               {polldata && (
                 <React.Fragment>
