@@ -1192,6 +1192,28 @@ export class FailsBoard extends FailsBasis {
           updateSizes={this.updateSizes}
           showscreennumber={this.state.showscreennumber}
         ></NoteScreenBase>
+        {!this.state.casttoscreens && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '2vh',
+              right: '1vw',
+              zIndex: 150
+            }}
+          >
+            <Button
+              label=' Start casting'
+              icon={<FontAwesomeIcon icon={faEye} />}
+              key={'casttoscreen'}
+              onClick={(e) => {
+                this.updateSizes({
+                  casttoscreens: true
+                })
+              }}
+              className='p-button-primary p-button-raised p-button-rounded'
+            />
+          </div>
+        )}
 
         <Dialog
           header='Select picture'
