@@ -40,6 +40,7 @@ import {
   faDesktop,
   faNotesMedical,
   faPlus,
+  faBars,
   faEye,
   faEyeSlash,
   faInfo
@@ -623,6 +624,73 @@ export class FailsBasis extends Component {
   }
 }
 
+class ShortcutsMessage extends React.Component {
+  constructor(args) {
+    super(args)
+    this.state = {}
+  }
+
+  render() {
+    return (
+      <React.Fragment>
+        <span className='p-toast-message-icon pi pi-info-circle'></span>
+        <div className='p-toast-message-text'>
+          <h2> Welcome!</h2>
+          <h3> Common initial tasks</h3>
+          <div className='p-grid p-align-center'>
+            <div className='p-col-9'>Toggle fullscreen:</div>
+            <div className='p-col-3'>
+              <Button
+                icon='pi pi-window-maximize'
+                id='bt-fullscreen'
+                className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                onClick={(event) => {
+                  screenfull.toggle()
+                }}
+              ></Button>
+            </div>
+          </div>
+          <div className='p-grid p-align-center'>
+            <div className='p-col-9'>Open screen (for showing):</div>
+            <div className='p-col-3'>
+              <Button
+                icon={
+                  <Fragment>
+                    <FontAwesomeIcon icon={faDesktop} className='p-m-1' />
+                  </Fragment>
+                }
+                id='bt-screen'
+                className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                onClick={(event) => {
+                  this.props.parent.onOpenNewScreen()
+                }}
+              ></Button>
+            </div>
+          </div>
+          <div className='p-grid p-align-center'>
+            <div className='p-col-9'>Open notepad (for writing):</div>
+            <div className='p-col-3'>
+              <Button
+                icon={
+                  <Fragment>
+                    <FontAwesomeIcon icon={faNotesMedical} className='p-m-1' />
+                  </Fragment>
+                }
+                id='bt-notepad'
+                className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                onClick={(event) => {
+                  this.props.parent.onOpenNewNotepad()
+                }}
+              ></Button>
+            </div>
+          </div>
+          see <FontAwesomeIcon icon={faBars} /> for more.
+        </div>
+      </React.Fragment>
+    )
+  }
+}
+
 export class FailsBoard extends FailsBasis {
   constructor(props) {
     super(props)
@@ -638,6 +706,7 @@ export class FailsBoard extends FailsBasis {
     this.state.pictures = null
     this.state.pictIndex = 0
     this.state.availscreens = []
+    this.state.welcomeMessageSend = 0
 
     this.availscreensmenu = React.createRef()
 
@@ -704,6 +773,14 @@ export class FailsBoard extends FailsBasis {
       })
       this.initializeNotepadSocket(this.socket)
       this.updateSizes() // no argument no effect
+      if (!this.welcomeMessageSend) {
+        this.toast.show({
+          severity: 'info',
+          sticky: true,
+          content: <ShortcutsMessage parent={this} />
+        })
+        this.welcomeMessageSend = 1
+      }
     }
     this.commonMount()
   }
