@@ -789,7 +789,13 @@ export class Blackboard extends Component {
     if (this.props.pageoffsetabsolute) return this.props.pageoffset
     let pageoffset = 0
     if (this.props.pageoffset) pageoffset = this.props.pageoffset
-    // console.log("calcCurpos", this.state.curscrollpos+pageoffset+this.state.scrolloffset,this.state.curscrollpos,pageoffset,this.state.scrolloffset);
+    /* console.log(
+      'calcCurpos',
+      this.state.curscrollpos + pageoffset + this.state.scrolloffset,
+      this.state.curscrollpos,
+      pageoffset,
+      this.state.scrolloffset
+    ) */
     return this.state.curscrollpos + pageoffset + this.state.scrolloffset
   }
 
@@ -852,7 +858,7 @@ export class Blackboard extends Component {
         const cs = this.collection.commandcontainer.getCurCommandState()
         if (callback) callback(cs) // calls the outgoing dispatcher
         console.log('replace data command', cs)
-        if (cs.scrollx && cs.scrolly)
+        if (cs.scrollx || cs.scrolly)
           this.scrollBoard(cs.time, 'data', cs.scrollx, cs.scrolly)
       }
     }

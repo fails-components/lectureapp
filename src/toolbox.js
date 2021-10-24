@@ -34,7 +34,6 @@ import {
   faEyeSlash,
   faInfo
 } from '@fortawesome/free-solid-svg-icons'
-import screenfull from 'screenfull'
 
 class ColorPickerButton2 extends Component {
   constructor(props) {
@@ -542,7 +541,7 @@ export class ToolBox extends Component {
         tooltipOptions={ttopts}
         key={1}
         onClick={(e) => {
-          screenfull.toggle()
+          this.props.toggleFullscreen(e)
         }}
         className={setclass}
       />

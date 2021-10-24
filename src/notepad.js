@@ -299,6 +299,7 @@ export class NoteScreenBase extends Component {
             notepad={this}
             startpoll={this.props.startpoll}
             updateSizes={this.props.updateSizes}
+            toggleFullscreen={this.props.toggleFullscreen}
             mainstate={this.props.mainstate}
             dispres={this.dispres}
           />

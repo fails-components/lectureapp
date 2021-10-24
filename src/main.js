@@ -52,7 +52,93 @@ import jwt_decode from 'jwt-decode'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
-import screenfull from 'screenfull'
+// import screenfull from 'screenfull'
+
+class ScreenManager {
+  constructor() {
+    this.inited = false
+    this.nextotherscreenid = 0
+  }
+
+  isFullscreen() {
+    /* console.log(
+      'FS element',
+      document.fullscreenElement,
+      document.webkitFullscreenElement
+    ) */
+    if (document.fullscreenElement) return true
+    else if (document.webkitFullscreenElement) return true
+    return false
+  }
+
+  async exitFullscreen() {
+    if (document.exitFullscreen) await document.exitFullscreen()
+    else if (document.webkitExitFullscreen)
+      await document.webkitExitFullscreen()
+    else console.log('exit fullscreen failed')
+  }
+
+  async requestFullscreen() {
+    if (document.documentElement.requestFullscreen)
+      await document.documentElement.requestFullscreen()
+    else if (document.documentElement.webkitRequestFullscreen)
+      await document.documentElement.webkitRequestFullscreen()
+  }
+
+  async initializeScreenInfo() {
+    if ('getScreens' in window) {
+      // The Multi-Screen Window Placement API is supported.
+      console.log('multi screen supported!')
+      this.multiscreen = true
+      try {
+        this.screens = await window.getScreens()
+      } catch (error) {
+        console.log('getScreens fails', error)
+        this.screens = {}
+        this.screens.screens = window.screen
+      }
+    } else {
+      console.log('multi screen unsupported!')
+      this.multiscreen = false
+      this.screens = {}
+      this.screens.screens = [window.screen]
+      window.screen.isExtended = false
+    }
+    console.log('Available screens', this.screens)
+    this.inited = true
+  }
+
+  async toggleFullscreen() {
+    if (this.isFullscreen()) {
+      await this.exitFullscreen()
+      return { status: 'ready' }
+    }
+    if (!this.inited) await this.initializeScreenInfo()
+    if (!window.screen.isExtended) {
+      console.log('screen is not extended', this.screens)
+      this.requestFullscreen()
+      return { status: 'ready' }
+    }
+    const cur = this.screens.currentScreen
+
+    const retobj = {
+      screens: this.screens.screens.map((el, index) => ({
+        screen: el,
+        isCurrent: el === cur,
+        number: index,
+        toggle: () => {
+          if (document.documentElement.requestFullscreen)
+            document.documentElement.requestFullscreen({ screen: el })
+          else if (document.documentElement.webkitRequestFullscreen)
+            document.documentElement.webkitRequestFullscree({ screen: el })
+        }
+      })),
+      status: 'selector'
+    }
+
+    return retobj
+  }
+}
 
 class ChannelEdit extends Component {
   constructor(props) {
@@ -265,7 +351,13 @@ export class FailsBasis extends Component {
     this.requestReauthor = this.requestReauthor.bind(this)
     this.getToken = this.getToken.bind(this)
     this.authCB = this.authCB.bind(this)
+    this.toggleFullscreen = this.toggleFullscreen.bind(this)
     this.reauthorizeTimeout = null
+
+    this.state = {}
+    this.state.screensToSel = []
+
+    this.screenm = new ScreenManager()
   }
 
   netSendSocket(command, data) {
@@ -356,7 +448,7 @@ export class FailsBasis extends Component {
             const cur = channel.notescreens[i]
             console.log('scrolloffsets', cur.scrollheight, cur.uuid)
 
-            scrolloffset -= parseFloat(cur.scrollheight)
+            if (cur.scrollheight) scrolloffset -= parseFloat(cur.scrollheight)
             if (cur.uuid === notescreenuuid) break
           }
           scrolloffset += notepos
@@ -526,6 +618,47 @@ export class FailsBasis extends Component {
     if (this.myauthtoken) return this.myauthtoken
   }
 
+  async toggleFullscreen(event) {
+    const ret = await this.screenm.toggleFullscreen()
+    console.log('ret screenmanager', ret, this.opScreens)
+    if (ret.status === 'selector' && this.opScreens) {
+      console.log('screenmanager setstate')
+      this.setState({ screensToSel: ret.screens })
+      this.opScreens.toggle(event)
+    }
+  }
+
+  screenOverlay() {
+    const screenbuttons = this.state.screensToSel.map((el) => (
+      <Button
+        className={
+          el.isCurrent
+            ? 'p-button-primary  p-button-rounded p-m-2'
+            : 'p-button-secondary p-button-rounded p-m-2'
+        }
+        icon={<FontAwesomeIcon icon={faDesktop} className='p-m-1' />}
+        label={
+          ' ' + (el.number + 1) + (el.isCurrent ? ' (current)' : ' (other)')
+        }
+        onClick={(event) => {
+          this.opScreens.hide()
+          el.toggle()
+        }}
+      />
+    ))
+
+    return (
+      <OverlayPanel
+        ref={(el) => {
+          this.opScreens = el
+        }}
+      >
+        <h3> Fullscreen on </h3>
+        {screenbuttons}
+      </OverlayPanel>
+    )
+  }
+
   commonMount() {}
 
   commonUnmount() {
@@ -644,9 +777,7 @@ class ShortcutsMessage extends React.Component {
                 icon='pi pi-window-maximize'
                 id='bt-fullscreen'
                 className='p-button-primary p-button-outlined p-button-rounded p-m-2'
-                onClick={(event) => {
-                  screenfull.toggle()
-                }}
+                onClick={this.props.parent.toggleFullscreen}
               ></Button>
             </div>
           </div>
@@ -694,7 +825,7 @@ class ShortcutsMessage extends React.Component {
 export class FailsBoard extends FailsBasis {
   constructor(props) {
     super(props)
-    this.state = {}
+    // this.state = {} move to parent
     this.state.arrangebuttondialog = false
     this.state.pictbuttondialog = false
     // this.state.casttoscreens = false // no initial definition, wait for network
@@ -965,7 +1096,7 @@ export class FailsBoard extends FailsBasis {
         'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
       )
       sessionStorage.setItem('failstoken', authtoken)
-      sessionStorage.setItem('failpurpose', 'lecture')
+      sessionStorage.setItem('failspurpose', 'lecture')
 
       if (!newscreen) console.log('Opening window failed')
       else {
@@ -1005,7 +1136,7 @@ export class FailsBoard extends FailsBasis {
         'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
       )
       sessionStorage.setItem('failstoken', authtoken)
-      sessionStorage.setItem('failpurpose', 'lecture')
+      sessionStorage.setItem('failspurpose', 'lecture')
 
       if (!newnotepad) console.log('Opening window failed')
       else {
@@ -1238,6 +1369,7 @@ export class FailsBoard extends FailsBasis {
     return (
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
+        {this.screenOverlay()}
         <NoteScreenBase
           arrangebuttoncallback={this.arrangebuttonCallback}
           netsend={
@@ -1267,6 +1399,7 @@ export class FailsBoard extends FailsBasis {
           height={this.props.height}
           noteref={this.getNoteRef}
           updateSizes={this.updateSizes}
+          toggleFullscreen={this.toggleFullscreen}
           showscreennumber={this.state.showscreennumber}
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
@@ -1428,7 +1561,7 @@ export class FailsBoard extends FailsBasis {
 export class FailsScreen extends FailsBasis {
   constructor(props) {
     super(props)
-    this.state = {}
+    // this.state = {} move to parent
     this.state.casttoscreens = false // may be move to base class
     this.state.showscreennumber = false
     this.state.blackbackground = true
@@ -1622,7 +1755,6 @@ export class FailsScreen extends FailsBasis {
   }
 
   render() {
-    console.log('current states', this.state)
     const pointermove = () => {
       this.setState({
         lastpointermove: Date.now()
@@ -1631,6 +1763,7 @@ export class FailsScreen extends FailsBasis {
     return (
       <div onPointerMove={pointermove}>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
+        {this.screenOverlay()}
         <NoteScreenBase
           isnotepad={false}
           showscreennumber={this.state.showscreennumber}
@@ -1671,9 +1804,7 @@ export class FailsScreen extends FailsBasis {
               zIndex: 101
             }}
             key={1}
-            onClick={(e) => {
-              screenfull.toggle()
-            }}
+            onClick={this.toggleFullscreen}
             className='p-button-primary p-button-raised p-button-rounded fadeMenu'
           />
         )}
@@ -1685,7 +1816,7 @@ export class FailsScreen extends FailsBasis {
 export class FailsNotes extends FailsBasis {
   constructor(props) {
     super(props)
-    this.state = {}
+    // this.state = {} move to parent
     this.state.casttoscreens = false // may be move to base class
     this.state.blackbackground = true
     this.state.lectdetail = null
