@@ -124,7 +124,7 @@ export class NoteScreenBase extends Component {
 
   setScrollOffset(scrolloffset) {
     this.scrolloffset = scrolloffset
-    console.log(this.blackboard.current)
+    // console.log(this.blackboard.current)
     if (this.blackboard && this.blackboard.current)
       this.blackboard.current.setScrollOffset(scrolloffset)
     if (this.backgroundbw) this.setBackgroundColor(this.backcolornormal)
