@@ -1100,6 +1100,8 @@ export class BlackboardNotepad extends Component {
     this.lastpos = {}
     this.pictobjid = 0
     this.clientId = Math.random().toString(36).substr(2, 9) // randomly create clientId
+      
+    this.lastfogtime = Date.now()
 
     this.interactive = true
     // props.stage.interactive=true;
@@ -1349,7 +1351,8 @@ export class BlackboardNotepad extends Component {
 
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true) {
-        if (event.pointerType === 'pen') this.lastPenEvent = Date.now()
+        if (event.pointerType === 'pen' || event.pointerType === 'mouse' ) // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
+          this.lastPenEvent = Date.now()  
         /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
            console.log("last pos",this.lastpos );
            console.log("pointer id", event.pointerId);
@@ -1413,13 +1416,18 @@ export class BlackboardNotepad extends Component {
           }
           this.lastpictmovetime = Date.now()
         }
-      } /* if (!this.mousepathstarted) */ else {
+      } /* if (!this.mousepathstarted) */ else if ( this.pointerdraw
+              && Object.keys(this.pointerdraw).length === 0
+              && Object.getPrototypeOf(this.pointerdraw) === Object.prototype) {
         const pos = { x: event.clientX, y: event.clientY }
         // console.log("Fog out BB",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth,event.data,this);
-        this.props.notepadscreen.reportFoG(
-          pos.x / this.props.bbwidth,
-          pos.y / this.props.bbwidth + this.getCalcScrollPos()
-        )
+        if (Date.now() - this.lastfogtime > 25) {
+          this.props.notepadscreen.reportFoG(
+            pos.x / this.props.bbwidth,
+            pos.y / this.props.bbwidth + this.getCalcScrollPos()
+          )
+          this.lastfogtime = Date.now()
+        }
       }
       // console.log("mousemove");
     } else {
