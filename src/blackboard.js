@@ -156,11 +156,19 @@ export class SVGWriting2 extends Component {
       alpha = 0.95
     }
     if (glyph.gtype === 0) {
-      // console.log("color check", glyph.color, this.props.backcolor);
-      if (this.props.backcolor === glyph.color) {
+      //  console.log('color check', glyph.color, this.props.backcolor)
+      if (
+        Color(this.props.backcolor).isLight() &&
+        Color(glyph.color).luminosity() > 0.9
+      ) {
         stroke = 'black'
         // console.log("stroke changed to black");
-      }
+      } /* else if (
+        Color(this.props.backcolor).isDark() &&
+        Color(glyph.color).luminosity() < 0.2
+      ) {
+        stroke = 'white'
+      } */
     }
 
     let firstpoint = null
@@ -218,10 +226,10 @@ export class SVGSpotlight extends Component {
     const style = {
       position: 'absolute',
       zIndex: this.props.zIndex,
-      left: this.props.x - 10 + 'px',
-      width: '20px',
-      top: this.props.y - 10 + 'px',
-      height: '20px',
+      left: this.props.x,
+      width: '1.2vw',
+      top: this.props.y,
+      height: '1.2vw',
       cursor: 'none',
       pointerEvents: 'none'
     }
@@ -229,7 +237,7 @@ export class SVGSpotlight extends Component {
     // console.log("workarea",glyph.workarea);
 
     return (
-      <svg viewBox={viewbox} style={style}>
+      <svg viewBox={viewbox} style={style} className='spotlight'>
         <circle cx='10' cy='10' r='10' fill='#ff0000' />
       </svg>
     )
@@ -521,14 +529,13 @@ export class Blackboard extends Component {
 
     this.lastbbtemp = null
 
+    this.lastrenderprops = {}
+
     // stage.addChild(this.blackboardtemp);
 
     this.pathstarted = this.pathupdated = false
 
     this.elapsed = new Date()
-    this.fogtime = new Date()
-    this.lastfogpos = null
-    this.fogmeanvel = 0
 
     this.stage = props.stage
     console.log('Blackboard start up completed!')
@@ -901,111 +908,123 @@ export class Blackboard extends Component {
   }
 
   receiveFoG(data) {
-    // this.partemitter.updateOwnerPos(data.x*this.props.bbwidth,
-    //                               (data.y-this.scrolloffset-this.state.curscrollpos)*this.props.bbwidth);
-    // Now decide according to velocity if we emit
-    const newtime = new Date()
-    const timeelapsed = (newtime.getTime() - this.fogtime.getTime()) / 1000
+    if (data.clientid === this.clientid) return
+    if (!data.x && !data.y) this.setState({ fogpos: false })
+    else {
+      this.setState((state) => ({
+        fogpos: { x: data.x, y: data.y /* +state.curscrollpos */ }
+      }))
+    }
+  }
 
-    if (timeelapsed > 0.05) {
-      //
-      this.fogtime = newtime
-
-      const lfp = this.lastfogpos
-      let distance = 0
-      if (lfp)
-        distance =
-          (data.x - lfp.x) * (data.x - lfp.x) +
-          (data.y - lfp.y) * (data.y - lfp.y)
-      this.lastfogpos = data
-
-      const velocity = Math.sqrt(distance / timeelapsed / timeelapsed) // this is velocity squared
-      this.fogmeanvel = this.fogmeanvel * 0.66 + 0.33 * velocity
-
-      // console.log("fog "+this.fogmeanvel);
-      // console.log("FoG scrolloffset",data.y,this.state.curscrollpos,this.state.scrolloffset);
-      if (this.fogmeanvel > 0.7) {
-        this.fogontime = newtime
-        this.setState((state) => ({
-          fogpos: { x: data.x, y: data.y /* +state.curscrollpos */ }
-        }))
-      } else {
-        if (newtime - this.fogontime > 2000) {
-          this.setState({ fogpos: false })
-        } else if (this.state.fogpos) {
-          this.setState((state) => ({
-            fogpos: { x: data.x, y: data.y /* +state.curscrollpos */ }
-          }))
-        }
-      }
+  preReceiveFoG(data) {
+    if (data.clientid) this.clientid = data.clientid
+    if (!data.x && !data.y) this.setState({ fogpos: false, ownfog: false })
+    else {
+      this.setState((state) => ({
+        fogpos: { x: data.x, y: data.y /* +state.curscrollpos */ },
+        ownfog: true
+      }))
     }
   }
 
   render() {
     let cursor = 'auto'
+    let usecache = true
+    if (
+      this.lastrenderprops.bbwidth !== this.props.bbwidth ||
+      this.lastrenderprops.backcolor !== this.props.backcolor
+    ) {
+      usecache = false
+    }
+    this.lastrenderprops = {
+      bbwidth: this.props.bbwidth,
+      backcolor: this.props.backcolor
+    }
 
-    if (this.state.fogpos && !this.props.addpict && this.props.isnotepad)
+    if (this.state.ownfog && !this.props.addpict && this.props.isnotepad)
       cursor = 'none'
     // console.log("render ob", this.state.objects);
     const written = this.state.objects.map((el, index) => {
-      // console.log("obj",el);
-      if (el.type === 'glyph') {
-        return (
-          <SVGWriting2
-            glyph={el}
-            key={el.objnum + ':' + index}
-            backcolor={this.props.backcolor}
-            pixelwidth={this.props.bbwidth}
-            zIndex={10}
-          ></SVGWriting2>
-        )
-      } else if (el.type === 'image') {
-        return (
-          <ImageHelper
-            x={el.posx * this.props.bbwidth}
-            y={el.posy * this.props.bbwidth}
-            zIndex={10}
-            width={el.width * this.props.bbwidth}
-            height={el.height * this.props.bbwidth}
-            url={el.url}
-            uuid={el.uuid}
-            key={el.objnum + ':' + index}
-          ></ImageHelper>
-        )
-      } else {
-        return <React.Fragment></React.Fragment>
+      const key = el.objid
+      let rendercache = el.getRenderCache(key)
+      if (!rendercache || !usecache) {
+        if (el.type === 'glyph') {
+          rendercache = (
+            <SVGWriting2
+              glyph={el}
+              key={key}
+              backcolor={this.props.backcolor}
+              pixelwidth={this.props.bbwidth}
+              zIndex={10}
+            ></SVGWriting2>
+          )
+        } else if (el.type === 'image') {
+          rendercache = (
+            <ImageHelper
+              x={el.posx * this.props.bbwidth}
+              y={el.posy * this.props.bbwidth}
+              zIndex={10}
+              width={el.width * this.props.bbwidth}
+              height={el.height * this.props.bbwidth}
+              url={el.url}
+              uuid={el.uuid}
+              key={key}
+            ></ImageHelper>
+          )
+        } else {
+          rendercache = <React.Fragment key={key}></React.Fragment>
+        }
+        // console.log('cache miss')
+        el.setRenderCache(key, rendercache)
+        // console.log('cache miss fix ', el)
       }
+      return rendercache
     })
     const wobj = []
     for (const prop in this.workobj) {
-      if (!this.preworkobj[prop])
-        wobj.push(
-          <SVGWriting2
-            glyph={this.workobj[prop]}
-            backcolor={this.props.backcolor}
-            pixelwidth={this.props.bbwidth}
-            zIndex={50}
-            key={prop}
-          >
-            {' '}
-          </SVGWriting2>
-        )
+      if (!this.preworkobj[prop]) {
+        const key = 'work' + prop
+        let rendercache = this.workobj[prop].getRenderCache(key)
+        if (!rendercache || !usecache) {
+          rendercache = (
+            <SVGWriting2
+              glyph={this.workobj[prop]}
+              backcolor={this.props.backcolor}
+              pixelwidth={this.props.bbwidth}
+              zIndex={50}
+              key={key}
+            >
+              {' '}
+            </SVGWriting2>
+          )
+          this.workobj[prop].setRenderCache(key, rendercache)
+        }
+
+        wobj.push(rendercache)
+      }
     }
 
     const pwobj = []
     for (const prop in this.preworkobj) {
-      pwobj.push(
-        <SVGWriting2
-          glyph={this.preworkobj[prop]}
-          backcolor={this.props.backcolor}
-          pixelwidth={this.props.bbwidth}
-          zIndex={50}
-          preview={true}
-          key={'pre' + prop}
-        >
-          {' '}
-        </SVGWriting2>
-      )
+      const key = 'pre' + prop
+      let rendercache = this.preworkobj[prop].getRenderCache(key)
+      if (!rendercache || !usecache) {
+        rendercache = (
+          <SVGWriting2
+            glyph={this.preworkobj[prop]}
+            backcolor={this.props.backcolor}
+            pixelwidth={this.props.bbwidth}
+            zIndex={50}
+            preview={true}
+            key={key}
+          >
+            {' '}
+          </SVGWriting2>
+        )
+        this.preworkobj[prop].setRenderCache(key, rendercache)
+      }
+      pwobj.push(rendercache)
     }
 
     const stylespan = {
@@ -1100,8 +1119,14 @@ export class BlackboardNotepad extends Component {
     this.lastpos = {}
     this.pictobjid = 0
     this.clientId = Math.random().toString(36).substr(2, 9) // randomly create clientId
-      
+
+    // pointer handling
     this.lastfogtime = Date.now()
+
+    // velocity handling
+    this.lastfogpos = null
+    this.fogtime = new Date()
+    this.fogmeanvel = 0
 
     this.interactive = true
     // props.stage.interactive=true;
@@ -1332,6 +1357,56 @@ export class BlackboardNotepad extends Component {
     })
   }
 
+  fogHandle(x, y) {
+    const newtime = new Date()
+    const timeelapsed = (newtime.getTime() - this.fogtime.getTime()) / 1000
+
+    if (timeelapsed > 0.05) {
+      //
+      this.fogtime = newtime
+
+      const lfp = this.lastfogpos
+      let distance = 0
+      if (lfp) distance = (x - lfp.x) * (x - lfp.x) + (y - lfp.y) * (y - lfp.y)
+      this.lastfogpos = { x: x, y: y }
+
+      const velocity = Math.sqrt(distance / timeelapsed / timeelapsed) // this is velocity squared
+      this.fogmeanvel = this.fogmeanvel * 0.66 + 0.33 * velocity
+
+      // console.log("fog "+this.fogmeanvel);
+      // console.log("FoG scrolloffset",data.y,this.state.curscrollpos,this.state.scrolloffset);
+      if (this.fogmeanvel > 0.7) {
+        this.fogontime = newtime
+        this.props.notepadscreen.reportFoG(x, y, this.clientId)
+        if (this.realblackboard && this.realblackboard.current)
+          this.realblackboard.current.preReceiveFoG({
+            x: x,
+            y: y,
+            clientid: this.clientId
+          })
+      } else {
+        if (this.fogontime && newtime - this.fogontime > 2000) {
+          this.fogontime = null
+          this.props.notepadscreen.reportFoG(null, null, this.clientId)
+          if (this.realblackboard && this.realblackboard.current)
+            this.realblackboard.current.preReceiveFoG({
+              x: null,
+              y: null,
+              clientid: this.clientId
+            })
+        } else if (this.fogontime) {
+          this.props.notepadscreen.reportFoG(x, y, this.clientId)
+          if (this.realblackboard && this.realblackboard.current)
+            this.realblackboard.current.preReceiveFoG({
+              x: x,
+              y: y,
+              clientid: this.clientId
+            })
+        }
+      }
+    }
+  }
+
   pointermove(event) {
     /* console.log("pointermove",event);
         console.log("pointerId:",event.pointerId,
@@ -1351,8 +1426,9 @@ export class BlackboardNotepad extends Component {
 
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true) {
-        if (event.pointerType === 'pen' || event.pointerType === 'mouse' ) // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
-          this.lastPenEvent = Date.now()  
+        if (event.pointerType === 'pen' || event.pointerType === 'mouse')
+          // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
+          this.lastPenEvent = Date.now()
         /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
            console.log("last pos",this.lastpos );
            console.log("pointer id", event.pointerId);
@@ -1416,16 +1492,20 @@ export class BlackboardNotepad extends Component {
           }
           this.lastpictmovetime = Date.now()
         }
-      } /* if (!this.mousepathstarted) */ else if ( this.pointerdraw
-              && Object.keys(this.pointerdraw).length === 0
-              && Object.getPrototypeOf(this.pointerdraw) === Object.prototype) {
+      } /* if (!this.mousepathstarted) */ else if (
+        this.pointerdraw &&
+        Object.keys(this.pointerdraw).length === 0 &&
+        Object.getPrototypeOf(this.pointerdraw) === Object.prototype
+      ) {
         const pos = { x: event.clientX, y: event.clientY }
         // console.log("Fog out BB",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth,event.data,this);
-        if (Date.now() - this.lastfogtime > 25) {
-          this.props.notepadscreen.reportFoG(
+        if (Date.now() - this.lastfogtime > 10) {
+          // TODO move velocity calculation to here...
+          this.fogHandle(
             pos.x / this.props.bbwidth,
             pos.y / this.props.bbwidth + this.getCalcScrollPos()
           )
+
           this.lastfogtime = Date.now()
         }
       }

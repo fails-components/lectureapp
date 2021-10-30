@@ -425,7 +425,8 @@ export class FailsBasis extends Component {
       const notescreenuuid = this.decodedToken().notescreenuuid
       // #error TODO assure that notepads are always within positive range and make sure that changes are immediately
       setstate.casttoscreens = data.casttoscreens === 'true'
-      setstate.blackbackground = data.backgroundbw === 'true'
+      if (data.backgroundbw)
+        setstate.blackbackground = data.backgroundbw === 'true'
       setstate.showscreennumber = data.showscreennumber === 'true'
       if (data.channelinfo) {
         setstate.channelinfo = data.channelinfo
@@ -685,7 +686,7 @@ export class FailsBasis extends Component {
       const data = {
         scrollheight: this.noteref.blackboard.current.scrollheight(),
         // isscreen: this.isscreen,
-        backgroundbw: this.state.blackbackground,
+        /*   backgroundbw: this.state.blackbackground, */
         showscreennumber: this.state.showscreennumber
       }
       console.log('update sizes', data, args)

@@ -34,6 +34,11 @@ code {
   transform: translate(-50%, 0%);
 }
 
+.spotlight {
+  transform: translate(-50%, -50%);
+}
+
+
 .teal-tooltip.p-tooltip.p-tooltip-top .p-tooltip-arrow {
   border-top-color: var(--teal-500);
 }
