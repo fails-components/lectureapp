@@ -305,7 +305,7 @@ export class ToolBox extends Component {
     this.setState((state) => {
       if (d * d > circlerad * circlerad) {
         // no intersection
-        finaly = Math.max(Math.min(0.9 * scrollheight, y), 0.1 * scrollheight)
+        finaly = Math.max(Math.min(0.8 * scrollheight, y), 0.1 * scrollheight)
         // console.log("stupid  finaly",finaly,d,circlerad);
       } else {
         const finaly1 = y + Math.sqrt(circlerad * circlerad - d * d)
@@ -321,11 +321,17 @@ export class ToolBox extends Component {
         }
 
         // console.log("first finaly",finaly);
-        if (finaly < 0.1 * scrollheight || finaly > 0.9 * scrollheight) {
+        if (finaly < 0.1 * scrollheight || finaly > 0.8 * scrollheight) {
           // in this case take the otherone
 
           // ok we move outside, jump
           finaly = ofinaly
+
+          // ok we have to fix if still outside
+          finaly = Math.max(
+            Math.min(0.8 * scrollheight, finaly),
+            0.1 * scrollheight
+          )
 
           //   console.log("second finaly",finaly);
         }
