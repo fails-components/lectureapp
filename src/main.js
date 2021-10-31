@@ -32,6 +32,7 @@ import { confirmPopup } from 'primereact/confirmpopup'
 import { Steps } from 'primereact/steps'
 import { ListBox } from 'primereact/listbox'
 import { Chart } from 'primereact/chart'
+import { ProgressSpinner } from 'primereact/progressspinner'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -356,6 +357,7 @@ export class FailsBasis extends Component {
 
     this.state = {}
     this.state.screensToSel = []
+    this.state.reloading = true
 
     this.screenm = new ScreenManager()
   }
@@ -369,11 +371,12 @@ export class FailsBasis extends Component {
     commonsocket.on(
       'authtoken',
       function (data) {
-        console.log('authtoken renewed', data)
-        console.log('oldauthtoken', this.myauthtoken)
+        // console.log('authtoken renewed', data)
+        // console.log('oldauthtoken' /* , this.myauthtoken */)
         this.myauthtoken = data.token
         sessionStorage.setItem('failstoken', data.token)
-        console.log('newauthtoken', this.myauthtoken)
+        // console.log('newauthtoken' /* , this.myauthtoken */)
+        console.log('authtoken renewed')
         this.scheduleReauthor() // request renewal
       }.bind(this)
     )
@@ -382,7 +385,8 @@ export class FailsBasis extends Component {
     commonsocket.on(
       'reloadBoard',
       function (data) {
-        console.log('reloadboard', data, this.noteref)
+        // console.log('reloadboard', data, this.noteref)
+        this.setState({ reloading: !data.last })
         if (this.noteref) {
           this.noteref.replaceData(data)
           // if (data.last) this.noteref.setHasControl(true)
@@ -395,7 +399,7 @@ export class FailsBasis extends Component {
       'availscreens',
       function (data) {
         // we can also figure out a notescreen id
-        console.log('availscreens', data)
+        // console.log('availscreens', data)
         if (data.screens) {
           const notescreenuuid = this.decodedToken().notescreenuuid
 
@@ -404,7 +408,7 @@ export class FailsBasis extends Component {
           )
 
           this.setState({ availscreens: data.screens, notescreenid: nsid })
-          console.log('nsid', nsid)
+          console.log('notescreenid', nsid)
         }
       }.bind(this)
     )
@@ -420,7 +424,7 @@ export class FailsBasis extends Component {
     })
 
     commonsocket.on('channelinfo', (data) => {
-      console.log('data channelinfo', data)
+      // console.log('data channelinfo', data)
       const setstate = {}
       const notescreenuuid = this.decodedToken().notescreenuuid
       // #error TODO assure that notepads are always within positive range and make sure that changes are immediately
@@ -447,17 +451,17 @@ export class FailsBasis extends Component {
           if (notepos === 0) notepos = curpos // if there is no notepad, then treat the lonely screen(s), all as a notepad
           for (let i = 0; i < channel.notescreens.length; i++) {
             const cur = channel.notescreens[i]
-            console.log('scrolloffsets', cur.scrollheight, cur.uuid)
+            // console.log('scrolloffsets', cur.scrollheight, cur.uuid)
 
             if (cur.scrollheight) scrolloffset -= parseFloat(cur.scrollheight)
             if (cur.uuid === notescreenuuid) break
           }
           scrolloffset += notepos
-          console.log('Final screen scrolloffset', scrolloffset, this.noteref)
+          // console.log('Final screen scrolloffset', scrolloffset, this.noteref)
           if (this.noteref) this.noteref.setScrollOffset(scrolloffset)
         }
       }
-      console.log('monitor setstate', setstate, data)
+      // console.log('monitor setstate', setstate, data)
       this.setState(setstate)
 
       /*
@@ -550,7 +554,10 @@ export class FailsBasis extends Component {
       function (data) {
         console.log('Socketio error', data)
         this.servererrorhandler(data.code, data.message, data.type)
-        if (commonsocket) commonsocket.disconnect()
+        this.setState({ reloading: true })
+        if (commonsocket) {
+          commonsocket.disconnect()
+        }
       }.bind(this)
     )
 
@@ -568,6 +575,7 @@ export class FailsBasis extends Component {
 
     commonsocket.on('connect_error', (err) => {
       console.log('connect error', err.message)
+      this.setState({ reloading: true })
       this.servererrorhandler(null, 'connect error: ' + err.message, null)
     })
   }
@@ -580,6 +588,32 @@ export class FailsBasis extends Component {
       detail: message,
       life: 20000
     })
+  }
+
+  loadDataDialog() {
+    return (
+      <Dialog
+        header='(Re-)loading data'
+        footer=''
+        visible={this.state.reloading}
+        style={{ width: '30vw' }}
+        closeOnEscape={false}
+        closable={false}
+        showHeader={false}
+        modal
+      >
+        <div className='p-grid p-align-center'>
+          <div className='p-col-3'>
+            <ProgressSpinner />
+          </div>
+          <div className='p-col-9'>
+            Board data is currently loaded or server is disconnected.
+            <br />
+            Please be patient.
+          </div>
+        </div>
+      </Dialog>
+    )
   }
 
   scheduleReauthor() {
@@ -674,7 +708,7 @@ export class FailsBasis extends Component {
   }
 
   getNoteRef(ref) {
-    console.log('getNoteRef')
+    // console.log('getNoteRef')
     this.noteref = ref
     /*  this.noteref.setHasControl(true);
     this.noteref.reactivateToolBox(); */
@@ -682,20 +716,20 @@ export class FailsBasis extends Component {
 
   updateSizes(args) {
     if (this.noteref) {
-      console.log('checko us', this.noteref.blackboard.current)
+      // console.log('checko us', this.noteref.blackboard.current)
       const data = {
         scrollheight: this.noteref.blackboard.current.scrollheight(),
         // isscreen: this.isscreen,
         /*   backgroundbw: this.state.blackbackground, */
         showscreennumber: this.state.showscreennumber
       }
-      console.log('update sizes', data, args)
+      // console.log('update sizes', data, args)
       if (args && args.scrollheight) data.scrollheight = args.scrollheight
       if (args && typeof args.blackbackground !== 'undefined')
         data.backgroundbw = args.blackbackground
       if (args && typeof args.showscreennumber !== 'undefined')
         data.showscreennumber = args.showscreennumber
-      console.log('update sizes2', data, args)
+      // console.log('update sizes2', data, args)
       if (!this.isscreen) {
         // data.isalsoscreen=this.state.notepadisscreen;
         if (this.state.casttoscreens)
@@ -1371,6 +1405,7 @@ export class FailsBoard extends FailsBasis {
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
         {this.screenOverlay()}
+        {this.loadDataDialog()}
         <NoteScreenBase
           arrangebuttoncallback={this.arrangebuttonCallback}
           netsend={
@@ -1660,7 +1695,8 @@ export class FailsScreen extends FailsBasis {
           return {
             casttoscreens: false,
             showscreennumber: false,
-            screenmode: 'disconnected'
+            screenmode: 'disconnected',
+            reloading: true
           }
         })
 
@@ -1694,15 +1730,14 @@ export class FailsScreen extends FailsBasis {
     switch (this.state.screenmode) {
       case 'connected':
         return (
-          <div style={{ textAlign: 'center', zIndex: 100 }}>
+          <div style={{ textAlign: 'center', zIndex: 100, fontSize: '3vh' }}>
             {' '}
             {lectinfo && lectinfo}
             {screenunassigned && (
               <React.Fragment>
                 <h2> Screen connected: </h2>{' '}
                 <h3>ID: {this.state.notescreenid + 1} </h3>
-                <h4>UUID: {this.decodedToken().notescreenuuid}</h4> Start
-                casting lecture!{' '}
+                Start casting lecture!{' '}
               </React.Fragment>
             )}
           </div>
@@ -1710,18 +1745,17 @@ export class FailsScreen extends FailsBasis {
 
       case 'disconnected':
         return (
-          <div style={{ textAlign: 'center', zIndex: 100 }}>
+          <div style={{ textAlign: 'center', zIndex: 100, fontSize: '3vh' }}>
             {' '}
             {lectinfo && lectinfo}
             <h2> Screen disconnected: </h2>{' '}
             <h3>ID: {this.state.notescreenid + 1} </h3>
-            <h4>UUID: {this.decodedToken().notescreenuuid}</h4>{' '}
           </div>
         )
 
       case 'removed':
         return (
-          <div style={{ textAlign: 'center', zIndex: 100 }}>
+          <div style={{ textAlign: 'center', zIndex: 100, fontSize: '3vh' }}>
             {' '}
             {lectinfo && lectinfo}
             {screenunassigned && (
@@ -1729,7 +1763,6 @@ export class FailsScreen extends FailsBasis {
                 {' '}
                 <h2> Screen connected: </h2>{' '}
                 <h3>ID: {this.state.notescreenid + 1} </h3>
-                <h4>UUID: {this.decodedToken().notescreenuuid}</h4>
                 Screen was removed! <br></br>
                 Start casting lecture!{' '}
               </React.Fragment>
@@ -1789,7 +1822,7 @@ export class FailsScreen extends FailsBasis {
         <Sidebar
           visible={!this.state.casttoscreens}
           position='top'
-          style={{ width: '100%', height: '90%', zIndex: 100 }}
+          style={{ width: '100%', height: '98%', zIndex: 100 }}
           showCloseIcon={false}
           onHide={() => {}}
         >
@@ -2027,6 +2060,7 @@ export class FailsNotes extends FailsBasis {
     return (
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
+        {this.loadDataDialog()}
         <OverlayPanel
           ref={(el) => {
             this.ossinfo = el
@@ -2074,8 +2108,13 @@ export class FailsNotes extends FailsBasis {
             style={{ height: '100vh', width: '100vw' }}
           >
             <div className='p-mr-2'>
-              <h1>The screencast is currently deactivated!</h1>
-              <h2>Ask the docent for activation, when ready!</h2>
+              {this.state.reloading && <h1>Loading...</h1>}
+              {!this.state.reloading && (
+                <React.Fragment>
+                  <h1>The screencast is currently deactivated!</h1>
+                  <h2>Ask the docent for activation, when ready!</h2>
+                </React.Fragment>
+              )}
             </div>
           </div>
         )}

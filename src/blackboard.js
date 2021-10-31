@@ -517,6 +517,7 @@ export class Blackboard extends Component {
     this.notepadscreen = props.notepadscreen
 
     this.state.scrolloffset = 0
+    this.state.drawversion = 0
 
     this.incomdispatcher = new Dispatcher()
     this.incomdispatcher.addSink(this) // we also want to draw everything
@@ -538,6 +539,10 @@ export class Blackboard extends Component {
     this.elapsed = new Date()
 
     this.stage = props.stage
+
+    this.stepDrawVersion = this.stepDrawVersion.bind(this)
+    this.renderObjectsWithCache = this.renderObjectsWithCache.bind(this)
+    this.renderObjectsWithoutCache = this.renderObjectsWithoutCache.bind(this)
     console.log('Blackboard start up completed!')
   }
 
@@ -562,7 +567,7 @@ export class Blackboard extends Component {
 
   setScrollOffset(scrolloffset) {
     this.setState({ scrolloffset: scrolloffset })
-    console.log('setScrollOffset', scrolloffset)
+    // console.log('setScrollOffset', scrolloffset)
     this.scrollBoard(0, 'myself', 0, this.getCurScrollPos())
   }
 
@@ -574,9 +579,9 @@ export class Blackboard extends Component {
   addPicture(time, objnum, curclient, x, y, width, height, uuid) {
     this.updateRenderArea(x, y)
     this.updateRenderArea(x + width, y + height)
-    console.log('addpicture', x, y, width, height, uuid)
+    // console.log('addpicture', x, y, width, height, uuid)
     const pictinfo = this.pictures[uuid]
-    console.log('pictinfo', pictinfo)
+    // console.log('pictinfo', pictinfo)
     if (pictinfo) {
       const addpict = new DrawObjectPicture(objnum)
 
@@ -598,12 +603,16 @@ export class Blackboard extends Component {
     // resubmitpath
   }
 
+  stepDrawVersion(state) {
+    return { drawversion: state.drawversion + 1 }
+  }
+
   startPath(time, objnum, curclient, x, y, type, color, width, pressure) {
     // console.log("startPath",x,y,type,color,width, pressure);
 
     if (this.workobj[objnum]) {
       // in case of lost messages
-      console.log('lost case')
+      console.log('lost case', objnum)
     }
 
     this.workobj[objnum] = new DrawObjectGlyph(objnum)
@@ -611,14 +620,7 @@ export class Blackboard extends Component {
 
     this.updateRenderArea(x, y)
 
-    if (!this.redrawing)
-      this.setState((state) => {
-        const version = { ...state.workobjversion }
-        version[objnum] = this.workobj[objnum].version
-        return {
-          workobjversion: version
-        }
-      })
+    if (!this.redrawing) this.setState(this.stepDrawVersion)
 
     // }
     this.recpathstarted = true
@@ -636,14 +638,8 @@ export class Blackboard extends Component {
     this.preworkobj[objnum] = new DrawObjectGlyph(objnum)
     this.preworkobj[objnum].startPath(x, y, type, color, width, pressure)
 
-    this.setState((state) => {
-      const version = { ...state.preworkobjversion }
-      version[objnum] = this.preworkobj[objnum].version
-      return {
-        preworkobjversion: version,
-        fogpos: false
-      }
-    })
+    this.setState({ fogpos: false })
+    this.setState(this.stepDrawVersion)
 
     // }
     this.prerecpathstarted = true
@@ -663,13 +659,7 @@ export class Blackboard extends Component {
         now - this.lastrender > 100 &&
         !this.preworkobj[objid]
       ) {
-        this.setState((state) => {
-          const version = { ...state.workobjversion }
-          version[objid] = this.workobj[objid].version
-          return {
-            workobjversion: version
-          }
-        })
+        this.setState(this.stepDrawVersion)
         this.lastrender = now
       }
 
@@ -687,14 +677,8 @@ export class Blackboard extends Component {
       const now = Date.now()
 
       if (now - this.prelastrender > 100) {
-        this.setState((state) => {
-          const version = { ...state.preworkobjversion }
-          version[objid] = this.preworkobj[objid].version
-          return {
-            preworkobjversion: version,
-            fogpos: false
-          }
-        })
+        this.setState({ fogpos: false })
+        this.setState(this.stepDrawVersion)
         if (this.toolbox()) {
           // this is quite expensive, do not do this during a redraw, but this is never a redraw
           // console.log("redrawinf", this.redrawing, !this.redrawing);
@@ -724,15 +708,12 @@ export class Blackboard extends Component {
         ) */
       delete this.preworkobj[objid] // also remove preview
 
-      if (!this.redrawing)
-        this.setState((state) => {
-          const version = { ...state.workobjversion }
-          delete version[objid]
-          return {
-            workobjversion: version,
-            objects: this.work.objects.concat()
-          }
+      if (!this.redrawing) {
+        this.setState(this.stepDrawVersion)
+        this.setState({
+          objects: this.work.objects.concat()
         })
+      }
     }
     this.recpathstarted = false // tracks the process outside the state
   }
@@ -744,15 +725,10 @@ export class Blackboard extends Component {
       // this.work.objects.push(this.workobj[objid])
       // delete this.workobj[objid]
 
-      if (!this.redrawing)
-        this.setState((state) => {
-          const version = { ...state.preworkobjversion }
-          delete version[objid]
-          return {
-            preworkobjversion: version,
-            fogpos: false
-          }
-        })
+      if (!this.redrawing) {
+        this.setState({ fogpos: false })
+        this.setState(this.stepDrawVersion)
+      }
     }
     this.prerecpathstarted = false // tracks the process outside the state */
   }
@@ -860,11 +836,11 @@ export class Blackboard extends Component {
   replaceData(data, callback) {
     if (data.data) {
       this.collection.replaceStoredData(data.number, data.data) // also do this only if the container is non empty
-      console.log('replace data', data.number, data)
+      console.log('replace data', data.number /* , data */)
       if (data.number === 'command') {
         const cs = this.collection.commandcontainer.getCurCommandState()
         if (callback) callback(cs) // calls the outgoing dispatcher
-        console.log('replace data command', cs)
+        console.log('replace data command' /*, cs */)
         if (cs.scrollx || cs.scrolly)
           this.scrollBoard(cs.time, 'data', cs.scrollx, cs.scrolly)
       }
@@ -897,12 +873,12 @@ export class Blackboard extends Component {
   }
 
   receivePictInfo(data) {
-    console.log('receivepictureinfo', data)
+    // console.log('receivepictureinfo', data)
     this.pictures[data.uuid] = data
   }
 
   receiveBgpdfInfo(data) {
-    console.log('receivebgpdfinfo', data)
+    // console.log('receivebgpdfinfo', data)
     if (data.none) this.setState({ bgpdf: null })
     else if (data.url) this.setState({ bgpdf: data.url })
   }
@@ -911,9 +887,9 @@ export class Blackboard extends Component {
     if (data.clientid === this.clientid) return
     if (!data.x && !data.y) this.setState({ fogpos: false })
     else {
-      this.setState((state) => ({
+      this.setState({
         fogpos: { x: data.x, y: data.y /* +state.curscrollpos */ }
-      }))
+      })
     }
   }
 
@@ -921,11 +897,56 @@ export class Blackboard extends Component {
     if (data.clientid) this.clientid = data.clientid
     if (!data.x && !data.y) this.setState({ fogpos: false, ownfog: false })
     else {
-      this.setState((state) => ({
+      this.setState({
         fogpos: { x: data.x, y: data.y /* +state.curscrollpos */ },
         ownfog: true
-      }))
+      })
     }
+  }
+
+  renderObjectsWithCache(el) {
+    return this.renderObjects(true, el)
+  }
+
+  renderObjectsWithoutCache(el) {
+    return this.renderObjects(false, el)
+  }
+
+  renderObjects(usecache, el) {
+    const key = el.objid
+    let rendercache = el.getRenderCache(key)
+    if (!rendercache || !usecache) {
+      if (el.type === 'glyph') {
+        rendercache = (
+          <SVGWriting2
+            glyph={el}
+            key={key}
+            backcolor={this.props.backcolor}
+            pixelwidth={this.props.bbwidth}
+            zIndex={10}
+          ></SVGWriting2>
+        )
+      } else if (el.type === 'image') {
+        rendercache = (
+          <ImageHelper
+            x={el.posx * this.props.bbwidth}
+            y={el.posy * this.props.bbwidth}
+            zIndex={10}
+            width={el.width * this.props.bbwidth}
+            height={el.height * this.props.bbwidth}
+            url={el.url}
+            uuid={el.uuid}
+            key={key}
+          ></ImageHelper>
+        )
+      } else {
+        rendercache = <React.Fragment key={key}></React.Fragment>
+      }
+      // console.log('cache miss')
+      el.setRenderCache(key, rendercache)
+      // console.log('cache miss fix ', el)
+    }
+    return rendercache
   }
 
   render() {
@@ -945,42 +966,9 @@ export class Blackboard extends Component {
     if (this.state.ownfog && !this.props.addpict && this.props.isnotepad)
       cursor = 'none'
     // console.log("render ob", this.state.objects);
-    const written = this.state.objects.map((el, index) => {
-      const key = el.objid
-      let rendercache = el.getRenderCache(key)
-      if (!rendercache || !usecache) {
-        if (el.type === 'glyph') {
-          rendercache = (
-            <SVGWriting2
-              glyph={el}
-              key={key}
-              backcolor={this.props.backcolor}
-              pixelwidth={this.props.bbwidth}
-              zIndex={10}
-            ></SVGWriting2>
-          )
-        } else if (el.type === 'image') {
-          rendercache = (
-            <ImageHelper
-              x={el.posx * this.props.bbwidth}
-              y={el.posy * this.props.bbwidth}
-              zIndex={10}
-              width={el.width * this.props.bbwidth}
-              height={el.height * this.props.bbwidth}
-              url={el.url}
-              uuid={el.uuid}
-              key={key}
-            ></ImageHelper>
-          )
-        } else {
-          rendercache = <React.Fragment key={key}></React.Fragment>
-        }
-        // console.log('cache miss')
-        el.setRenderCache(key, rendercache)
-        // console.log('cache miss fix ', el)
-      }
-      return rendercache
-    })
+    const written = this.state.objects.map(
+      usecache ? this.renderObjectsWithCache : this.renderObjectsWithoutCache
+    )
     const wobj = []
     for (const prop in this.workobj) {
       if (!this.preworkobj[prop]) {
@@ -1153,6 +1141,7 @@ export class BlackboardNotepad extends Component {
     this.pointerup = this.pointerup.bind(this)
     this.curPictAspect = this.curPictAspect.bind(this)
     this.calcAddPictSize = this.calcAddPictSize.bind(this)
+    this.processEvent = this.processEvent.bind(this)
   }
 
   setblocked(isblocked) {
@@ -1407,6 +1396,40 @@ export class BlackboardNotepad extends Component {
     }
   }
 
+  processEvent(mevent) {
+    const pos = { x: mevent.clientX, y: mevent.clientY }
+
+    const lastpos = this.lastpos[mevent.pointerId]
+    if (lastpos) {
+      const distance =
+        (lastpos.x - pos.x) * (lastpos.x - pos.x) +
+        (lastpos.y - pos.y) * (lastpos.y - pos.y)
+      if (distance > 0) {
+        const objid = this.pointerobjids[mevent.pointerId]
+        // console.log("distance check,",distance,pos.x,pos.y,pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCurScrollPos()  );
+        this.outgodispatcher.addToPath(
+          null,
+          objid,
+          null,
+          pos.x / this.props.bbwidth,
+          pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+          mevent.pressure
+        )
+        if (this.realblackboard && this.realblackboard.current)
+          // preview
+          this.realblackboard.current.preAddToPath(
+            null,
+            objid,
+            null,
+            pos.x / this.props.bbwidth,
+            pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+            mevent.pressure
+          )
+        this.lastpos[mevent.pointerId] = pos
+      }
+    }
+  } // end process event
+
   pointermove(event) {
     /* console.log("pointermove",event);
         console.log("pointerId:",event.pointerId,
@@ -1433,44 +1456,11 @@ export class BlackboardNotepad extends Component {
            console.log("last pos",this.lastpos );
            console.log("pointer id", event.pointerId);
            console.log("lastpos",this.lastpos[event.pointerId]); */
-        const processEvent = (mevent) => {
-          const pos = { x: mevent.clientX, y: mevent.clientY }
-
-          const lastpos = this.lastpos[mevent.pointerId]
-          if (lastpos) {
-            const distance =
-              (lastpos.x - pos.x) * (lastpos.x - pos.x) +
-              (lastpos.y - pos.y) * (lastpos.y - pos.y)
-            if (distance > 0) {
-              const objid = this.pointerobjids[mevent.pointerId]
-              // console.log("distance check,",distance,pos.x,pos.y,pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCurScrollPos()  );
-              this.outgodispatcher.addToPath(
-                null,
-                objid,
-                null,
-                pos.x / this.props.bbwidth,
-                pos.y / this.props.bbwidth + this.getCalcScrollPos(),
-                mevent.pressure
-              )
-              if (this.realblackboard && this.realblackboard.current)
-                // preview
-                this.realblackboard.current.preAddToPath(
-                  null,
-                  objid,
-                  null,
-                  pos.x / this.props.bbwidth,
-                  pos.y / this.props.bbwidth + this.getCalcScrollPos(),
-                  mevent.pressure
-                )
-              this.lastpos[mevent.pointerId] = pos
-            }
-          }
-        } // end process event
         if (typeof event.nativeEvent.getCoalescedEvents === 'function') {
           // are coalesced events supported, yes now process them all
-          event.nativeEvent.getCoalescedEvents().forEach(processEvent)
+          event.nativeEvent.getCoalescedEvents().forEach(this.processEvent)
         } else {
-          processEvent(event)
+          this.processEvent(event)
         }
       } else if (this.addpictmode !== 0) {
         const pos = { x: event.clientX, y: event.clientY }
@@ -1547,14 +1537,14 @@ export class BlackboardNotepad extends Component {
 
     if (event.pointerId in this.pointerdraw === true) {
       const objid = this.pointerobjids[event.pointerId]
-      console.log('pu event', event)
+      /* console.log('pu event', event)
       console.log(
         'pointerup',
         pos.x,
         pos.y,
         pos.x / this.props.bbwidth,
         pos.y / this.props.bbwidth + this.getCalcScrollPos()
-      )
+      ) */
       if (event.clientX !== 0 && event.clientY !== 0) {
         this.outgodispatcher.addToPath(
           null,
@@ -1749,7 +1739,7 @@ export class BlackboardNotepad extends Component {
   receiveData(data) {
     if (typeof data.timeSet !== 'undefined') {
       if (data.timeSet) {
-        console.log('initialscroll', data)
+        // console.log('initialscroll', data)
         if (this.outgodispatcher)
           this.outgodispatcher.setTimeandScrollPos(data.time)
       }

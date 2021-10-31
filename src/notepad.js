@@ -24,7 +24,7 @@ import { ToolBox, ConfirmBox } from './toolbox.js'
 export class NoteScreenBase extends Component {
   constructor(props) {
     super(props)
-    console.log('myprops', props)
+    // console.log('myprops', props)
 
     // this.animate=this.animate.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this)
@@ -65,8 +65,6 @@ export class NoteScreenBase extends Component {
 
     window.addEventListener('resize', this.resizeeventlistener)
     window.addEventListener('keydown', this.onKeyDown, false)
-
-    console.log('Create new NoteScreenBase', this.width, this.height)
 
     if (
       this.state.bbwidth !== window.innerWidth ||
