@@ -1441,11 +1441,11 @@ export class BlackboardNotepad extends Component {
                 "cX",event.clientX,
                 "cY",event.clientY); */
 
-    /* if (
+    if (
       event.pointerType === 'touch' &&
       Date.now() - this.lastPenEvent < 5 * 1000
     )
-      return // no touchy touchy */ // this is handled in pointer down already
+      return // no touchy touchy  // this is handled in pointer down already, no it is not
 
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true) {
