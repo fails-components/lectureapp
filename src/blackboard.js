@@ -905,6 +905,45 @@ export class Blackboard extends Component {
     }
   }
 
+  setcursor(args) {
+    if (args.mode === 'drawing') {
+      this.setState({
+        cursor: {
+          mode: 'drawing',
+          size: args.size,
+          color: args.color,
+          alpha: args.alpha
+        }
+      })
+    } else if (args.mode === 'picture') {
+      this.setState({
+        cursor: { mode: 'normal' }
+      })
+    }
+  }
+
+  cursor() {
+    if (!this.state.cursor) return 'auto'
+    if (this.state.cursor.mode !== 'drawing') return 'auto'
+    const circleradius = this.state.cursor.size * 0.5
+    let color = this.state.cursor.color
+
+    if (typeof color === 'string' || color instanceof String)
+      color = color.replace('#', '%23')
+
+    let alpha = 1.0
+    if (this.state.cursor.alpha) alpha = this.state.cursor.alpha
+
+    const vw = 2.1 * circleradius
+    const vh = 2.1 * circleradius
+    const vbx1 = -1.05 * circleradius
+    const vby1 = -1.05 * circleradius
+    return [
+      `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="${vw}" height="${vh}" viewBox="${vbx1} ${vby1} ${vw} ${vh}"><circle cx="0" cy="0" r="${circleradius}" style="fill:${color};fill-opacity:${alpha};stroke:black"/></svg>') ${circleradius} ${circleradius}`,
+      'crosshair'
+    ]
+  }
+
   renderObjectsWithCache(el) {
     return this.renderObjects(true, el)
   }
@@ -952,6 +991,7 @@ export class Blackboard extends Component {
 
   render() {
     let cursor = 'auto'
+    if (this.props.isnotepad) cursor = this.cursor()
     let usecache = true
     if (
       this.lastrenderprops.bbwidth !== this.props.bbwidth ||
@@ -1659,6 +1699,12 @@ export class BlackboardNotepad extends Component {
     this.tooltype = 0
     this.toolsize = size
     this.toolcolor = color
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.setcursor({
+        mode: 'drawing',
+        size: size * this.props.devicePixelRatio,
+        color: color
+      })
     // console.log("sPT",this.tooltype, this.toolsize,this.toolcolor );
   }
 
@@ -1666,12 +1712,25 @@ export class BlackboardNotepad extends Component {
     this.tooltype = 1
     this.toolsize = size
     this.toolcolor = color
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.setcursor({
+        mode: 'drawing',
+        size: size * this.props.devicePixelRatio,
+        color: color,
+        alpha: 0.3
+      })
     // console.log("sMT",this.tooltype, this.toolsize,this.toolcolor );
   }
 
   setEraserTool(size) {
     this.tooltype = 2
     this.toolsize = size
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.setcursor({
+        mode: 'drawing',
+        size: size * this.props.devicePixelRatio,
+        color: this.props.backcolor
+      })
     // console.log("sET",this.tooltype, this.toolsize,this.toolcolor );
   }
 
