@@ -510,7 +510,7 @@ export class Blackboard extends Component {
     this.forceredraw = false
 
     this.curkeyscroll = 0
-    this.lastkeyscrolltime = new Date(0)
+    this.lastkeyscrolltime = 0
 
     this.pictures = {}
 
@@ -535,8 +535,6 @@ export class Blackboard extends Component {
     // stage.addChild(this.blackboardtemp);
 
     this.pathstarted = this.pathupdated = false
-
-    this.elapsed = new Date()
 
     this.stage = props.stage
 
@@ -1112,16 +1110,16 @@ export class BlackboardNotepad extends Component {
     this.lastfogtime = Date.now()
 
     // velocity handling
-    this.lastfogpos = null
-    this.fogtime = new Date()
-    this.fogmeanvel = 0
+    this.lastfogpos = {}
+    this.fogtime = {}
+    this.fogmeanvel = {}
 
     this.interactive = true
     // props.stage.interactive=true;
 
     this.mousepathstarted = false
 
-    this.lastkeyscrolltime = new Date()
+    this.lastkeyscrolltime = Date.now()
 
     this.rightmousescroll = false
     this.rightmousescrollx = 0
@@ -1346,25 +1344,39 @@ export class BlackboardNotepad extends Component {
     })
   }
 
-  fogHandle(x, y) {
-    const newtime = new Date()
-    const timeelapsed = (newtime.getTime() - this.fogtime.getTime()) / 1000
+  fogHandle(x, y, pointerid) {
+    const newtime = Date.now()
+
+    if (!this.fogtime[pointerid]) {
+      this.fogtime[pointerid] = newtime
+      this.lastfogpos[pointerid] = { x: x, y: y }
+      return
+    }
+
+    const timeelapsed = (newtime - this.fogtime[pointerid]) / 1000
 
     if (timeelapsed > 0.05) {
       //
-      this.fogtime = newtime
+      this.fogtime[pointerid] = newtime
 
-      const lfp = this.lastfogpos
+      const lfp = this.lastfogpos[pointerid]
       let distance = 0
       if (lfp) distance = (x - lfp.x) * (x - lfp.x) + (y - lfp.y) * (y - lfp.y)
-      this.lastfogpos = { x: x, y: y }
+      this.lastfogpos[pointerid] = { x: x, y: y }
 
       const velocity = Math.sqrt(distance / timeelapsed / timeelapsed) // this is velocity squared
-      this.fogmeanvel = this.fogmeanvel * 0.66 + 0.33 * velocity
+      if (!this.fogmeanvel[pointerid]) this.fogmeanvel[pointerid] = 0
+      this.fogmeanvel[pointerid] =
+        this.fogmeanvel[pointerid] * 0.66 + 0.33 * velocity
 
-      // console.log("fog "+this.fogmeanvel);
-      // console.log("FoG scrolloffset",data.y,this.state.curscrollpos,this.state.scrolloffset);
-      if (this.fogmeanvel > 0.7) {
+      /* console.log('fog ' + this.fogmeanvel[pointerid], timeelapsed, velocity)
+      console.log(
+        'FoG scrolloffset',
+        y,
+        this.state.curscrollpos,
+        this.state.scrolloffset
+      ) */
+      if (this.fogmeanvel[pointerid] > 0.7) {
         this.fogontime = newtime
         this.props.notepadscreen.reportFoG(x, y, this.clientId)
         if (this.realblackboard && this.realblackboard.current)
@@ -1441,12 +1453,6 @@ export class BlackboardNotepad extends Component {
                 "cX",event.clientX,
                 "cY",event.clientY); */
 
-    if (
-      event.pointerType === 'touch' &&
-      Date.now() - this.lastPenEvent < 5 * 1000
-    )
-      return // no touchy touchy  // this is handled in pointer down already, no it is not
-
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true) {
         if (event.pointerType === 'pen' || event.pointerType === 'mouse')
@@ -1487,13 +1493,20 @@ export class BlackboardNotepad extends Component {
         Object.keys(this.pointerdraw).length === 0 &&
         Object.getPrototypeOf(this.pointerdraw) === Object.prototype
       ) {
+        if (
+          event.pointerType === 'touch' &&
+          Date.now() - this.lastPenEvent < 5 * 1000
+        )
+          return // no touchy touchy  // this is handled in pointer down already, no it is not in this case
+
         const pos = { x: event.clientX, y: event.clientY }
         // console.log("Fog out BB",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth,event.data,this);
         if (Date.now() - this.lastfogtime > 10) {
           // TODO move velocity calculation to here...
           this.fogHandle(
             pos.x / this.props.bbwidth,
-            pos.y / this.props.bbwidth + this.getCalcScrollPos()
+            pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+            event.pointerId
           )
 
           this.lastfogtime = Date.now()
@@ -1610,7 +1623,7 @@ export class BlackboardNotepad extends Component {
 
   scrollboardKeys(x, y) {
     // console.log("scrollboardKeys",x,y,this.getCurScrollPos(),this.state.curkeyscroll);
-    const time = new Date()
+    const time = Date.now()
 
     let resetkeyscroll = null
 
