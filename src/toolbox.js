@@ -275,7 +275,7 @@ export class ToolBox extends Component {
         if (this.blackboard())
           this.blackboard().setMarkerTool(
             color,
-            (20 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
+            (12 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
           )
         break
       default:
