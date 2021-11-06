@@ -532,6 +532,8 @@ export class Blackboard extends Component {
 
     this.lastrenderprops = {}
 
+    this.lastrpd = Date.now()
+
     // stage.addChild(this.blackboardtemp);
 
     this.pathstarted = this.pathupdated = false
@@ -674,12 +676,13 @@ export class Blackboard extends Component {
       // console.log("addtopath rs",x,y,pressure);
       const now = Date.now()
 
-      if (now - this.prelastrender > 100) {
+      if (now - this.prelastrender > 50) {
         this.setState({ fogpos: false })
         this.setState(this.stepDrawVersion)
-        if (this.toolbox()) {
+        if (this.toolbox() && now - this.lastrpd > 200) {
           // this is quite expensive, do not do this during a redraw, but this is never a redraw
           // console.log("redrawinf", this.redrawing, !this.redrawing);
+          this.lastrpd = now
           this.toolbox().reportDrawPos(
             x,
             y - this.state.curscrollpos - this.state.scrolloffset

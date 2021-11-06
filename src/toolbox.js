@@ -61,11 +61,11 @@ class ColorPickerButton2 extends Component {
       <Button
         icon={
           <svg viewBox='-20 -20 40 40' width='100%' height='100%'>
-            {this.props.size * 0.5 < 10 && (
+            {this.props.size < 15 && (
               <circle
                 cx='0'
                 cy='0'
-                r={10}
+                r={15}
                 stroke='#001A00'
                 strokeWidth='0'
                 fill='#001A00'
@@ -74,7 +74,7 @@ class ColorPickerButton2 extends Component {
             <circle
               cx='0'
               cy='0'
-              r={this.props.size * this.props.sizefac * 0.5}
+              r={this.props.size * this.props.sizefac}
               stroke='#001A00'
               strokeWidth='0'
               fill={this.props.color}
@@ -102,10 +102,6 @@ export class ToolBox extends Component {
     this.state.activated = true
 
     console.log('bbwidth in tb', this.props.bbwidth)
-    this.state.scalefac = (1.2 * 0.45 * this.props.bbwidth) / 1000
-
-    this.state.scale = { x: this.state.scalefac, y: this.state.scalefac }
-
     this.state.pencolor = '#FFFFFF' // "#99FF99";
     this.state.markercolor = '#CCFF33'
     this.state.pensize = 1
@@ -115,6 +111,7 @@ export class ToolBox extends Component {
 
     this.tbx = 0.8 // constant toolbox pos
     this.lastpostime = Date.now()
+    this.divheight = 32
 
     this.secondtoolnum = 0
 
@@ -144,16 +141,15 @@ export class ToolBox extends Component {
       '#FE8BF0',
       '#FFA8A8'
     ]
-    this.pensizesizes = [1, 1.5, 2, 3, 4, 6, 8, 11, 16]
+    this.pensizesizes = [1, 1.5, 2, 3, 4, 6, 8, 11 /* , 16 */]
     this.tmcolorwheelcolors = [
       '#FF0066',
       '#00FF00',
       '#FFFF00',
       '#FF3300',
       '#6600FF',
-      '#FF99',
-      '#FF',
-      '#FFFF'
+      '#FF9900',
+      '#FF0000'
     ]
 
     this.scrollPointerdown = this.scrollPointerdown.bind(this)
@@ -185,6 +181,16 @@ export class ToolBox extends Component {
       )
   }
 
+  componentDidUpdate() {
+    if (this.divref) {
+      if (this.divref.offsetHeight !== this.divheight) {
+        this.divheight = this.divref.offsetHeight
+        // console.log('divheight changed', this.divheight)
+        this.reportDrawPos()
+      }
+    }
+  }
+
   addRemoveSecondToolGuardian(newguard) {
     if (this.secondtoolnum) clearTimeout(this.secondtoolnum)
     this.secondtoolnum = null
@@ -198,12 +204,18 @@ export class ToolBox extends Component {
   selectTool(buttonid) {
     switch (buttonid) {
       case 3:
-        if (this.blackboard()) this.blackboard().setEraserTool(15) // was 30
+        if (this.blackboard())
+          this.blackboard().setEraserTool(
+            (12 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
+          ) // was 30
         this.addRemoveSecondToolGuardian(false)
         break
       case 4:
         if (this.blackboard())
-          this.blackboard().setMarkerTool(this.state.markercolor, 20)
+          this.blackboard().setMarkerTool(
+            this.state.markercolor,
+            (12 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
+          )
         this.addRemoveSecondToolGuardian(true)
         break
       case 5:
@@ -260,7 +272,11 @@ export class ToolBox extends Component {
         break
       case 3:
         this.setState({ markercolor: color, selectedPickerid: pickerid })
-        if (this.blackboard()) this.blackboard().setMarkerTool(color, 20)
+        if (this.blackboard())
+          this.blackboard().setMarkerTool(
+            color,
+            (20 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
+          )
         break
       default:
         break
@@ -294,6 +310,16 @@ export class ToolBox extends Component {
     const now = Date.now()
     this.lastpostime = now
 
+    if (x) this.lastrdpx = x
+    else x = this.lastrdpx
+
+    if (y) {
+      if (Math.abs(this.lastrdpy - y) < 0.03) return
+      this.lastrdpy = y
+    } else y = this.lastrdpy
+
+    // console.log('reportdrawpos', x, y)
+
     let finaly = 0
     // ok the idea as as follows, if drawing is close, the toolbox is in an circle around the drawing
     const circlerad = 0.2
@@ -302,10 +328,25 @@ export class ToolBox extends Component {
 
     const scrollheight = this.scrollheight()
 
+    const marginbottom = Math.max(
+      this.divheight / this.props.bbwidth + 0.05 * scrollheight,
+      0.1 * scrollheight
+    )
+
+    const bottom = scrollheight - marginbottom
+
+    /* console.log(
+      'bottom details',
+      bottom,
+      marginbottom,
+      this.divheight,
+      scrollheight
+    ) */
+
     this.setState((state) => {
       if (d * d > circlerad * circlerad) {
         // no intersection
-        finaly = Math.max(Math.min(0.8 * scrollheight, y), 0.1 * scrollheight)
+        finaly = Math.max(Math.min(bottom, y), 0.1 * scrollheight)
         // console.log("stupid  finaly",finaly,d,circlerad);
       } else {
         const finaly1 = y + Math.sqrt(circlerad * circlerad - d * d)
@@ -321,17 +362,14 @@ export class ToolBox extends Component {
         }
 
         // console.log("first finaly",finaly);
-        if (finaly < 0.1 * scrollheight || finaly > 0.8 * scrollheight) {
+        if (finaly < 0.1 * scrollheight || finaly > bottom) {
           // in this case take the otherone
 
           // ok we move outside, jump
           finaly = ofinaly
 
           // ok we have to fix if still outside
-          finaly = Math.max(
-            Math.min(0.8 * scrollheight, finaly),
-            0.1 * scrollheight
-          )
+          finaly = Math.max(Math.min(bottom, finaly), 0.1 * scrollheight)
 
           //   console.log("second finaly",finaly);
         }
@@ -668,9 +706,15 @@ export class ToolBox extends Component {
             color={'#ffffff'}
             pickerid={2}
             selected={this.state.pensize === this.pensizesizes[it]}
-            size={this.pensizesizes[it] * 0.001 * this.props.bbwidth}
-            mysize={this.pensizesizes[it]}
-            sizefac={1 / this.state.scalefac}
+            size={
+              (this.pensizesizes[it] * 0.001 * this.props.bbwidth) /
+              this.props.devicePixelRatio
+            }
+            mysize={
+              (this.pensizesizes[it] * 0.001 * this.props.bbwidth) /
+              this.props.devicePixelRatio
+            }
+            sizefac={this.props.devicePixelRatio}
             alpha={1}
             key={it}
           />
@@ -718,6 +762,9 @@ export class ToolBox extends Component {
           width: '15vx',
           zIndex: 200,
           touchAction: 'none'
+        }}
+        ref={(divref) => {
+          this.divref = divref
         }}
       >
         <OverlayPanel
