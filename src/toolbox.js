@@ -186,7 +186,7 @@ export class ToolBox extends Component {
       if (this.divref.offsetHeight !== this.divheight) {
         this.divheight = this.divref.offsetHeight
         // console.log('divheight changed', this.divheight)
-        this.reportDrawPos()
+        if (!this.scrollmodeactiv) this.reportDrawPos()
       }
     }
   }
@@ -293,12 +293,8 @@ export class ToolBox extends Component {
     const scrollheight = this.scrollheight()
     const marginbottom = this.marginbottom()
     const bottom = scrollheight - marginbottom
-    
     let newposy = this.scrolltoolposref - scrolly / this.props.bbwidth // well we have to check if it will be relocated
-    if (
-      newposy > bottom ||
-      newposy < 0.1 * scrollheight
-    )
+    if (newposy > bottom || newposy < 0.1 * scrollheight)
       newposy = 0.5 * scrollheight
     this.setState({ posy: newposy })
     if (this.blackboard()) {
@@ -309,7 +305,7 @@ export class ToolBox extends Component {
       )
     }
   }
-  
+
   marginbottom() {
     const scrollheight = this.scrollheight()
     return Math.max(
@@ -322,13 +318,23 @@ export class ToolBox extends Component {
     const now = Date.now()
     this.lastpostime = now
 
+    if (x && y) {
+      if (
+        Math.abs(this.lastrdpy - y) < 0.02 &&
+        Math.abs(this.lastrdpx - x) < 0.02
+      )
+        return
+    }
+
     if (x) this.lastrdpx = x
     else x = this.lastrdpx
 
     if (y) {
-      if (Math.abs(this.lastrdpy - y) < 0.03) return
       this.lastrdpy = y
     } else y = this.lastrdpy
+
+    if (!y) this.lastrdpy = y = this.state.posy
+    if (!x) this.lastrdpx = x = 0
 
     // console.log('reportdrawpos', x, y)
 
@@ -356,7 +362,7 @@ export class ToolBox extends Component {
       if (d * d > circlerad * circlerad) {
         // no intersection
         finaly = Math.max(Math.min(bottom, y), 0.1 * scrollheight)
-        // console.log("stupid  finaly",finaly,d,circlerad);
+        // console.log('stupid  finaly', finaly, d, circlerad)
       } else {
         const finaly1 = y + Math.sqrt(circlerad * circlerad - d * d)
         const finaly2 = y - Math.sqrt(circlerad * circlerad - d * d)
@@ -370,7 +376,7 @@ export class ToolBox extends Component {
           ofinaly = finaly1
         }
 
-        // console.log("first finaly",finaly);
+        // console.log('first finaly', finaly, ofinaly)
         if (finaly < 0.1 * scrollheight || finaly > bottom) {
           // in this case take the otherone
 
@@ -378,12 +384,14 @@ export class ToolBox extends Component {
           finaly = ofinaly
 
           // ok we have to fix if still outside
-          if (finaly < 0.1 * scrollheight || finaly > bottom)
+          if (finaly < 0.1 * scrollheight || finaly > bottom) {
             finaly = Math.max(Math.min(bottom, finaly), 0.1 * scrollheight)
 
-          //   console.log("second finaly",finaly);
+            // console.log('finaly overwrite', finaly)
+          }
         }
       }
+      // console.log('finaly', finaly)
       return { posy: finaly }
     })
   }
