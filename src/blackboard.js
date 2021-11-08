@@ -679,7 +679,7 @@ export class Blackboard extends Component {
       if (now - this.prelastrender > 50) {
         this.setState({ fogpos: false })
         this.setState(this.stepDrawVersion)
-        if (this.toolbox() && now - this.lastrpd > 200) {
+        if (this.toolbox() && now - this.lastrpd > 100) {
           // this is quite expensive, do not do this during a redraw, but this is never a redraw
           // console.log("redrawinf", this.redrawing, !this.redrawing);
           this.lastrpd = now
