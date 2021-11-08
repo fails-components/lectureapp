@@ -290,12 +290,16 @@ export class ToolBox extends Component {
   }
 
   scrollboard(scrollx, scrolly) {
+    const scrollheight = this.scrollheight()
+    const marginbottom = this.marginbottom()
+    const bottom = scrollheight - marginbottom
+    
     let newposy = this.scrolltoolposref - scrolly / this.props.bbwidth // well we have to check if it will be relocated
     if (
-      newposy > 0.9 * this.scrollheight() ||
-      newposy < 0.1 * this.scrollheight()
+      newposy > bottom ||
+      newposy < 0.1 * scrollheight
     )
-      newposy = 0.5 * this.scrollheight()
+      newposy = 0.5 * scrollheight
     this.setState({ posy: newposy })
     if (this.blackboard()) {
       this.blackboard().scrollboardTB(
@@ -304,6 +308,14 @@ export class ToolBox extends Component {
         this.scrollboardreference
       )
     }
+  }
+  
+  marginbottom() {
+    const scrollheight = this.scrollheight()
+    return Math.max(
+      this.divheight / this.props.bbwidth + 0.05 * scrollheight,
+      0.1 * scrollheight
+    )
   }
 
   reportDrawPos(x, y) {
@@ -328,10 +340,7 @@ export class ToolBox extends Component {
 
     const scrollheight = this.scrollheight()
 
-    const marginbottom = Math.max(
-      this.divheight / this.props.bbwidth + 0.05 * scrollheight,
-      0.1 * scrollheight
-    )
+    const marginbottom = this.marginbottom()
 
     const bottom = scrollheight - marginbottom
 
@@ -369,7 +378,8 @@ export class ToolBox extends Component {
           finaly = ofinaly
 
           // ok we have to fix if still outside
-          finaly = Math.max(Math.min(bottom, finaly), 0.1 * scrollheight)
+          if (finaly < 0.1 * scrollheight || finaly > bottom)
+            finaly = Math.max(Math.min(bottom, finaly), 0.1 * scrollheight)
 
           //   console.log("second finaly",finaly);
         }
