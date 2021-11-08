@@ -1799,6 +1799,10 @@ export class BlackboardNotepad extends Component {
 
   enterAddPictureMode(uuid, url) {
     this.addpictmode = 4 // stage of adding picture
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.setcursor({
+        mode: 'normal'
+      })
     this.setState({
       addpictuuid: uuid,
       addpicturl: url,
