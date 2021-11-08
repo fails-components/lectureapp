@@ -54,8 +54,9 @@ class ColorPickerButton2 extends Component {
     const selbuttonclass = (cond, add) =>
       cond
         ? // eslint-disable-next-line no-unneeded-ternary
-          (add ? add : '') + 'p-button-primary p-button-raised p-button-rounded'
-        : 'p-button-secondary p-button-raised p-button-rounded'
+          (add ? add : '') +
+          'p-button-primary p-button-raised p-button-rounded tbChild'
+        : 'p-button-secondary p-button-raised p-button-rounded tbChild'
 
     return (
       <Button
@@ -464,10 +465,12 @@ export class ToolBox extends Component {
     const selbuttonclass = (cond, add) =>
       cond
         ? // eslint-disable-next-line no-unneeded-ternary
-          (add ? add : '') + 'p-button-primary p-button-raised p-button-rounded'
-        : 'p-button-secondary p-button-raised p-button-rounded'
+          (add ? add : '') +
+          'p-button-primary p-button-raised p-button-rounded tbChild'
+        : 'p-button-secondary p-button-raised p-button-rounded tbChild'
 
-    const setclass = 'p-button-secondary p-button-raised p-button-rounded'
+    const setclass =
+      'p-button-secondary p-button-raised p-button-rounded tbChild'
     let maintools = []
 
     const endbutton = (
@@ -778,14 +781,14 @@ export class ToolBox extends Component {
           top: this.state.posy * this.props.bbwidth + 'px',
           left: this.tbx * this.props.bbwidth + 'px',
           width: '15vx',
-          zIndex: 200,
-          touchAction: 'none'
+          zIndex: 200
         }}
         ref={(divref) => {
           this.divref = divref
         }}
       >
         <OverlayPanel
+          className='tbChild'
           ref={(el) => {
             this.ossinfo = el
           }}

@@ -28,10 +28,18 @@ code {
 .toolboxMove {
   transition: top 0.4s ease-in-out 0.4s;
   transform: translate(-50%, 0%);
+  touch-action: none;
+  pointer-events: none;
 }
 
 .toolboxStatic {
   transform: translate(-50%, 0%);
+  touch-action: none;
+  pointer-events: none;
+}
+
+.tbChild {
+  pointer-events: auto;
 }
 
 .spotlight {
