@@ -1266,6 +1266,16 @@ export class BlackboardNotepad extends Component {
 
     const pos = { x: event.clientX, y: event.clientY }
     this.rightmousescroll = false
+    
+    if (event.pointerId in this.pointerdraw === true) {
+      // finish stale paths
+      this.outgodispatcher.finishPath(null, objid, null)
+      if (this.realblackboard && this.realblackboard.current)
+        this.realblackboard.current.preFinishPath(null, objid, null)
+
+      delete this.pointerdraw[event.pointerId]
+      delete this.pointerobjids[event.pointerId]
+    }
 
     if (event.pointerId in this.pointerdraw === false) {
       this.pointerdraw[event.pointerId] = true
