@@ -1467,25 +1467,30 @@ export class FailsBoard extends FailsBasis {
           style={{ width: '50vw' }}
           onHide={this.onHidePictDialog}
         >
-          <div className='p-grid'>
-            <div className='p-col-12'>
-              <Galleria
-                value={this.state.pictures}
-                item={this.itemGalleriaTemplate}
-                thumbnail={this.thumbnailGalleriaTemplate}
-                activeIndex={this.state.pictIndex}
-                changeItemOnIndicatorHover={true}
-                onItemChange={(e) => this.setState({ pictIndex: e.index })}
-              ></Galleria>
+          {this.state.pictures && this.state.pictures.length !== 0 && (
+            <div className='p-grid'>
+              <div className='p-col-12'>
+                <Galleria
+                  value={this.state.pictures}
+                  item={this.itemGalleriaTemplate}
+                  thumbnail={this.thumbnailGalleriaTemplate}
+                  activeIndex={this.state.pictIndex}
+                  changeItemOnIndicatorHover={true}
+                  onItemChange={(e) => this.setState({ pictIndex: e.index })}
+                ></Galleria>
+              </div>
+              <div className='p-col-6'>
+                <Button
+                  label='Add to lecture'
+                  icon='pi pi-plus'
+                  onClick={this.onAddPicture}
+                />
+              </div>
             </div>
-            <div className='p-col-6'>
-              <Button
-                label='Add to lecture'
-                icon='pi pi-plus'
-                onClick={this.onAddPicture}
-              />
-            </div>
-          </div>
+          )}
+          {this.state.pictures && this.state.pictures.length === 0 && (
+            <h3> No pictures uploaded! </h3>
+          )}
         </Dialog>
 
         <Dialog

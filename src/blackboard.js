@@ -204,6 +204,7 @@ export class SVGWriting2 extends Component {
     }
 
     if (this.props.preview) stroke = 'purple'
+    if (this.props.predraw) stroke = 'cyan'
 
     return (
       <svg viewBox={viewbox} style={style}>
@@ -1021,6 +1022,7 @@ export class Blackboard extends Component {
               backcolor={this.props.backcolor}
               pixelwidth={this.props.bbwidth}
               zIndex={50}
+              predraw={true}
               key={key}
             >
               {' '}
@@ -1236,7 +1238,7 @@ export class BlackboardNotepad extends Component {
   async pointerdown(event) {
     console.log('pointerdown', event)
     console.log(
-      'pointerId:',
+      'pointerdown pointerId:',
       event.pointerId,
       'pointerType',
       event.pointerType,
@@ -1260,15 +1262,16 @@ export class BlackboardNotepad extends Component {
     if (event.pointerType === 'pen') this.lastPenEvent = Date.now()
     if (
       event.pointerType === 'touch' &&
-      (Date.now() - this.lastPenEvent < 5 * 1000 /* || !event.isPrimary*/ )
+      Date.now() - this.lastPenEvent < 5 * 1000 /* || !event.isPrimary */
     )
       return // no touchy touchy
 
     const pos = { x: event.clientX, y: event.clientY }
     this.rightmousescroll = false
-    
+
     if (event.pointerId in this.pointerdraw === true) {
       // finish stale paths
+      const objid = this.pointerobjids[event.pointerId]
       this.outgodispatcher.finishPath(null, objid, null)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preFinishPath(null, objid, null)
@@ -1602,6 +1605,24 @@ export class BlackboardNotepad extends Component {
 
     if (event.pointerId in this.pointerdraw === true) {
       const objid = this.pointerobjids[event.pointerId]
+      console.log(
+        'pointerup pointerId:',
+        event.pointerId,
+        'pointerType',
+        event.pointerType,
+        'isPrimary',
+        event.isPrimary,
+        'width',
+        event.width,
+        'height',
+        event.height,
+        'button',
+        event.button,
+        'cX',
+        event.clientX,
+        'cY',
+        event.clientY
+      )
       /* console.log('pu event', event)
       console.log(
         'pointerup',
