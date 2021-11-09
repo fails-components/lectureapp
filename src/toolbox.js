@@ -936,7 +936,7 @@ export class ConfirmBox extends Component {
           if (Date.now() - this.state.activationTime > 1000)
             this.okButtonPressed()
         }}
-        className='p-button-success p-button-raised p-button-rounded'
+        className='p-button-success p-button-raised p-button-rounded tbChild'
       />
     )
 
@@ -954,7 +954,7 @@ export class ConfirmBox extends Component {
         onPointerMove={this.movePointermove}
         onPointerUp={this.movePointerup}
         ref={this.moveButtonRef}
-        className='p-button-primary p-button-raised p-button-rounded'
+        className='p-button-primary p-button-raised p-button-rounded tbChild'
       />
     )
     okcancel.push(movebutton)
@@ -967,7 +967,7 @@ export class ConfirmBox extends Component {
           if (Date.now() - this.state.activationTime > 1000)
             this.cancelButtonPressed()
         }}
-        className='p-button-danger p-button-raised p-button-rounded'
+        className='p-button-danger p-button-raised p-button-rounded tbChild'
       />
     )
     okcancel.push(cancelbutton)
