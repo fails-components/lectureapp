@@ -617,6 +617,8 @@ export class Blackboard extends Component {
     }
 
     this.workobj[objnum] = new DrawObjectGlyph(objnum)
+    this.workobj[objnum].setPreview(true)
+    this.work.objects.push(this.workobj[objnum]) // moved from finish path
     this.workobj[objnum].startPath(x, y, type, color, width, pressure)
 
     this.updateRenderArea(x, y)
@@ -699,7 +701,7 @@ export class Blackboard extends Component {
   finishPath(time, objid, curclient) {
     if (this.workobj[objid]) {
       this.workobj[objid].finishPath()
-      this.work.objects.push(this.workobj[objid])
+      this.workobj[objid].setPreview(false)
       delete this.workobj[objid]
       /* if (this.preworkobj[objid])
         console.log(
@@ -963,7 +965,8 @@ export class Blackboard extends Component {
             key={key}
             backcolor={this.props.backcolor}
             pixelwidth={this.props.bbwidth}
-            zIndex={10}
+            zIndex={el.preview ? 10 : 50}
+            predraw={el.preview}
           ></SVGWriting2>
         )
       } else if (el.type === 'image') {
@@ -971,7 +974,7 @@ export class Blackboard extends Component {
           <ImageHelper
             x={el.posx * this.props.bbwidth}
             y={el.posy * this.props.bbwidth}
-            zIndex={10}
+            zIndex={el.preview ? 10 : 50}
             width={el.width * this.props.bbwidth}
             height={el.height * this.props.bbwidth}
             url={el.url}
@@ -1010,7 +1013,7 @@ export class Blackboard extends Component {
     const written = this.state.objects.map(
       usecache ? this.renderObjectsWithCache : this.renderObjectsWithoutCache
     )
-    const wobj = []
+    /*   const wobj = []
     for (const prop in this.workobj) {
       if (!this.preworkobj[prop]) {
         const key = 'work' + prop
@@ -1033,7 +1036,7 @@ export class Blackboard extends Component {
 
         wobj.push(rendercache)
       }
-    }
+    } */
 
     const pwobj = []
     for (const prop in this.preworkobj) {
@@ -1091,7 +1094,6 @@ export class Blackboard extends Component {
         {!this.state.redrawing && (
           <span style={stylespan}>
             {written}
-            {wobj}
             {pwobj}
             {this.props.addpict && (
               <ImageHelper
