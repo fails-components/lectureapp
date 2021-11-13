@@ -239,7 +239,13 @@ export class SVGSpotlight extends Component {
 
     return (
       <svg viewBox={viewbox} style={style} className='spotlight'>
-        <circle cx='10' cy='10' r='10' fill='#ff0000' />
+        <defs>
+          <radialGradient id='laserGradient'>
+            <stop offset='10%' stop-color='gold' />
+            <stop offset='95%' stop-color='red' />
+          </radialGradient>
+        </defs>
+        <circle cx='10' cy='10' r='10' fill="url('#laserGradient')" />
       </svg>
     )
 
@@ -912,7 +918,7 @@ export class Blackboard extends Component {
       this.setState({
         cursor: {
           mode: 'drawing',
-          size: args.size,
+          size: Math.max(args.size, 4),
           color: args.color,
           alpha: args.alpha
         }
@@ -1183,6 +1189,7 @@ export class BlackboardNotepad extends Component {
     this.pointerdown = this.pointerdown.bind(this)
     this.pointermove = this.pointermove.bind(this)
     this.pointerup = this.pointerup.bind(this)
+    this.wheel = this.wheel.bind(this)
     this.curPictAspect = this.curPictAspect.bind(this)
     this.calcAddPictSize = this.calcAddPictSize.bind(this)
     this.processEvent = this.processEvent.bind(this)
@@ -1267,6 +1274,8 @@ export class BlackboardNotepad extends Component {
       Date.now() - this.lastPenEvent < 5 * 1000 /* || !event.isPrimary */
     )
       return // no touchy touchy
+
+    if (this.laserpointer && this.addpictmode === 0) return
 
     const pos = { x: event.clientX, y: event.clientY }
     this.rightmousescroll = false
@@ -1416,7 +1425,7 @@ export class BlackboardNotepad extends Component {
       //
       this.fogtime[pointerid] = newtime
 
-      const lfp = this.lastfogpos[pointerid]
+      /*  const lfp = this.lastfogpos[pointerid]
       let distance = 0
       if (lfp) distance = (x - lfp.x) * (x - lfp.x) + (y - lfp.y) * (y - lfp.y)
       this.lastfogpos[pointerid] = { x: x, y: y }
@@ -1424,7 +1433,7 @@ export class BlackboardNotepad extends Component {
       const velocity = Math.sqrt(distance / timeelapsed / timeelapsed) // this is velocity squared
       if (!this.fogmeanvel[pointerid]) this.fogmeanvel[pointerid] = 0
       this.fogmeanvel[pointerid] =
-        this.fogmeanvel[pointerid] * 0.66 + 0.33 * velocity
+        this.fogmeanvel[pointerid] * 0.66 + 0.33 * velocity */
 
       /* console.log('fog ' + this.fogmeanvel[pointerid], timeelapsed, velocity)
       console.log(
@@ -1433,7 +1442,15 @@ export class BlackboardNotepad extends Component {
         this.state.curscrollpos,
         this.state.scrolloffset
       ) */
-      if (this.fogmeanvel[pointerid] > 0.7) {
+      this.props.notepadscreen.reportFoG(x, y, this.clientId)
+      if (this.realblackboard && this.realblackboard.current)
+        this.realblackboard.current.preReceiveFoG({
+          x: x,
+          y: y,
+          clientid: this.clientId
+        })
+
+      /*  if (this.fogmeanvel[pointerid] > 0.7) {
         this.fogontime = newtime
         this.props.notepadscreen.reportFoG(x, y, this.clientId)
         if (this.realblackboard && this.realblackboard.current)
@@ -1461,7 +1478,7 @@ export class BlackboardNotepad extends Component {
               clientid: this.clientId
             })
         }
-      }
+      } */
     }
   }
 
@@ -1500,6 +1517,7 @@ export class BlackboardNotepad extends Component {
   } // end process event
 
   pointermove(event) {
+    const now = Date.now()
     /* console.log("pointermove",event);
         console.log("pointerId:",event.pointerId,
                 "pointerType",event.pointerType,
@@ -1511,10 +1529,10 @@ export class BlackboardNotepad extends Component {
                 "cY",event.clientY); */
 
     if (!this.rightmousescroll) {
-      if (event.pointerId in this.pointerdraw === true) {
+      if (event.pointerId in this.pointerdraw === true && !this.laserpointer) {
         if (event.pointerType === 'pen' || event.pointerType === 'mouse')
           // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
-          this.lastPenEvent = Date.now()
+          this.lastPenEvent = now
         /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
            console.log("last pos",this.lastpos );
            console.log("pointer id", event.pointerId);
@@ -1527,7 +1545,7 @@ export class BlackboardNotepad extends Component {
         }
       } else if (this.addpictmode !== 0) {
         const pos = { x: event.clientX, y: event.clientY }
-        if (Date.now() - this.lastpictmovetime > 25) {
+        if (now - this.lastpictmovetime > 25) {
           // console.log('createmousemovement', pos)
           switch (this.addpictmode) {
             case 4:
@@ -1550,15 +1568,12 @@ export class BlackboardNotepad extends Component {
         Object.keys(this.pointerdraw).length === 0 &&
         Object.getPrototypeOf(this.pointerdraw) === Object.prototype
       ) {
-        if (
-          event.pointerType === 'touch' &&
-          Date.now() - this.lastPenEvent < 5 * 1000
-        )
+        if (event.pointerType === 'touch' && now - this.lastPenEvent < 5 * 1000)
           return // no touchy touchy  // this is handled in pointer down already, no it is not in this case
 
         const pos = { x: event.clientX, y: event.clientY }
         // console.log("Fog out BB",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth,event.data,this);
-        if (Date.now() - this.lastfogtime > 10) {
+        if (now - this.lastfogtime > 10 && this.laserpointer) {
           // TODO move velocity calculation to here...
           this.fogHandle(
             pos.x / this.props.bbwidth,
@@ -1566,7 +1581,7 @@ export class BlackboardNotepad extends Component {
             event.pointerId
           )
 
-          this.lastfogtime = Date.now()
+          this.lastfogtime = now
         }
       }
       // console.log("mousemove");
@@ -1661,6 +1676,13 @@ export class BlackboardNotepad extends Component {
     }
   }
 
+  wheel(event) {
+    // console.log('wheel', event)
+    if (event.deltaMode === 0) {
+      this.scrollboardKeys(0, event.deltaY / this.props.bbwidth)
+    }
+  }
+
   rightup(event) {
     if (this.rightmousescroll) {
       this.outgodispatcher.scrollBoard(
@@ -1727,7 +1749,25 @@ export class BlackboardNotepad extends Component {
     this.curkeyscroll = curkeyscroll
   }
 
+  activateLaserPointer() {
+    this.laserpointer = true
+  }
+
+  deactivateLaserPointer() {
+    if (this.laserpointer === true) {
+      this.props.notepadscreen.reportFoG(null, null, this.clientId)
+      if (this.realblackboard && this.realblackboard.current)
+        this.realblackboard.current.preReceiveFoG({
+          x: null,
+          y: null,
+          clientid: this.clientId
+        })
+      this.laserpointer = false
+    }
+  }
+
   setPenTool(color, size) {
+    this.laserpointer = false
     this.tooltype = 0
     this.toolsize = size
     this.toolcolor = color
@@ -1741,6 +1781,7 @@ export class BlackboardNotepad extends Component {
   }
 
   setMarkerTool(color, size) {
+    this.laserpointer = false
     this.tooltype = 1
     this.toolsize = size
     this.toolcolor = color
@@ -1755,6 +1796,7 @@ export class BlackboardNotepad extends Component {
   }
 
   setEraserTool(size) {
+    this.laserpointer = false
     this.tooltype = 2
     this.toolsize = size
     if (this.realblackboard && this.realblackboard.current)
@@ -1932,6 +1974,7 @@ export class BlackboardNotepad extends Component {
         onPointerMove={this.pointermove}
         onPointerUp={this.pointerup}
         onPointerLeave={this.pointerup}
+        onWheel={this.wheel}
       >
         {this.state.addpictmode === 4 && (
           <div style={addpictmessstyle}>

@@ -32,7 +32,8 @@ import {
   faAdjust,
   faEye,
   faEyeSlash,
-  faInfo
+  faInfo,
+  faBullseye
 } from '@fortawesome/free-solid-svg-icons'
 
 class ColorPickerButton2 extends Component {
@@ -203,6 +204,9 @@ export class ToolBox extends Component {
   }
 
   selectTool(buttonid) {
+    if (buttonid !== 7) {
+      if (this.blackboard()) this.blackboard().deactivateLaserPointer()
+    }
     switch (buttonid) {
       case 3:
         if (this.blackboard())
@@ -227,6 +231,10 @@ export class ToolBox extends Component {
       case 1:
         this.addRemoveSecondToolGuardian(true)
         break
+      case 7:
+        if (this.blackboard()) this.blackboard().activateLaserPointer()
+        this.addRemoveSecondToolGuardian(true)
+        break
       default:
         break
     }
@@ -235,6 +243,7 @@ export class ToolBox extends Component {
       let secondtoolstep = 0
       let newbuttonid = state.selectedButtonid
       switch (buttonid) {
+        case 7:
         case 3:
           newbuttonid = buttonid
           break
@@ -403,9 +412,10 @@ export class ToolBox extends Component {
   }
 
   pictButtonPressed() {
-    this.blackboard().pictButtonPressed()
-
-    this.setState({ activated: false })
+    if (this.blackboard()) {
+      this.blackboard().pictButtonPressed()
+      this.setState({ activated: false })
+    }
   }
 
   reactivate() {
@@ -516,6 +526,17 @@ export class ToolBox extends Component {
       />
     )
 
+    const laserbutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faBullseye} />}
+        tooltip='Laser pointer'
+        tooltipOptions={ttopts}
+        key={7}
+        onClick={(e) => this.selectTool(7)}
+        className={selbuttonclass(this.state.selectedButtonid === 7)}
+      />
+    )
+
     const eraserbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faEraser} />}
@@ -568,6 +589,7 @@ export class ToolBox extends Component {
     maintools.push(penbutton)
     maintools.push(markerbutton)
     maintools.push(eraserbutton)
+    maintools.push(laserbutton)
     maintools.push(scrollbutton)
     maintools.push(endbutton)
     maintools.push(pictbutton)
