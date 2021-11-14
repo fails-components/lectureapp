@@ -222,20 +222,39 @@ export class SVGWriting2 extends Component {
 }
 
 export class SVGSpotlight extends Component {
+  constructor(args) {
+    super(args)
+    this.state = { fogpos: false }
+    this.fogCheck = this.fogCheck.bind(this)
+    this.lastfogtime = Date.now()
+    window.setInterval(this.fogCheck, 1000)
+  }
+
+  fogCheck() {
+    if (this.state.fogpos && Date.now() - this.lastfogtime > 5 * 1000)
+      this.setState({ fogpos: false })
+  }
+
+  setFogpos(fogpos) {
+    this.lastfogtime = Date.now()
+    this.setState({ fogpos: fogpos })
+  }
+
   render() {
+    if (!this.state.fogpos) return <React.Fragment></React.Fragment>
+    const x = this.state.fogpos.x * this.props.bbwidth
+    const y = this.state.fogpos.y * this.props.bbwidth
     const viewbox = '0 0 20 20'
     const style = {
       position: 'absolute',
       zIndex: this.props.zIndex,
-      left: this.props.x,
+      left: x,
       width: '1.2vw',
-      top: this.props.y,
+      top: y,
       height: '1.2vw',
       cursor: 'none',
       pointerEvents: 'none'
     }
-    // console.log("tyle",style);
-    // console.log("workarea",glyph.workarea);
 
     return (
       <svg viewBox={viewbox} style={style} className='spotlight'>
@@ -498,6 +517,7 @@ export class Blackboard extends Component {
     this.preworkobj = {}
 
     this.addpictimage = React.createRef()
+    this.spotlight = React.createRef()
 
     this.redrawing = false // not to be confused with the state
 
@@ -902,23 +922,22 @@ export class Blackboard extends Component {
 
   receiveFoG(data) {
     if (data.clientid === this.clientid) return
-    if (!data.x && !data.y) this.setState({ fogpos: false })
+    let fogpos = {}
+    if (!data.x && !data.y) fogpos = false
     else {
-      this.setState({
-        fogpos: { x: data.x, y: data.y /* +state.curscrollpos */ }
-      })
+      fogpos = { x: data.x, y: data.y /* +state.curscrollpos */ }
     }
+    if (this.spotlight.current) this.spotlight.current.setFogpos(fogpos)
   }
 
   preReceiveFoG(data) {
     if (data.clientid) this.clientid = data.clientid
-    if (!data.x && !data.y) this.setState({ fogpos: false, ownfog: false })
+    let fogpos = {}
+    if (!data.x && !data.y) fogpos = false
     else {
-      this.setState({
-        fogpos: { x: data.x, y: data.y /* +state.curscrollpos */ },
-        ownfog: true
-      })
+      fogpos = { x: data.x, y: data.y /* +state.curscrollpos */ }
     }
+    if (this.spotlight.current) this.spotlight.current.setFogpos(fogpos)
   }
 
   setcursor(args) {
@@ -933,13 +952,23 @@ export class Blackboard extends Component {
       })
     } else if (args.mode === 'picture') {
       this.setState({
-        cursor: { mode: 'normal' }
+        cursor: { mode: 'picture' }
+      })
+    } else if (args.mode === 'laserpointer') {
+      this.setState({
+        cursor: { mode: 'laserpointer' }
+      })
+    } else if (args.mode === 'menu') {
+      this.setState({
+        cursor: { mode: 'menu' }
       })
     }
   }
 
   cursor() {
     if (!this.state.cursor) return 'auto'
+    if (this.state.cursor.mode === 'laserpointer') return 'none'
+    if (this.state.cursor.mode === 'picture') return 'crosshair'
     if (this.state.cursor.mode !== 'drawing') return 'auto'
     const circleradius = this.state.cursor.size * 0.5
     let color = this.state.cursor.color
@@ -1007,7 +1036,7 @@ export class Blackboard extends Component {
   }
 
   renderFilter(el) {
-    return !(el.key in this.preworkobj)
+    return !(el.objid in this.preworkobj)
   }
 
   render() {
@@ -1025,8 +1054,6 @@ export class Blackboard extends Component {
       backcolor: this.props.backcolor
     }
 
-    if (this.state.ownfog && !this.props.addpict && this.props.isnotepad)
-      cursor = 'none'
     // console.log("render ob", this.state.objects);
     const written = this.state.objects
       .filter(this.renderFilter)
@@ -1128,13 +1155,11 @@ export class Blackboard extends Component {
               ></ImageHelper>
             )}
 
-            {this.state.fogpos && (
-              <SVGSpotlight
-                x={this.state.fogpos.x * this.props.bbwidth}
-                y={this.state.fogpos.y * this.props.bbwidth}
-                zIndex={51}
-              ></SVGSpotlight>
-            )}
+            <SVGSpotlight
+              ref={this.spotlight}
+              bbwidth={this.props.bbwidth}
+              zIndex={51}
+            ></SVGSpotlight>
           </span>
         )}
       </div>
@@ -1765,6 +1790,10 @@ export class BlackboardNotepad extends Component {
 
   activateLaserPointer() {
     this.laserpointer = true
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.setcursor({
+        mode: 'laserpointer'
+      })
   }
 
   deactivateLaserPointer() {
@@ -1778,6 +1807,14 @@ export class BlackboardNotepad extends Component {
         })
       this.laserpointer = false
     }
+  }
+
+  setMenuMode() {
+    this.saveLastCursorState()
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.setcursor({
+        mode: 'menu'
+      })
   }
 
   setPenTool(color, size) {
@@ -1827,9 +1864,35 @@ export class BlackboardNotepad extends Component {
     this.props.notepadscreen.arrangeButtonPressed()
   }
 
+  saveLastCursorState() {
+    if (
+      this.realblackboard &&
+      this.realblackboard.current &&
+      this.realblackboard.current.state.cursor &&
+      this.realblackboard.current.state.cursor.mode !== 'picture' &&
+      this.realblackboard.current.state.cursor.mode !== 'menu'
+    )
+      this.beforepictcursor = this.realblackboard.current.state.cursor
+  }
+
+  restoreLastCursorState() {
+    if (
+      this.realblackboard &&
+      this.realblackboard.current &&
+      this.beforepictcursor
+    ) {
+      this.realblackboard.current.setcursor(this.beforepictcursor)
+    }
+  }
+
   pictButtonPressed() {
     this.setblocked(true)
+    this.saveLastCursorState()
     this.props.notepadscreen.pictButtonPressed()
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.setcursor({
+        mode: 'picture'
+      })
   }
 
   okButtonPressed() {
@@ -1860,6 +1923,7 @@ export class BlackboardNotepad extends Component {
         addpictmode: 0
       })
       this.addpictmode = 0
+      this.restoreLastCursorState()
       this.reactivateToolBox()
     }
   }
@@ -1876,6 +1940,7 @@ export class BlackboardNotepad extends Component {
       })
       // todo report about new picture
       this.addpictmode = 0
+      this.restoreLastCursorState()
       this.reactivateToolBox()
     }
   }

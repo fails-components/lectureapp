@@ -111,6 +111,8 @@ export class ToolBox extends Component {
     this.state.secondtoolstep = false
     this.state.selectedPickerid = 1
 
+    this.lasttool = 5
+
     this.tbx = 0.8 // constant toolbox pos
     this.lastpostime = Date.now()
     this.divheight = 32
@@ -193,14 +195,14 @@ export class ToolBox extends Component {
     }
   }
 
-  addRemoveSecondToolGuardian(newguard) {
+  addRemoveSecondToolGuardian(newguard, oldbuttonid) {
     if (this.secondtoolnum) clearTimeout(this.secondtoolnum)
     this.secondtoolnum = null
     if (newguard)
-      this.secondtoolnum = setTimeout(
-        () => this.setState({ secondtoolstep: 0 }),
-        5000
-      )
+      this.secondtoolnum = setTimeout(() => {
+        if (oldbuttonid) this.selectTool(oldbuttonid)
+        this.setState({ secondtoolstep: 0 })
+      }, 5000)
   }
 
   selectTool(buttonid) {
@@ -214,6 +216,7 @@ export class ToolBox extends Component {
             (12 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
           ) // was 30
         this.addRemoveSecondToolGuardian(false)
+        this.lasttool = 3
         break
       case 4:
         if (this.blackboard())
@@ -222,18 +225,22 @@ export class ToolBox extends Component {
             (12 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
           )
         this.addRemoveSecondToolGuardian(true)
+        this.lasttool = 4
         break
       case 5:
         if (this.blackboard())
           this.blackboard().setPenTool(this.state.pencolor, this.state.pensize)
         this.addRemoveSecondToolGuardian(true)
+        this.lasttool = 5
         break
       case 1:
-        this.addRemoveSecondToolGuardian(true)
+        if (this.blackboard()) this.blackboard().setMenuMode()
+        this.addRemoveSecondToolGuardian(true, this.lasttool)
         break
       case 7:
         if (this.blackboard()) this.blackboard().activateLaserPointer()
         this.addRemoveSecondToolGuardian(true)
+        this.lasttool = 7
         break
       default:
         break
