@@ -550,11 +550,17 @@ export class Blackboard extends Component {
     this.stepDrawVersion = this.stepDrawVersion.bind(this)
     this.renderObjectsWithCache = this.renderObjectsWithCache.bind(this)
     this.renderObjectsWithoutCache = this.renderObjectsWithoutCache.bind(this)
+    this.renderFilter = this.renderFilter.bind(this)
     console.log('Blackboard start up completed!')
   }
 
   componentDidUpdate(prevprops) {
-    if (prevprops.pageoffset !== this.props.pageoffset) this.checkRedraw()
+    if (
+      !isNaN(this.props.pageoffset) &&
+      prevprops.pageoffset !== this.props.pageoffset
+    ) {
+      this.checkRedraw()
+    }
   }
 
   toolbox() {
@@ -629,7 +635,12 @@ export class Blackboard extends Component {
 
     this.updateRenderArea(x, y)
 
-    if (!this.redrawing) this.setState(this.stepDrawVersion)
+    if (!this.redrawing) {
+      this.setState(this.stepDrawVersion)
+      this.setState({
+        objects: this.work.objects.concat()
+      })
+    }
 
     // }
     this.recpathstarted = true
@@ -719,9 +730,6 @@ export class Blackboard extends Component {
 
       if (!this.redrawing) {
         this.setState(this.stepDrawVersion)
-        this.setState({
-          objects: this.work.objects.concat()
-        })
       }
     }
     this.recpathstarted = false // tracks the process outside the state
@@ -998,6 +1006,10 @@ export class Blackboard extends Component {
     return rendercache
   }
 
+  renderFilter(el) {
+    return !(el.key in this.preworkobj)
+  }
+
   render() {
     let cursor = 'auto'
     if (this.props.isnotepad) cursor = this.cursor()
@@ -1016,9 +1028,11 @@ export class Blackboard extends Component {
     if (this.state.ownfog && !this.props.addpict && this.props.isnotepad)
       cursor = 'none'
     // console.log("render ob", this.state.objects);
-    const written = this.state.objects.map(
-      usecache ? this.renderObjectsWithCache : this.renderObjectsWithoutCache
-    )
+    const written = this.state.objects
+      .filter(this.renderFilter)
+      .map(
+        usecache ? this.renderObjectsWithCache : this.renderObjectsWithoutCache
+      )
     /*   const wobj = []
     for (const prop in this.workobj) {
       if (!this.preworkobj[prop]) {

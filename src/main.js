@@ -1607,6 +1607,7 @@ export class FailsScreen extends FailsBasis {
     this.state.showscreennumber = false
     this.state.blackbackground = true
     this.state.lectdetail = null
+    this.state.lastpointermove = Date.now()
 
     this.notepaduuid = null
 
