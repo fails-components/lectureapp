@@ -1232,6 +1232,13 @@ export class BlackboardNotepad extends Component {
     this.curPictAspect = this.curPictAspect.bind(this)
     this.calcAddPictSize = this.calcAddPictSize.bind(this)
     this.processEvent = this.processEvent.bind(this)
+
+    this.mainDiv = React.createRef()
+  }
+
+  preventDefault(e) {
+    // work around for apple ios
+    e.preventDefault()
   }
 
   setblocked(isblocked) {
@@ -1309,8 +1316,9 @@ export class BlackboardNotepad extends Component {
     }
     if (event.pointerType === 'pen') this.lastPenEvent = Date.now()
     if (
-      event.pointerType === 'touch' &&
-      Date.now() - this.lastPenEvent < 5 * 1000  || !event.isPrimary 
+      (event.pointerType === 'touch' &&
+        Date.now() - this.lastPenEvent < 5 * 1000) ||
+      !event.isPrimary
     )
       return // no touchy touchy
 
@@ -1554,6 +1562,15 @@ export class BlackboardNotepad extends Component {
       }
     }
   } // end process event
+
+  componentDidMount() {
+    // work around for apple ios
+    this.mainDiv.current.addEventListener(
+      'touchmove',
+      this.preventDefault,
+      false
+    )
+  }
 
   pointermove(event) {
     const now = Date.now()
@@ -2048,7 +2065,8 @@ export class BlackboardNotepad extends Component {
     }
     return (
       <div
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', touchAction: 'none' }}
+        ref={this.mainDiv}
         onPointerDown={this.pointerdown}
         onPointerMove={this.pointermove}
         onPointerUp={this.pointerup}
