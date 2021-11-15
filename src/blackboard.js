@@ -260,8 +260,8 @@ export class SVGSpotlight extends Component {
       <svg viewBox={viewbox} style={style} className='spotlight'>
         <defs>
           <radialGradient id='laserGradient'>
-            <stop offset='10%' stop-color='gold' />
-            <stop offset='95%' stop-color='red' />
+            <stop offset='10%' stopColor='gold' />
+            <stop offset='95%' stopColor='red' />
           </radialGradient>
         </defs>
         <circle cx='10' cy='10' r='10' fill="url('#laserGradient')" />
