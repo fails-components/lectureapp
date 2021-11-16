@@ -1315,10 +1315,19 @@ export class BlackboardNotepad extends Component {
       return
     }
     if (event.pointerType === 'pen') this.lastPenEvent = Date.now()
+
     if (
-      (event.pointerType === 'touch' &&
-        (Date.now() - this.lastPenEvent < 5 * 1000 ||
-      !event.isPrimary)
+      event.pointerType === 'touch' &&
+      (event.width > 40 || event.height > 40)
+    ) {
+      console.log('palm detected', event.width, event.height)
+      return
+    } else if (event.pointerType === 'touch')
+      console.log('nopalm detected', event.width, event.height)
+
+    if (
+      event.pointerType === 'touch' &&
+      (Date.now() - this.lastPenEvent < 5 * 1000 || !event.isPrimary)
     )
       return // no touchy touchy
 
