@@ -1317,8 +1317,8 @@ export class BlackboardNotepad extends Component {
     if (event.pointerType === 'pen') this.lastPenEvent = Date.now()
     if (
       (event.pointerType === 'touch' &&
-        Date.now() - this.lastPenEvent < 5 * 1000) ||
-      !event.isPrimary
+        (Date.now() - this.lastPenEvent < 5 * 1000 ||
+      !event.isPrimary)
     )
       return // no touchy touchy
 
