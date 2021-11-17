@@ -1314,16 +1314,30 @@ export class BlackboardNotepad extends Component {
       this.rightdown(event)
       return
     }
-    if (event.pointerType === 'pen') this.lastPenEvent = Date.now()
+    const now = Date.now()
+    if (event.pointerType === 'pen') this.lastPenEvent = now
 
-    if (
-      event.pointerType === 'touch' &&
-      (event.width > 40 || event.height > 40)
-    ) {
-      console.log('palm detected', event.width, event.height)
-      return
-    } else if (event.pointerType === 'touch')
-      console.log('nopalm detected', event.width, event.height)
+    if (event.pointerType === 'touch') {
+      
+      // detect if device really reports values that made sense, for example wacom tells nonsense
+      if (this.lastpalmw !== event.width || this.lastpalmh !== event.height)
+      {
+        this.lastpalmw = event.width
+        this.lastpalmh = event.height
+        
+        if (event.width > 40 || event.height > 40)
+        {
+          console.log('palm detected', event.width, event.height)
+          return
+        } else 
+          console.log('nopalm detected', event.width, event.height)
+        }
+      } else if ( (Math.abs(this.lastTouchPos.x-event.clientX)> 200
+                 || Math.abs(this.lastTouchPos.y-event.clientY)> 200)
+                 && (now - this.lastTouchTime < 1000)) {
+        console.log('distance palm rejection')
+      } 
+    }
 
     if (
       event.pointerType === 'touch' &&
@@ -1595,9 +1609,15 @@ export class BlackboardNotepad extends Component {
 
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true && !this.laserpointer) {
-        if (event.pointerType === 'pen' || event.pointerType === 'mouse')
+        if (event.pointerType === 'pen' /* || event.pointerType === 'mouse'*/ )
           // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
+          // no is not true in this case it is a mixure of mouse and touch events emulating the pen
+          // this would not work
           this.lastPenEvent = now
+        if (event.pointerType === 'touch') {
+          this.lastTouchPos = {x: event.clientX, y: event.clientY}
+          this.lastTouchTime = now
+        }
         /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
            console.log("last pos",this.lastpos );
            console.log("pointer id", event.pointerId);
