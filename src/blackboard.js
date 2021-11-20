@@ -770,6 +770,35 @@ export class Blackboard extends Component {
     this.prerecpathstarted = false // tracks the process outside the state */
   }
 
+  deleteObject(time, objnum, curclient, storagenum) {
+    // not very efficient, if multiple deleteObjects are present
+    // optimize later?
+    this.work.objects = this.work.objects.filter((el) => el.objid !== objnum)
+
+    if (!this.redrawing) {
+      this.setState(this.stepDrawVersion)
+      this.setState({
+        objects: this.work.objects.concat()
+      })
+    }
+  }
+
+  moveObject(time, objnum, curclient, x, y) {
+    if (!this.work.objects) return
+    this.work.objects.forEach((el) => {
+      if (el.objid === objnum) {
+        el.moveObject(x, y)
+      }
+    })
+
+    if (!this.redrawing) {
+      this.setState(this.stepDrawVersion)
+      this.setState({
+        objects: this.work.objects.concat()
+      })
+    }
+  }
+
   scrollBoard(time, clientnum, x, y) {
     if (this.myclientnum && clientnum === this.myclientnum) return // only scrolls from other people
     if (x !== 0) {
