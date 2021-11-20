@@ -1314,34 +1314,45 @@ export class BlackboardNotepad extends Component {
       this.rightdown(event)
       return
     }
-    const now = Date.now()
+    const now = event.timeStamp
     if (event.pointerType === 'pen') this.lastPenEvent = now
 
     if (event.pointerType === 'touch') {
-      
       // detect if device really reports values that made sense, for example wacom tells nonsense
-      if (this.lastpalmw !== event.width || this.lastpalmh !== event.height)
-      {
+      if (this.lastpalmw !== event.width || this.lastpalmh !== event.height) {
         this.lastpalmw = event.width
         this.lastpalmh = event.height
-        
-        if (event.width > 40 || event.height > 40)
-        {
+
+        if (event.width > 40 || event.height > 40) {
           console.log('palm detected', event.width, event.height)
           return
-        } else 
+        } else {
           console.log('nopalm detected', event.width, event.height)
         }
-      } else if ( (Math.abs(this.lastTouchPos.x-event.clientX)> 200
-                 || Math.abs(this.lastTouchPos.y-event.clientY)> 200)
-                 && (now - this.lastTouchTime < 1000)) {
-        console.log('distance palm rejection')
-      } 
+      }
+      if (now - this.lastTouchTime < 3000 && 3 === 2) {
+        // preparation for better palm detection, off for now
+        const x = event.clientX - this.lastTouchPos.x
+        const y = -(event.clientY - this.lastTouchPos.y)
+        const degrees = (Math.atan2(y, x) * 180) / Math.PI
+        const distance = Math.sqrt(x * x + y * y)
+        const palmdegreemin = -90
+        const palmdegreemax = 0
+
+        if (
+          distance > 100 &&
+          degrees > palmdegreemin &&
+          degrees < palmdegreemax
+        ) {
+          console.log('degree palm rejection')
+          return
+        } else console.log('degree debug', distance, degrees)
+      }
     }
 
     if (
       event.pointerType === 'touch' &&
-      (Date.now() - this.lastPenEvent < 5 * 1000 || !event.isPrimary)
+      now - this.lastPenEvent < 5 * 1000 /* || !event.isPrimary */
     )
       return // no touchy touchy
 
@@ -1362,7 +1373,7 @@ export class BlackboardNotepad extends Component {
     }
 
     if (event.pointerId in this.pointerdraw === false) {
-      this.pointerdraw[event.pointerId] = true
+      this.pointerdraw[event.pointerId] = 1
 
       if (this.addpictmode !== 0) {
         switch (this.addpictmode) {
@@ -1376,7 +1387,7 @@ export class BlackboardNotepad extends Component {
               addpictmode: 2 /* for drawing */
             })
             // this.addpictmode = 3
-            this.lastpictmovetime = Date.now()
+            this.lastpictmovetime = now
             // break
             // case 3:
             this.addpictmode = 2
@@ -1480,8 +1491,8 @@ export class BlackboardNotepad extends Component {
     })
   }
 
-  fogHandle(x, y, pointerid) {
-    const newtime = Date.now()
+  fogHandle(x, y, pointerid, now) {
+    const newtime = now
 
     if (!this.fogtime[pointerid]) {
       this.fogtime[pointerid] = newtime
@@ -1596,7 +1607,7 @@ export class BlackboardNotepad extends Component {
   }
 
   pointermove(event) {
-    const now = Date.now()
+    const now = event.timeStamp
     /* console.log("pointermove",event);
         console.log("pointerId:",event.pointerId,
                 "pointerType",event.pointerType,
@@ -1609,25 +1620,27 @@ export class BlackboardNotepad extends Component {
 
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true && !this.laserpointer) {
-        if (event.pointerType === 'pen' /* || event.pointerType === 'mouse'*/ )
+        if (event.pointerType === 'pen' /* || event.pointerType === 'mouse' */)
           // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
           // no is not true in this case it is a mixure of mouse and touch events emulating the pen
           // this would not work
           this.lastPenEvent = now
         if (event.pointerType === 'touch') {
-          this.lastTouchPos = {x: event.clientX, y: event.clientY}
+          this.lastTouchPos = { x: event.clientX, y: event.clientY }
           this.lastTouchTime = now
         }
         /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
            console.log("last pos",this.lastpos );
            console.log("pointer id", event.pointerId);
            console.log("lastpos",this.lastpos[event.pointerId]); */
+        this.pointerdraw[event.pointerId]++
         if (typeof event.nativeEvent.getCoalescedEvents === 'function') {
           // are coalesced events supported, yes now process them all
-          event.nativeEvent.getCoalescedEvents().forEach(this.processEvent)
-        } else {
-          this.processEvent(event)
+          const coalevents = event.nativeEvent.getCoalescedEvents()
+          coalevents.forEach(this.processEvent)
+          this.pointerdraw[event.pointerId] += coalevents.length
         }
+        this.processEvent(event)
       } else if (this.addpictmode !== 0) {
         const pos = { x: event.clientX, y: event.clientY }
         if (now - this.lastpictmovetime > 25) {
@@ -1663,7 +1676,8 @@ export class BlackboardNotepad extends Component {
           this.fogHandle(
             pos.x / this.props.bbwidth,
             pos.y / this.props.bbwidth + this.getCalcScrollPos(),
-            event.pointerId
+            event.pointerId,
+            now
           )
 
           this.lastfogtime = now
