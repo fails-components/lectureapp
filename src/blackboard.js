@@ -1226,9 +1226,7 @@ export class BlackboardNotepad extends Component {
     this.pictobjid = 0
     this.clientId = Math.random().toString(36).substr(2, 9) // randomly create clientId
 
-    // pointer handling
-    this.lastfogtime = Date.now()
-
+    this.fogtime = {}
     // velocity handling
     this.lastfogpos = {}
     this.fogtime = {}
@@ -1530,7 +1528,6 @@ export class BlackboardNotepad extends Component {
     }
 
     const timeelapsed = (newtime - this.fogtime[pointerid]) / 1000
-
     if (timeelapsed > 0.05) {
       //
       this.fogtime[pointerid] = newtime
@@ -1654,10 +1651,11 @@ export class BlackboardNotepad extends Component {
           // no is not true in this case it is a mixure of mouse and touch events emulating the pen
           // this would not work
           this.lastPenEvent = now
-        if (event.pointerType === 'touch') {
-          this.lastTouchPos = { x: event.clientX, y: event.clientY }
-          this.lastTouchTime = now
-        }
+        // if (event.pointerType === 'touch') {
+        // always use writing pos for orientation
+        this.lastTouchPos = { x: event.clientX, y: event.clientY }
+        this.lastTouchTime = now
+        // }
         /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
            console.log("last pos",this.lastpos );
            console.log("pointer id", event.pointerId);
@@ -1700,17 +1698,13 @@ export class BlackboardNotepad extends Component {
 
         const pos = { x: event.clientX, y: event.clientY }
         // console.log("Fog out BB",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth,event.data,this);
-        if (now - this.lastfogtime > 10 && this.laserpointer) {
-          // TODO move velocity calculation to here...
+        if (this.laserpointer)
           this.fogHandle(
             pos.x / this.props.bbwidth,
             pos.y / this.props.bbwidth + this.getCalcScrollPos(),
             event.pointerId,
             now
           )
-
-          this.lastfogtime = now
-        }
       }
       // console.log("mousemove");
     } else {
