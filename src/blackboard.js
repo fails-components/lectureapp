@@ -782,6 +782,7 @@ export class Blackboard extends Component {
     // not very efficient, if multiple deleteObjects are present
     // optimize later?
     this.work.objects = this.work.objects.filter((el) => el.objid !== objnum)
+    delete this.preworkobj[objnum] // also remove preview
 
     if (!this.redrawing) {
       this.isdirty = true
@@ -1223,7 +1224,9 @@ export class BlackboardNotepad extends Component {
 
     this.pointerobjids = {} // count obj
     this.pointerobjnum = {}
+    this.pointerstoragenum = {}
     this.pointerdraw = {}
+    this.pointerrejectcheck = []
     this.objnum = 1
 
     this.lastpos = {}
@@ -1263,6 +1266,9 @@ export class BlackboardNotepad extends Component {
     this.curPictAspect = this.curPictAspect.bind(this)
     this.calcAddPictSize = this.calcAddPictSize.bind(this)
     this.processEvent = this.processEvent.bind(this)
+    this.processPointerReject = this.processPointerReject.bind(this)
+
+    this.pointerRejectInterval = setInterval(this.processPointerReject, 100)
 
     this.mainDiv = React.createRef()
   }
@@ -1321,6 +1327,72 @@ export class BlackboardNotepad extends Component {
     return res
   }
 
+  checkPalmReject(event) {
+    const now = event.timeStamp
+    // detect if device really reports values that made sense, for example wacom tells nonsense
+    if (this.lastpalmw !== event.width || this.lastpalmh !== event.height) {
+      this.lastpalmw = event.width
+      this.lastpalmh = event.height
+
+      if (event.width * event.height > 45 * 45) {
+        console.log('palm detected', event.width, event.height)
+        return true
+      } else {
+        // console.log('nopalm detected', event.width, event.height)
+      }
+    }
+    if (
+      now - this.lastTouchTime < 500 &&
+      event.pointerId !== this.lastTouchPointerId
+    ) {
+      // preparation for better palm detection, off for now
+      const x = event.clientX - this.lastTouchPos.x
+      const y = -(event.clientY - this.lastTouchPos.y)
+      const degrees = (Math.atan2(y, x) * 180) / Math.PI
+      const distance = Math.sqrt(x * x + y * y)
+      const palmdegreemin = -90
+      const palmdegreemax = 0
+
+      if (
+        distance > 200 &&
+        degrees > palmdegreemin &&
+        degrees < palmdegreemax
+      ) {
+        console.log('degree palm rejection', distance, degrees)
+        return true
+      } // else console.log('degree debug', distance, degrees, x, y)
+    }
+
+    if (
+      now - this.lastPenEvent < 5 * 1000 ||
+      this.lastPenEvent + 500 > now /* || !event.isPrimary */
+    ) {
+      console.log('pen blocks touch')
+      return true // no touchy touchy
+    }
+    return false
+  }
+
+  processPointerReject() {
+    this.pointerrejectcheck = this.pointerrejectcheck.filter((el) => {
+      if (el.time - 600 > this.lastTouchTime) return false
+      if (el.check && el.check > 6) return false
+      if (!el.check) el.check = 1
+      else el.check++
+      if (this.checkPalmReject(el.event)) {
+        console.log('palm object dismissed retro active')
+        this.outgodispatcher.deleteObject(null, el.objid, null, el.storagenum)
+        delete this.pointerdraw[el.event.pointerId]
+        delete this.pointerobjids[el.event.pointerId]
+        delete this.pointerobjnum[el.event.pointerId]
+        delete this.pointerstoragenum[el.event.pointerId]
+        return false
+      } else return true
+    }, this)
+    // if (this.pointerrejectcheck.length > 0)
+    //  console.log('pPR size', this.pointerrejectcheck.length)
+  }
+
   async pointerdown(event) {
     console.log('pointerdown', event)
     console.log(
@@ -1349,43 +1421,11 @@ export class BlackboardNotepad extends Component {
     if (event.pointerType === 'pen') this.lastPenEvent = now
 
     if (event.pointerType === 'touch') {
-      // detect if device really reports values that made sense, for example wacom tells nonsense
-      if (this.lastpalmw !== event.width || this.lastpalmh !== event.height) {
-        this.lastpalmw = event.width
-        this.lastpalmh = event.height
-
-        if (event.width > 40 || event.height > 40) {
-          console.log('palm detected', event.width, event.height)
-          return
-        } else {
-          console.log('nopalm detected', event.width, event.height)
-        }
-      }
-      if (now - this.lastTouchTime < 3000 && 3 === 2) {
-        // preparation for better palm detection, off for now
-        const x = event.clientX - this.lastTouchPos.x
-        const y = -(event.clientY - this.lastTouchPos.y)
-        const degrees = (Math.atan2(y, x) * 180) / Math.PI
-        const distance = Math.sqrt(x * x + y * y)
-        const palmdegreemin = -90
-        const palmdegreemax = 0
-
-        if (
-          distance > 100 &&
-          degrees > palmdegreemin &&
-          degrees < palmdegreemax
-        ) {
-          console.log('degree palm rejection')
-          return
-        } else console.log('degree debug', distance, degrees)
+      if (this.checkPalmReject(event)) {
+        console.log('palm object rejected')
+        return
       }
     }
-
-    if (
-      event.pointerType === 'touch' &&
-      now - this.lastPenEvent < 5 * 1000 /* || !event.isPrimary */
-    )
-      return // no touchy touchy
 
     if (this.laserpointer && this.addpictmode === 0) return
 
@@ -1401,6 +1441,8 @@ export class BlackboardNotepad extends Component {
 
       delete this.pointerdraw[event.pointerId]
       delete this.pointerobjids[event.pointerId]
+      delete this.pointerobjnum[event.pointerId]
+      delete this.pointerstoragenum[event.pointerId]
     }
 
     if (event.pointerId in this.pointerdraw === false) {
@@ -1439,6 +1481,9 @@ export class BlackboardNotepad extends Component {
         this.lastpos[event.pointerId] = pos
         const objid = this.calcObjId(event.pointerId)
         this.pointerobjids[event.pointerId] = objid
+        this.pointerstoragenum[event.pointerId] = Math.floor(
+          pos.y / this.props.bbwidth + this.getCalcScrollPos()
+        )
         // console.log("objid",objid);
         this.outgodispatcher.startPath(
           null,
@@ -1463,6 +1508,14 @@ export class BlackboardNotepad extends Component {
             (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
             event.pressure
           )
+        if (event.pointerType === 'touch') {
+          this.pointerrejectcheck.push({
+            time: event.timeStamp,
+            objid: this.pointerobjids[event.pointerId],
+            event: event,
+            storagenum: this.pointerstoragenum[event.pointerId]
+          })
+        }
 
         // console.log("props.devicePixelRatio", this.props.devicePixelRatio);
 
@@ -1650,6 +1703,24 @@ export class BlackboardNotepad extends Component {
 
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true && !this.laserpointer) {
+        if (event.pointerType === 'touch') {
+          if (this.checkPalmReject(event)) {
+            // dismiss object
+            console.log('palm object dismissed')
+            this.outgodispatcher.deleteObject(
+              null,
+              this.pointerobjids[event.pointerId],
+              null,
+              this.pointerstoragenum[event.pointerId]
+            )
+            delete this.pointerdraw[event.pointerId]
+            delete this.pointerobjids[event.pointerId]
+            delete this.pointerobjnum[event.pointerId]
+            delete this.pointerstoragenum[event.pointerId]
+
+            return
+          }
+        }
         if (event.pointerType === 'pen' /* || event.pointerType === 'mouse' */)
           // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
           // no is not true in this case it is a mixure of mouse and touch events emulating the pen
@@ -1659,6 +1730,7 @@ export class BlackboardNotepad extends Component {
         // always use writing pos for orientation
         this.lastTouchPos = { x: event.clientX, y: event.clientY }
         this.lastTouchTime = now
+        this.lastTouchPointerId = event.pointerId
         // }
         /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
            console.log("last pos",this.lastpos );
@@ -1799,6 +1871,8 @@ export class BlackboardNotepad extends Component {
 
       delete this.pointerdraw[event.pointerId]
       delete this.pointerobjids[event.pointerId]
+      delete this.pointerobjnum[event.pointerId]
+      delete this.pointerstoragenum[event.pointerId]
     }
   }
 
