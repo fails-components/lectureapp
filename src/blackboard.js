@@ -572,6 +572,22 @@ export class Blackboard extends Component {
     this.renderObjectsWithoutCache = this.renderObjectsWithoutCache.bind(this)
     this.renderFilter = this.renderFilter.bind(this)
     console.log('Blackboard start up completed!')
+    this.updateObjects = this.updateObjects.bind(this)
+    this.updateObjectsId = setInterval(this.updateObjects, 40)
+    this.isdirty = false
+  }
+
+  updateObjects() {
+    if (this.isdirty) {
+      this.setState(this.stepDrawVersion)
+      this.isdirty = false
+    }
+    if (this.objdirty) {
+      this.setState({
+        objects: this.work.objects.concat()
+      })
+      this.objdirty = false
+    }
   }
 
   componentDidUpdate(prevprops) {
@@ -656,10 +672,8 @@ export class Blackboard extends Component {
     this.updateRenderArea(x, y)
 
     if (!this.redrawing) {
-      this.setState(this.stepDrawVersion)
-      this.setState({
-        objects: this.work.objects.concat()
-      })
+      this.isdirty = true
+      this.objdirty = true
     }
 
     // }
@@ -679,7 +693,8 @@ export class Blackboard extends Component {
     this.preworkobj[objnum].startPath(x, y, type, color, width, pressure)
 
     this.setState({ fogpos: false })
-    this.setState(this.stepDrawVersion)
+    this.isdirty = true
+    this.objdirty = true
 
     // }
     this.prerecpathstarted = true
@@ -694,12 +709,8 @@ export class Blackboard extends Component {
 
       // console.log("addtopath rs",x,y,pressure);
 
-      if (
-        !this.redrawing &&
-        now - this.lastrender > 100 &&
-        !this.preworkobj[objid]
-      ) {
-        this.setState(this.stepDrawVersion)
+      if (!this.redrawing && !this.preworkobj[objid]) {
+        this.isdirty = true
         this.lastrender = now
       }
 
@@ -716,18 +727,15 @@ export class Blackboard extends Component {
       // console.log("addtopath rs",x,y,pressure);
       const now = Date.now()
 
-      if (now - this.prelastrender > 50) {
-        this.setState({ fogpos: false })
-        this.setState(this.stepDrawVersion)
-        if (this.toolbox() && now - this.lastrpd > 200) {
-          // this is quite expensive, do not do this during a redraw, but this is never a redraw
-          this.lastrpd = now
-          this.toolbox().reportDrawPos(
-            x,
-            y - this.state.curscrollpos - this.state.scrolloffset
-          )
-        }
-        this.prelastrender = now
+      if (this.state.fogpos) this.setState({ fogpos: false })
+      this.isdirty = true
+      if (this.toolbox() && now - this.lastrpd > 200) {
+        // this is quite expensive, do not do this during a redraw, but this is never a redraw
+        this.lastrpd = now
+        this.toolbox().reportDrawPos(
+          x,
+          y - this.state.curscrollpos - this.state.scrolloffset
+        )
       }
 
       // this.updateRenderArea(x, y)
@@ -749,7 +757,7 @@ export class Blackboard extends Component {
       delete this.preworkobj[objid] // also remove preview
 
       if (!this.redrawing) {
-        this.setState(this.stepDrawVersion)
+        this.isdirty = true
       }
     }
     this.recpathstarted = false // tracks the process outside the state
@@ -763,8 +771,8 @@ export class Blackboard extends Component {
       // delete this.workobj[objid]
 
       if (!this.redrawing) {
-        this.setState({ fogpos: false })
-        this.setState(this.stepDrawVersion)
+        if (this.state.fogpos) this.setState({ fogpos: false })
+        this.isdirty = true
       }
     }
     this.prerecpathstarted = false // tracks the process outside the state */
@@ -776,10 +784,8 @@ export class Blackboard extends Component {
     this.work.objects = this.work.objects.filter((el) => el.objid !== objnum)
 
     if (!this.redrawing) {
-      this.setState(this.stepDrawVersion)
-      this.setState({
-        objects: this.work.objects.concat()
-      })
+      this.isdirty = true
+      this.objdirty = true
     }
   }
 
@@ -792,10 +798,8 @@ export class Blackboard extends Component {
     })
 
     if (!this.redrawing) {
-      this.setState(this.stepDrawVersion)
-      this.setState({
-        objects: this.work.objects.concat()
-      })
+      this.isdirty = true
+      this.objdirty = true
     }
   }
 
