@@ -1229,6 +1229,8 @@ export class BlackboardNotepad extends Component {
     this.pointerrejectcheck = []
     this.objnum = 1
 
+    this.undostack = []
+
     this.lastpos = {}
     this.pictobjid = 0
     this.clientId = Math.random().toString(36).substr(2, 9) // randomly create clientId
@@ -1325,6 +1327,31 @@ export class BlackboardNotepad extends Component {
           .substr(0, 8)
     )
     return res
+  }
+
+  addUndo(objid, storagenum) {
+    if (objid && Number.isInteger(storagenum)) {
+      if (this.toolbox()) {
+        this.toolbox().setCanUndo(true)
+      }
+      this.undostack.push({ objid: objid, storagenum: storagenum })
+    }
+    if (this.undostack.length > 20) this.undostack.shift()
+  }
+
+  undo() {
+    if (this.undostack.length > 0) {
+      const element = this.undostack.pop()
+      this.outgodispatcher.deleteObject(
+        null,
+        element.objid,
+        null,
+        element.storagenum
+      )
+      if (this.undostack.length === 0 && this.toolbox()) {
+        this.toolbox().setCanUndo(false)
+      }
+    }
   }
 
   checkPalmReject(event) {
@@ -1865,6 +1892,7 @@ export class BlackboardNotepad extends Component {
             event.pressure
           )
       }
+      this.addUndo(objid, this.pointerstoragenum[event.pointerId])
       this.outgodispatcher.finishPath(null, objid, null)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preFinishPath(null, objid, null)
@@ -2075,6 +2103,7 @@ export class BlackboardNotepad extends Component {
         this.state.addpictheight,
         this.state.addpictuuid
       )
+      this.addUndo(objid, Math.floor(this.state.addpictposy))
 
       this.setState({
         addpictuuid: null,

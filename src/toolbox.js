@@ -33,7 +33,8 @@ import {
   faEye,
   faEyeSlash,
   faInfo,
-  faBullseye
+  faBullseye,
+  faUndoAlt
 } from '@fortawesome/free-solid-svg-icons'
 
 class ColorPickerButton2 extends Component {
@@ -110,6 +111,7 @@ export class ToolBox extends Component {
     this.state.selectedButtonid = 5
     this.state.secondtoolstep = false
     this.state.selectedPickerid = 1
+    this.state.canundo = false
 
     this.lasttool = 5
 
@@ -159,6 +161,7 @@ export class ToolBox extends Component {
     this.scrollPointerdown = this.scrollPointerdown.bind(this)
     this.scrollPointerup = this.scrollPointerup.bind(this)
     this.scrollPointermove = this.scrollPointermove.bind(this)
+    this.undo = this.undo.bind(this)
 
     this.scrollButtonRef = React.createRef()
   }
@@ -298,6 +301,14 @@ export class ToolBox extends Component {
       default:
         break
     }
+  }
+
+  undo() {
+    if (this.blackboard()) this.blackboard().undo()
+  }
+
+  setCanUndo(canundo) {
+    if (this.state.canundo !== !!canundo) this.setState({ canundo: !!canundo })
   }
 
   scrollboardSetReference() {
@@ -580,6 +591,16 @@ export class ToolBox extends Component {
         className={selbuttonclass(this.state.selectedButtonid === 5)}
       />
     )
+    const undobutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faUndoAlt} />}
+        tooltip='Undo last command'
+        tooltipOptions={ttopts}
+        key={8}
+        onClick={this.undo}
+        className={setclass}
+      />
+    )
     const pollbutton = (
       <Button
         icon='pi pi-chart-bar'
@@ -600,6 +621,7 @@ export class ToolBox extends Component {
     maintools.push(scrollbutton)
     maintools.push(endbutton)
     maintools.push(pictbutton)
+    if (this.state.canundo) maintools.push(undobutton)
     maintools.push(pollbutton)
 
     maintools = maintools.map((ele, it) => (
