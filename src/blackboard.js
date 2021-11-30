@@ -1381,7 +1381,7 @@ export class BlackboardNotepad extends Component {
       const palmdegreemax = 0
 
       if (
-        distance > 200 &&
+        distance * window.devicePixelRatio > 200 &&
         degrees > palmdegreemin &&
         degrees < palmdegreemax
       ) {
