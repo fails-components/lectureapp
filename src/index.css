@@ -58,3 +58,8 @@ code {
 .teal-tooltip.p-tooltip .p-tooltip-text {
   background-color: var(--teal-500);
 }
+
+.fiIcon {
+  fill: currentColor;
+  stroke: currentColor;
+}
