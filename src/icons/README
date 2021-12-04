@@ -2,23 +2,25 @@ The custom icons in this folder were ordered via the fiverr marketplace for the 
 Therefore the icons are only subject to AGPL 3.0 as far as the fiverr terms of service permit.
 
 The order was placed by Marten Richter and the following icons were made by icon_xpert786:
-addnotepad.svg
-addscreen.svg
-arrangescreens.svg
-eyeoff.svg
-eyeon.svg
-laserpointer.svg
-magicwand.svg
-movetotop.svg
-palmareadetection.svg
-penblockstouch.svg
-poll.svg
-screennumberoff.svg
-screennumberon.svg
-wristbottomleft.svg
-wristbottomright.svg
-wristmiddleleft.svg
-wristmiddleright.svg
-wristpalmrejection.svg
-wristtopleft.svg
-wristtopright.svg
+addnotepad
+addscreen
+arrangescreens
+eyeoff
+eyeon
+laserpointer
+magicwand
+movetotop
+palmareadetection
+penblockstouch
+poll
+screennumberoff
+screennumberon
+wristbottomleft
+wristbottomright
+wristmiddleleft
+wristmiddleright
+wristpalmrejection
+wristtopleft
+wristtopright
+
+the original files were modified to eventually be inlined into icons.js

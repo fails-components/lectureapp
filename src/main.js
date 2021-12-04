@@ -17,7 +17,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import React, { Component, Fragment } from 'react'
+import React, { Component } from 'react'
 import { Dialog } from 'primereact/dialog'
 import { Checkbox } from 'primereact/checkbox'
 import { Button } from 'primereact/button'
@@ -36,16 +36,15 @@ import { ProgressSpinner } from 'primereact/progressspinner'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faDesktop, faBars, faInfo } from '@fortawesome/free-solid-svg-icons'
 import {
-  faArrowsAlt,
-  faDesktop,
-  faNotesMedical,
-  faPlus,
-  faBars,
-  faEye,
-  faEyeSlash,
-  faInfo
-} from '@fortawesome/free-solid-svg-icons'
+  fiAddNotepad,
+  fiAddScreen,
+  fiEyeOn,
+  fiMoveToTop,
+  fiScreenNumberOff,
+  fiScreenNumberOn
+} from './icons/icons.js'
 import { NoteScreenBase } from './notepad.js'
 import { io } from 'socket.io-client'
 // eslint-disable-next-line camelcase
@@ -152,7 +151,7 @@ class ChannelEdit extends Component {
 
     const availscreensitems = [
       {
-        label: 'Move/add to end',
+        label: 'Move/add to top',
         items: this.props.availscreens.map((el, ind) => {
           let purpose = 'Unknown'
           if (el.purpose === 'notepad') purpose = 'Notepad'
@@ -223,7 +222,7 @@ class ChannelEdit extends Component {
               <div className='p-d-flex'>
                 <div className='p-mr-2'>
                   <Button
-                    icon={<FontAwesomeIcon icon={faArrowsAlt} />}
+                    icon={fiMoveToTop}
                     label={'Move to top'}
                     className='p-button-rounded p-button-text p-button-sm'
                     onClick={(event) => {
@@ -280,12 +279,7 @@ class ChannelEdit extends Component {
             <div className='p-mr-2' key='newnotepad'>
               <Button
                 label='Notepad'
-                icon={
-                  <Fragment>
-                    <FontAwesomeIcon icon={faPlus} className='p-m-1' />
-                    <FontAwesomeIcon icon={faNotesMedical} className='p-m-1' />
-                  </Fragment>
-                }
+                icon={fiAddNotepad}
                 className='p-button-rounded p-button-text p-button-sm'
                 onClick={() => {
                   this.props.app.onOpenNewNotepad()
@@ -295,12 +289,7 @@ class ChannelEdit extends Component {
             <div className='p-mr-2' key='newscreen'>
               <Button
                 label='Screen'
-                icon={
-                  <Fragment>
-                    <FontAwesomeIcon icon={faPlus} className='p-m-1' />
-                    <FontAwesomeIcon icon={faDesktop} className='p-m-1' />
-                  </Fragment>
-                }
+                icon={fiAddScreen}
                 className='p-button-rounded p-button-text p-button-sm'
                 onClick={() => {
                   this.props.app.onOpenNewScreen()
@@ -311,21 +300,9 @@ class ChannelEdit extends Component {
               <Button
                 label='Numbers'
                 icon={
-                  <Fragment>
-                    <FontAwesomeIcon
-                      icon={
-                        this.props.app.state.showscreennumber
-                          ? faEye
-                          : faEyeSlash
-                      }
-                      className='p-m-1'
-                    />
-                    <FontAwesomeIcon
-                      icon={faDesktop}
-                      size='xs'
-                      className='p-m-1'
-                    />
-                  </Fragment>
+                  this.props.app.state.showscreennumber
+                    ? fiScreenNumberOn
+                    : fiScreenNumberOff
                 }
                 className='p-button-rounded p-button-text p-button-sm'
                 onClick={() => {
@@ -820,11 +797,7 @@ class ShortcutsMessage extends React.Component {
             <div className='p-col-9'>Open screen (for showing):</div>
             <div className='p-col-3'>
               <Button
-                icon={
-                  <Fragment>
-                    <FontAwesomeIcon icon={faDesktop} className='p-m-1' />
-                  </Fragment>
-                }
+                icon={fiAddScreen}
                 id='bt-screen'
                 className='p-button-primary p-button-outlined p-button-rounded p-m-2'
                 onClick={(event) => {
@@ -837,11 +810,7 @@ class ShortcutsMessage extends React.Component {
             <div className='p-col-9'>Open notepad (for writing):</div>
             <div className='p-col-3'>
               <Button
-                icon={
-                  <Fragment>
-                    <FontAwesomeIcon icon={faNotesMedical} className='p-m-1' />
-                  </Fragment>
-                }
+                icon={fiAddNotepad}
                 id='bt-notepad'
                 className='p-button-primary p-button-outlined p-button-rounded p-m-2'
                 onClick={(event) => {
@@ -1449,7 +1418,7 @@ export class FailsBoard extends FailsBasis {
           >
             <Button
               label=' Start casting'
-              icon={<FontAwesomeIcon icon={faEye} />}
+              icon={fiEyeOn}
               key={'casttoscreen'}
               onClick={(e) => {
                 this.updateSizes({

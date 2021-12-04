@@ -28,14 +28,17 @@ import {
   faArrowsAlt,
   faArrowsAltV as faUpdown,
   faBars,
-  faThList,
   faAdjust,
-  faEye,
-  faEyeSlash,
   faInfo,
-  faBullseye,
   faUndoAlt
 } from '@fortawesome/free-solid-svg-icons'
+import {
+  fiLaserpointer,
+  fiPoll,
+  fiEyeOff,
+  fiEyeOn,
+  fiArrangeScreens
+} from './icons/icons.js'
 
 class ColorPickerButton2 extends Component {
   constructor(props) {
@@ -546,7 +549,7 @@ export class ToolBox extends Component {
 
     const laserbutton = (
       <Button
-        icon={<FontAwesomeIcon icon={faBullseye} />}
+        icon={fiLaserpointer}
         tooltip='Laser pointer'
         tooltipOptions={ttopts}
         key={7}
@@ -603,7 +606,7 @@ export class ToolBox extends Component {
     )
     const pollbutton = (
       <Button
-        icon='pi pi-chart-bar'
+        icon={fiPoll}
         tooltip='Start poll'
         tooltipOptions={ttopts}
         key={2}
@@ -619,9 +622,9 @@ export class ToolBox extends Component {
     maintools.push(eraserbutton)
     maintools.push(laserbutton)
     maintools.push(scrollbutton)
+    if (this.state.canundo) maintools.push(undobutton)
     maintools.push(endbutton)
     maintools.push(pictbutton)
-    if (this.state.canundo) maintools.push(undobutton)
     maintools.push(pollbutton)
 
     maintools = maintools.map((ele, it) => (
@@ -682,11 +685,7 @@ export class ToolBox extends Component {
 
     const casttoscreenbutton = (
       <Button
-        icon={
-          <FontAwesomeIcon
-            icon={mainstate.casttoscreens ? faEye : faEyeSlash}
-          />
-        }
+        icon={mainstate.casttoscreens ? fiEyeOn : fiEyeOff}
         tooltip='Show/hide lecture to screen and students'
         tooltipOptions={ttopts}
         key={2}
@@ -701,7 +700,7 @@ export class ToolBox extends Component {
 
     const arrangebutton = (
       <Button
-        icon={<FontAwesomeIcon icon={faThList} />}
+        icon={fiArrangeScreens}
         tooltip='Arrange notepads and screens'
         tooltipOptions={ttopts}
         key={3}
