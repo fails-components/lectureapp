@@ -1369,7 +1369,8 @@ export class BlackboardNotepad extends Component {
       }
     }
     if (
-      now - this.lastTouchTime < 500 &&
+      ((now - this.lastTouchTime < 500 && now > this.lastTouchTime) ||
+        (now < this.lastTouchTime && this.lastTouchTime - now < 500)) && // check if this works
       event.pointerId !== this.lastTouchPointerId
     ) {
       // preparation for better palm detection, off for now
@@ -1385,14 +1386,31 @@ export class BlackboardNotepad extends Component {
         degrees > palmdegreemin &&
         degrees < palmdegreemax
       ) {
-        console.log('degree palm rejection', distance, degrees)
+        console.log(
+          'degree palm rejection',
+          distance,
+          degrees,
+          window.devicePixelRatio
+        )
         return true
-      } // else console.log('degree debug', distance, degrees, x, y)
+      } /* else
+        console.log(
+          'degree debug',
+          distance,
+          degrees,
+          x,
+          y,
+          this.lastTouchPos.x,
+          this.lastTouchPos.y,
+          event.clientX,
+          event.clientY,
+          window.devicePixelRatio
+        ) */
     }
-
     if (
-      now - this.lastPenEvent < 5 * 1000 ||
-      this.lastPenEvent + 500 > now /* || !event.isPrimary */
+      (now > this.lastPenEvent && now - this.lastPenEvent < 5 * 1000) ||
+      (now < this.lastPenEvent &&
+        this.lastPenEvent - now < 2000) /* || !event.isPrimary */
     ) {
       console.log('pen blocks touch')
       return true // no touchy touchy
@@ -1402,8 +1420,8 @@ export class BlackboardNotepad extends Component {
 
   processPointerReject() {
     this.pointerrejectcheck = this.pointerrejectcheck.filter((el) => {
-      if (el.time - 600 > this.lastTouchTime) return false
-      if (el.check && el.check > 6) return false
+      if (el.time - 2000 > this.lastTouchTime) return false
+      if (el.check && el.check > 20) return false
       if (!el.check) el.check = 1
       else el.check++
       if (this.checkPalmReject(el.event)) {
