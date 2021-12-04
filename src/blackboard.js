@@ -1273,11 +1273,63 @@ export class BlackboardNotepad extends Component {
     this.pointerRejectInterval = setInterval(this.processPointerReject, 100)
 
     this.mainDiv = React.createRef()
+
+    this.palmPos = [
+      { dmin: -90, dmax: 0, id: 0 }, // bottom right
+      { dmin: -45, dmax: 45, id: 1 }, // middle right
+      { dmin: 0, dmax: 90, id: 2 }, // top right
+      { dmin: 90, dmax: 180, id: 3 }, // top left
+      { dmin: 135, dmax: 180, dmin2: -180, dmax2: -135, id: 4 }, // middle left
+      { dmin: -180, dmax: -90, id: 5 } // bottom left
+    ]
+
+    this.loadTouchConfig()
   }
 
   preventDefault(e) {
     // work around for apple ios
     e.preventDefault()
+  }
+
+  loadConfigFromStorage(prop, type, def) {
+    let val = null
+    if (window.localStorage) {
+      val = window.localStorage.getItem(prop)
+    }
+    if (val == null) val = def
+    this[prop] = type(val)
+    if (this.toolbox()) this.toolbox().setBBConfig(prop, this[prop])
+  }
+
+  loadTouchConfig() {
+    this.loadConfigFromStorage('touchOn', Boolean, true)
+    this.loadConfigFromStorage('touchPenPrevent', Boolean, true)
+    this.loadConfigFromStorage('touchContactArea', Boolean, true)
+    this.loadConfigFromStorage('touchWrist', Boolean, true)
+    this.loadConfigFromStorage(
+      'touchWristPos',
+      Number,
+      0 /* for bottom right */
+    )
+  }
+
+  pushTouchConfigToToolbox() {
+    const tb = this.toolbox()
+    if (tb) {
+      tb.setBBConfig('touchOn', this.touchOn)
+      tb.setBBConfig('touchPenPrevent', this.touchPenPrevent)
+      tb.setBBConfig('touchContactArea', this.touchContactArea)
+      tb.setBBConfig('touchWrist', this.touchWrist)
+      tb.setBBConfig('touchWristPos', this.touchWristPos)
+    }
+  }
+
+  saveConfig(prop, val) {
+    if (window.localStorage) {
+      window.localStorage.setItem(prop, val)
+    }
+    this[prop] = val
+    if (this.toolbox()) this.toolbox().setBBConfig(prop, this[prop])
   }
 
   setblocked(isblocked) {
@@ -1361,14 +1413,15 @@ export class BlackboardNotepad extends Component {
       this.lastpalmw = event.width
       this.lastpalmh = event.height
 
-      if (event.width * event.height > 45 * 45) {
-        console.log('palm detected', event.width, event.height)
+      if (event.width * event.height > 45 * 45 && this.touchContactArea) {
+        console.log('palm detected contact area', event.width, event.height)
         return true
       } else {
         // console.log('nopalm detected', event.width, event.height)
       }
     }
     if (
+      this.touchWrist &&
       ((now - this.lastTouchTime < 500 && now > this.lastTouchTime) ||
         (now < this.lastTouchTime && this.lastTouchTime - now < 500)) && // check if this works
       event.pointerId !== this.lastTouchPointerId
@@ -1378,13 +1431,12 @@ export class BlackboardNotepad extends Component {
       const y = -(event.clientY - this.lastTouchPos.y)
       const degrees = (Math.atan2(y, x) * 180) / Math.PI
       const distance = Math.sqrt(x * x + y * y)
-      const palmdegreemin = -90
-      const palmdegreemax = 0
+      const palmPos = this.palmPos[this.touchWristPos]
 
       if (
         distance * window.devicePixelRatio > 200 &&
-        degrees > palmdegreemin &&
-        degrees < palmdegreemax
+        ((degrees > palmPos.dmin && degrees < palmPos.dmax) ||
+          (palmPos.dmin2 && degrees > palmPos.dmin2 && degrees < palmPos.dmax2))
       ) {
         console.log(
           'degree palm rejection',
@@ -1408,9 +1460,10 @@ export class BlackboardNotepad extends Component {
         ) */
     }
     if (
-      (now > this.lastPenEvent && now - this.lastPenEvent < 5 * 1000) ||
-      (now < this.lastPenEvent &&
-        this.lastPenEvent - now < 2000) /* || !event.isPrimary */
+      this.touchPenPrevent &&
+      ((now > this.lastPenEvent && now - this.lastPenEvent < 5 * 1000) ||
+        (now < this.lastPenEvent &&
+          this.lastPenEvent - now < 2000)) /* || !event.isPrimary */
     ) {
       console.log('pen blocks touch')
       return true // no touchy touchy
@@ -1470,6 +1523,7 @@ export class BlackboardNotepad extends Component {
         console.log('palm object rejected')
         return
       }
+      if (!this.touchOn) return // touch is turned off!
     }
 
     if (this.laserpointer && this.addpictmode === 0) return
@@ -1765,6 +1819,7 @@ export class BlackboardNotepad extends Component {
 
             return
           }
+          if (!this.touchOn) return // touch turned off
         }
         if (event.pointerType === 'pen' /* || event.pointerType === 'mouse' */)
           // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode

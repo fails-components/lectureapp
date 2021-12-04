@@ -37,7 +37,16 @@ import {
   fiPoll,
   fiEyeOff,
   fiEyeOn,
-  fiArrangeScreens
+  fiArrangeScreens,
+  fiPenBlocksTouch,
+  fiPalmAreaDetection,
+  fiWristPalmRejection,
+  fiWristBottomRight,
+  fiWristMiddleRight,
+  fiWristTopRight,
+  fiWristTopLeft,
+  fiWristMiddleLeft,
+  fiWristBottomLeft
 } from './icons/icons.js'
 
 class ColorPickerButton2 extends Component {
@@ -164,9 +173,23 @@ export class ToolBox extends Component {
     this.scrollPointerdown = this.scrollPointerdown.bind(this)
     this.scrollPointerup = this.scrollPointerup.bind(this)
     this.scrollPointermove = this.scrollPointermove.bind(this)
+    this.changeBBConfig = this.changeBBConfig.bind(this)
     this.undo = this.undo.bind(this)
 
     this.scrollButtonRef = React.createRef()
+  }
+
+  setBBConfig(prop, val) {
+    const forstate = {}
+    forstate[prop] = val
+    this.setState(forstate)
+  }
+
+  changeBBConfig(prop, val) {
+    const blackboard = this.blackboard()
+    if (blackboard) {
+      blackboard.saveConfig(prop, val)
+    }
   }
 
   blackboard() {
@@ -487,6 +510,9 @@ export class ToolBox extends Component {
   render() {
     // move to state ?
 
+    if (this.state.touchOn === undefined && this.blackboard())
+      this.blackboard().pushTouchConfigToToolbox()
+
     const ttopts = {
       className: 'teal-tooltip',
       position: 'top',
@@ -652,6 +678,8 @@ export class ToolBox extends Component {
     }
 
     let settingswheel = []
+    let settingswheel2 = []
+    let settingswheel3 = []
 
     const fsbutton = (
       <Button
@@ -688,7 +716,7 @@ export class ToolBox extends Component {
         icon={mainstate.casttoscreens ? fiEyeOn : fiEyeOff}
         tooltip='Show/hide lecture to screen and students'
         tooltipOptions={ttopts}
-        key={2}
+        key={3}
         onClick={(e) => {
           this.props.updateSizes({
             casttoscreens: !mainstate.casttoscreens
@@ -703,7 +731,7 @@ export class ToolBox extends Component {
         icon={fiArrangeScreens}
         tooltip='Arrange notepads and screens'
         tooltipOptions={ttopts}
-        key={3}
+        key={4}
         onClick={(e) => {
           this.arrangeButtonPressed()
         }}
@@ -716,11 +744,141 @@ export class ToolBox extends Component {
         icon={<FontAwesomeIcon icon={faInfo} />}
         tooltip='Info about fails'
         tooltipOptions={ttopts}
-        key={4}
+        key={5}
         onClick={(e) => {
           if (this.ossinfo) this.ossinfo.toggle(e)
         }}
         className={setclass}
+      />
+    )
+
+    const touchonbutton = (
+      <Button
+        icon={<div>T</div>}
+        tooltip='Toggle touch'
+        tooltipOptions={ttopts}
+        key={6}
+        onClick={(e) => {
+          this.changeBBConfig('touchOn', !this.state.touchOn)
+        }}
+        className={selbuttonclass(this.state.touchOn)}
+      />
+    )
+
+    const touchpenpreventbutton = (
+      <Button
+        icon={fiPenBlocksTouch}
+        tooltip='Toggle pen prevents pen'
+        tooltipOptions={ttopts}
+        key={7}
+        onClick={(e) => {
+          this.changeBBConfig('touchPenPrevent', !this.state.touchPenPrevent)
+        }}
+        className={selbuttonclass(this.state.touchPenPrevent)}
+      />
+    )
+
+    const touchcontactareabutton = (
+      <Button
+        icon={fiPalmAreaDetection}
+        tooltip='Toggle palm rejection using contact area'
+        tooltipOptions={ttopts}
+        key={8}
+        onClick={(e) => {
+          this.changeBBConfig('touchContactArea', !this.state.touchContactArea)
+        }}
+        className={selbuttonclass(this.state.touchContactArea)}
+      />
+    )
+
+    const touchwristbutton = (
+      <Button
+        icon={fiWristPalmRejection}
+        tooltip='Toggle palm rejection using wrist position'
+        tooltipOptions={ttopts}
+        key={9}
+        onClick={(e) => {
+          this.changeBBConfig('touchWrist', !this.state.touchWrist)
+        }}
+        className={selbuttonclass(this.state.touchWrist)}
+      />
+    )
+
+    const touchposbrbutton = (
+      <Button
+        icon={fiWristBottomRight}
+        tooltip='Wrist position bottom right'
+        tooltipOptions={ttopts}
+        key={10}
+        onClick={(e) => {
+          this.changeBBConfig('touchWristPos', 0)
+        }}
+        className={selbuttonclass(this.state.touchWristPos === 0)}
+      />
+    )
+
+    const touchposmrbutton = (
+      <Button
+        icon={fiWristMiddleRight}
+        tooltip='Wrist position middle right'
+        tooltipOptions={ttopts}
+        key={11}
+        onClick={(e) => {
+          this.changeBBConfig('touchWristPos', 1)
+        }}
+        className={selbuttonclass(this.state.touchWristPos === 1)}
+      />
+    )
+
+    const touchpostrbutton = (
+      <Button
+        icon={fiWristTopRight}
+        tooltip='Wrist position top right'
+        tooltipOptions={ttopts}
+        key={12}
+        onClick={(e) => {
+          this.changeBBConfig('touchWristPos', 2)
+        }}
+        className={selbuttonclass(this.state.touchWristPos === 2)}
+      />
+    )
+
+    const touchpostlbutton = (
+      <Button
+        icon={fiWristTopLeft}
+        tooltip='Wrist position top left'
+        tooltipOptions={ttopts}
+        key={13}
+        onClick={(e) => {
+          this.changeBBConfig('touchWristPos', 3)
+        }}
+        className={selbuttonclass(this.state.touchWristPos === 3)}
+      />
+    )
+
+    const touchposmlbutton = (
+      <Button
+        icon={fiWristMiddleLeft}
+        tooltip='Wrist position middle left'
+        tooltipOptions={ttopts}
+        key={14}
+        onClick={(e) => {
+          this.changeBBConfig('touchWristPos', 4)
+        }}
+        className={selbuttonclass(this.state.touchWristPos === 4)}
+      />
+    )
+
+    const touchposblbutton = (
+      <Button
+        icon={fiWristBottomLeft}
+        tooltip='Wrist position middle left'
+        tooltipOptions={ttopts}
+        key={15}
+        onClick={(e) => {
+          this.changeBBConfig('touchWristPos', 5)
+        }}
+        className={selbuttonclass(this.state.touchWristPos === 5)}
       />
     )
 
@@ -730,6 +888,23 @@ export class ToolBox extends Component {
     if (!mainstate.bgpdf) settingswheel.push(backbwbutton)
     settingswheel.push(infobutton)
 
+    if (this.state.touchOn) {
+      settingswheel2.push(touchonbutton)
+      settingswheel2.push(touchpenpreventbutton)
+      settingswheel2.push(touchcontactareabutton)
+      if (this.state.touchWrist) {
+        settingswheel3.push(touchwristbutton)
+        settingswheel3.push(touchposbrbutton)
+        settingswheel3.push(touchposmrbutton)
+        settingswheel3.push(touchpostrbutton)
+        settingswheel3.push(touchpostlbutton)
+        settingswheel3.push(touchposmlbutton)
+        settingswheel3.push(touchposblbutton)
+      } else settingswheel2.push(touchwristbutton)
+    } else {
+      settingswheel.push(touchonbutton)
+    }
+
     let setwheelpcpos = false
     if (this.state.selectedButtonid === 1) {
       if (this.state.secondtoolstep === 1) {
@@ -738,6 +913,17 @@ export class ToolBox extends Component {
     }
 
     settingswheel = settingswheel.map((ele, it) => (
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
+        {ele}
+      </div>
+    ))
+
+    settingswheel2 = settingswheel2.map((ele, it) => (
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
+        {ele}
+      </div>
+    ))
+    settingswheel3 = settingswheel3.map((ele, it) => (
       <div className='p-mr-2 p-mb-2' id={it} key={it}>
         {ele}
       </div>
@@ -878,9 +1064,21 @@ export class ToolBox extends Component {
             )}
 
             {setwheelpcpos && (
-              <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
-                {settingswheel}
-              </div>
+              <React.Fragment>
+                <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                  {settingswheel}
+                </div>
+                {settingswheel2.length > 0 && (
+                  <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                    {settingswheel2}
+                  </div>
+                )}
+                {settingswheel3.length > 0 && (
+                  <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                    {settingswheel3}
+                  </div>
+                )}
+              </React.Fragment>
             )}
           </Fragment>
         )}

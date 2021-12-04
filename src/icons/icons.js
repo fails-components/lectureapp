@@ -40,7 +40,6 @@ function iconMaker(importObj, alttext, size) {
 
 function iconMakerInl(objs, alttext, size) {
   const msize = size || '40px'
-  console.log('debug icon maker', msize, alttext)
   return () => (
     <svg
       viewBox='0 0 200 200'
@@ -86,8 +85,8 @@ const addNotepadIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='4'
-      stroke-miterlimit='10'
+      strokeWidth='4'
+      strokeMiterlimit='10'
       d='M127.307,45.439h-12.684
  c-1.229-4.257-4.252-7.767-8.279-9.614c-4.029-1.846-8.66-1.846-12.689,0c-4.027,1.848-7.049,5.357-8.277,9.614H72.693
  c-0.824,0-1.492,0.669-1.492,1.493v4.178h-6.416c-3.957,0-7.754,1.572-10.553,4.371c-2.799,2.797-4.369,6.593-4.369,10.551v84.606
@@ -149,8 +148,8 @@ const arrangeScreensIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='4'
-      stroke-miterlimit='10'
+      strokeWidth='4'
+      strokeMiterlimit='10'
       d='M38.018,42.523c-1.557-0.022-2.99,1.391-2.99,2.948
   c0,1.559,1.434,2.972,2.99,2.949h4.424v73.73h-4.424c-1.557-0.023-2.99,1.39-2.99,2.948s1.434,2.972,2.99,2.949h58.984v10.092
   l-23.594,13.87c-1.332,0.776-1.842,2.69-1.07,4.025c0.77,1.335,2.68,1.854,4.02,1.09l23.594-13.87l23.594,13.87
@@ -194,16 +193,16 @@ const eyeOnIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M100,68.915C72.948,68.915,51.018,100,51.018,100
   S72.948,131.085,100,131.085S148.982,100,148.982,100S127.052,68.915,100,68.915z'
     />
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M100,120.296c-11.191,0-20.296-9.104-20.296-20.296
   c0-11.192,9.104-20.296,20.296-20.296s20.296,9.104,20.296,20.296C120.296,111.191,111.191,120.296,100,120.296z'
     />
@@ -224,8 +223,8 @@ const laserpointerIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='2'
-      stroke-miterlimit='10'
+      strokeWidth='2'
+      strokeMiterlimit='10'
       d='M80.73,27.696C80.578,18,88.344,9.988,98.039,9.834
   c9.697-0.151,17.709,7.612,17.861,17.308c0.152,9.696-7.611,17.71-17.309,17.862C88.896,45.155,80.883,37.394,80.73,27.696z
    M111.068,27.219c-0.111-7.031-5.922-12.661-12.951-12.549c-7.033,0.107-12.664,5.918-12.555,12.949
@@ -245,8 +244,8 @@ const laserpointerIcon = (
       transform='matrix(0.0152 0.9999 -0.9999 0.0152 169.7996 -27.8973)'
       fill='none'
       stroke='currentColor'
-      stroke-width='4'
-      stroke-miterlimit='10'
+      strokeWidth='4'
+      strokeMiterlimit='10'
       width='3.221'
       height='4.833'
     />
@@ -256,8 +255,8 @@ const laserpointerIcon = (
       transform='matrix(0.0151 0.9999 -0.9999 0.0151 159.6753 -37.6676)'
       fill='none'
       stroke='currentColor'
-      stroke-width='4'
-      stroke-miterlimit='10'
+      strokeWidth='4'
+      strokeMiterlimit='10'
       width='3.223'
       height='4.831'
     />
@@ -267,8 +266,8 @@ const laserpointerIcon = (
       transform='matrix(0.0158 0.9999 -0.9999 0.0158 149.7972 -47.1685)'
       fill='none'
       stroke='currentColor'
-      stroke-width='4'
-      stroke-miterlimit='10'
+      strokeWidth='4'
+      strokeMiterlimit='10'
       width='3.223'
       height='4.833'
     />
@@ -282,8 +281,8 @@ const laserpointerIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='4'
-      stroke-miterlimit='10'
+      strokeWidth='4'
+      strokeMiterlimit='10'
       d='M80.021,169.957l-1.113-70.471
   c-0.178-11.323,8.889-20.682,20.211-20.86s20.682,8.889,20.861,20.213l1.111,70.47c0.178,11.322-8.891,20.68-20.211,20.857
   c-11.322,0.179-20.682-8.889-20.861-20.21L80.021,169.957z M116.762,98.889c-0.15-9.547-8.041-17.191-17.588-17.043
@@ -332,8 +331,8 @@ const magicwandIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       d='M142.516,173.21
   c4.178,5.143,11.736,5.926,16.879,1.747l1.553-1.261c5.145-4.18,5.926-11.738,1.748-16.881L93.73,71.927
   C89.551,66.783,81.992,66,76.85,70.18l-1.553,1.261c-5.145,4.179-5.926,11.736-1.748,16.881L142.516,173.21z'
@@ -346,8 +345,8 @@ const moveToTopIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M39.25,43.696c-2.455,0-4.443,1.989-4.443,4.444
 		v14.817c0,2.455,1.988,4.445,4.443,4.445h121.498c2.455,0,4.445-1.99,4.445-4.445V48.141c0-2.455-1.99-4.444-4.445-4.444H39.25z'
     />
@@ -374,8 +373,8 @@ const moveToTopIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M39.25,132.599c-2.455,0-4.443,1.99-4.443,4.445
 		v14.817c0.002,2.454,1.99,4.441,4.443,4.441h50.377c2.455,0,4.443-1.987,4.445-4.441v-14.817c0-2.455-1.99-4.445-4.445-4.445H39.25
 		z'
@@ -388,8 +387,8 @@ const palmAreaDetectionIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M148.42,125.055c0,2.371,1.924,4.295,4.296,4.295
   h16.408c2.373,0,4.297-1.924,4.297-4.295V85.971c0-2.371-1.924-4.295-4.297-4.295h-16.408c-2.372,0-4.296,1.924-4.296,4.295
   V125.055z'
@@ -397,40 +396,40 @@ const palmAreaDetectionIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M148.42,121.309H98.563
   c0,0-9.976,0.607-9.976-10.225c0,0-0.549-10.508,9.976-10.508h49.191'
     />
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M106.254,100.576l38.833-38.965
   c0,0,7.609-6.209,2.555-13.451c-5.055-7.244-14.054-3.561-18.721,1.598L64.087,117.25l-4.666,18.5l17.666-6.4l12.577-12.975'
     />
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M122.715,56.219L78.254,70.75
   c0,0-6.334,3-6.334,9.166v29.939'
     />
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M125.979,52.82v-8.713c0,0,0.773-5.357-5.56-5.357
   h-86.5c0,0-7.333,0.236-7.333,7.035V153.75c0,0-0.501,7.5,6.333,7.5h88.167c0,0,6.167-0.668,6.167-5.5v-34.436'
     />
     <line
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       x1='149.375'
       y1='83.273'
       x2='133.273'
@@ -445,24 +444,24 @@ const penBlocksTouchIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       d='M65.504,136.853h-27.6
   c-1.996,0-3.614-1.619-3.614-3.616V54.843c0-1.724,1.397-3.12,3.12-3.12h84.847'
     />
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       d='M159.146,51.723h2.556
   c1.723,0,3.12,1.396,3.12,3.12v78.89c0,1.723-1.397,3.12-3.12,3.12H130.77'
     />
     <line
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       x1='147.797'
       y1='136.853'
       x2='147.797'
@@ -471,8 +470,8 @@ const penBlocksTouchIcon = (
     <line
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       x1='147.797'
       y1='80.099'
       x2='147.797'
@@ -486,8 +485,8 @@ const penBlocksTouchIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       d='M88.205,102.801V80.1
   c0-1.505-0.598-2.95-1.662-4.015c-1.064-1.063-2.508-1.661-4.013-1.661s-2.95,0.598-4.015,1.661
   c-1.063,1.064-1.662,2.51-1.662,4.015v34.052h-3.489c-1.824-0.002-3.538,0.872-4.606,2.351c-1.067,1.48-1.359,3.382-0.785,5.111
@@ -496,8 +495,8 @@ const penBlocksTouchIcon = (
     <line
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       x1='99.557'
       y1='102.801'
       x2='99.557'
@@ -506,8 +505,8 @@ const penBlocksTouchIcon = (
     <line
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       x1='110.906'
       y1='102.801'
       x2='110.906'
@@ -516,8 +515,8 @@ const penBlocksTouchIcon = (
     <line
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       x1='88.205'
       y1='102.801'
       x2='88.205'
@@ -526,8 +525,8 @@ const penBlocksTouchIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='9'
-      stroke-miterlimit='10'
+      strokeWidth='9'
+      strokeMiterlimit='10'
       d='M76.854,148.204h45.403v26.241
   c0,1.179-0.957,2.136-2.137,2.136H78.99c-1.18,0-2.136-0.957-2.136-2.136V148.204z'
     />
@@ -544,8 +543,8 @@ const pollIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M60.084,79.958H43.98
   c-0.561,0-1.016,0.455-1.016,1.018v78.88c0,0.562,0.455,1.017,1.016,1.017h16.104c0.561,0,1.016-0.455,1.016-1.017v-78.88
   C61.1,80.413,60.645,79.958,60.084,79.958z'
@@ -553,8 +552,8 @@ const pollIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M156.002,94.722h-16.098
   c-0.563,0-1.018,0.455-1.018,1.018v64.115c0,0.563,0.455,1.018,1.018,1.018h16.098c0.563,0,1.018-0.455,1.018-1.018V95.739
   C157.02,95.177,156.564,94.722,156.002,94.722z'
@@ -568,8 +567,8 @@ const pollIcon = (
     <line
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       x1='109.947'
       y1='77.473'
       x2='134.952'
@@ -578,16 +577,16 @@ const pollIcon = (
     <path
       fill='none'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       d='M63.596,57.933
   c1.38,0.345,17.994,11.408,28.165,18.234'
     />
     <circle
       fill='currentColor'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       cx='148.526'
       cy='64.542'
       r='14.427'
@@ -595,8 +594,8 @@ const pollIcon = (
     <circle
       fill='currentColor'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       cx='100.308'
       cy='85.247'
       r='14.427'
@@ -604,8 +603,8 @@ const pollIcon = (
     <circle
       fill='currentColor'
       stroke='currentColor'
-      stroke-width='7'
-      stroke-miterlimit='10'
+      strokeWidth='7'
+      strokeMiterlimit='10'
       cx='51.474'
       cy='50.114'
       r='14.427'
@@ -1223,7 +1222,7 @@ export const fiPenBlocksTouch = iconMakerInl(
   'pen blocks touch',
   '30px'
 )
-export const fiPoll = iconMakerInl(pollIcon, 'poll', '35 px')
+export const fiPoll = iconMakerInl(pollIcon, 'poll', '35px')
 export const fiScreenNumberOff = iconMakerInl(
   screenNumberOffIcon,
   'screen number off',

@@ -43,7 +43,13 @@ import {
   fiEyeOn,
   fiMoveToTop,
   fiScreenNumberOff,
-  fiScreenNumberOn
+  fiScreenNumberOn,
+  fiWristBottomLeft,
+  fiWristBottomRight,
+  fiWristMiddleLeft,
+  fiWristMiddleRight,
+  fiWristTopLeft,
+  fiWristTopRight
 } from './icons/icons.js'
 import { NoteScreenBase } from './notepad.js'
 import { io } from 'socket.io-client'
@@ -819,6 +825,69 @@ class ShortcutsMessage extends React.Component {
               ></Button>
             </div>
           </div>
+          <div className='p-grid p-align-center'>
+            <div className='p-col-12'>Select your wrist position:</div>
+            <div className='p-col-2'>
+              <Button
+                icon={fiWristBottomRight}
+                id='bt-notepad'
+                className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                onClick={(event) => {
+                  this.props.parent.selectWrist(0)
+                }}
+              ></Button>
+            </div>
+            <div className='p-col-2'>
+              <Button
+                icon={fiWristMiddleRight}
+                id='bt-notepad'
+                className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                onClick={(event) => {
+                  this.props.parent.selectWrist(1)
+                }}
+              ></Button>
+            </div>
+            <div className='p-col-2'>
+              <Button
+                icon={fiWristTopRight}
+                id='bt-notepad'
+                className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                onClick={(event) => {
+                  this.props.parent.selectWrist(2)
+                }}
+              ></Button>
+            </div>
+            <div className='p-col-2'>
+              <Button
+                icon={fiWristTopLeft}
+                id='bt-notepad'
+                className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                onClick={(event) => {
+                  this.props.parent.selectWrist(3)
+                }}
+              ></Button>
+            </div>
+            <div className='p-col-2'>
+              <Button
+                icon={fiWristMiddleLeft}
+                id='bt-notepad'
+                className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                onClick={(event) => {
+                  this.props.parent.selectWrist(4)
+                }}
+              ></Button>
+            </div>
+            <div className='p-col-2'>
+              <Button
+                icon={fiWristBottomLeft}
+                id='bt-notepad'
+                className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                onClick={(event) => {
+                  this.props.parent.selectWrist(5)
+                }}
+              ></Button>
+            </div>
+          </div>
           see <FontAwesomeIcon icon={faBars} /> for more.
         </div>
       </React.Fragment>
@@ -1195,6 +1264,10 @@ export class FailsBoard extends FailsBasis {
     let picts= [{itemImageSrc: dummypicthelp , thumbnailImageSrc: dummypicthelp, alt: "Dummy Pict", title: "Dummy Pict",id:1, uuid: "d1f4387e-5793-4d13-a16a-28572ebcbc18" },
     {itemImageSrc: dummypicthelp , thumbnailImageSrc: dummypicthelp, alt: "Dummy Pict2", title: "Dummy Pict2",id:2, uuid: "d1f4387e-5793-4d13-a16a-28572ebcbc18" },
     {itemImageSrc: dummypicthelp , thumbnailImageSrc: dummypicthelp, alt: "Dummy Pict3", title: "Dummy Pict3",id:2, uuid: "d1f4387e-5793-4d13-a16a-28572ebcbc18" } ]; */
+  }
+
+  selectWrist(pos) {
+    if (this.noteref) this.noteref.selectWrist(pos)
   }
 
   onHideArrangeDialog() {

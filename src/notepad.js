@@ -167,6 +167,11 @@ export class NoteScreenBase extends Component {
       this.blackboard.current.reactivateToolBox()
   }
 
+  selectWrist(pos) {
+    if (this.props.isnotepad && this.blackboard && this.blackboard.current)
+      this.blackboard.current.saveConfig('touchWristPos', pos)
+  }
+
   arrangeButtonPressed() {
     this.props.arrangebuttoncallback()
   }
