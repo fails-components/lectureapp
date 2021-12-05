@@ -1786,6 +1786,12 @@ export class BlackboardNotepad extends Component {
       this.preventDefault,
       false
     )
+    this.mainDiv.current.addEventListener('touchup', this.preventDefault, false)
+    this.mainDiv.current.addEventListener(
+      'touchdown',
+      this.preventDefault,
+      false
+    )
   }
 
   pointermove(event) {
@@ -1799,6 +1805,11 @@ export class BlackboardNotepad extends Component {
                 "button",event.button,
                 "cX",event.clientX,
                 "cY",event.clientY); */
+    if (event.pointerType === 'pen' /* || event.pointerType === 'mouse' */)
+      // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
+      // no is not true in this case it is a mixure of mouse and touch events emulating the pen
+      // this would not work
+      this.lastPenEvent = now
 
     if (!this.rightmousescroll) {
       if (event.pointerId in this.pointerdraw === true && !this.laserpointer) {
@@ -1821,11 +1832,7 @@ export class BlackboardNotepad extends Component {
           }
           if (!this.touchOn) return // touch turned off
         }
-        if (event.pointerType === 'pen' /* || event.pointerType === 'mouse' */)
-          // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
-          // no is not true in this case it is a mixure of mouse and touch events emulating the pen
-          // this would not work
-          this.lastPenEvent = now
+
         // if (event.pointerType === 'touch') {
         // always use writing pos for orientation
         this.lastTouchPos = { x: event.clientX, y: event.clientY }
