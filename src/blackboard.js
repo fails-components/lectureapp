@@ -221,6 +221,124 @@ export class SVGWriting2 extends Component {
   }
 }
 
+export class MagicObject {
+  constructor() {
+    this.points = []
+    this.pathdirty = true
+    this.svgscale = 2000 // should be kept constant
+    this.mw = 5
+  }
+
+  addPoint(x, y) {
+    this.pathdirty = true
+    const px = x * this.svgscale
+    const py = y * this.svgscale
+    this.points.push({ x: px, y: py })
+    if (!this.area) {
+      this.area = {
+        left: -this.mw,
+        right: +this.mw,
+        top: -this.mw,
+        bottom: -this.mw
+      }
+      this.spx = px
+      this.spy = py
+    } else {
+      const ws = this.area
+      this.area = {
+        left: Math.min(px - this.spx - 2 * this.mw, ws.left),
+        right: Math.max(px - this.spx + 2 * this.mw, ws.right),
+        top: Math.min(py - this.spy - 2 * this.mw, ws.top),
+        bottom: Math.max(py - this.spy + 2 * this.mw, ws.bottom)
+      }
+    }
+  }
+
+  buildPath() {
+    const strings = []
+    if (this.points.length < 1) this.svgpath = null
+
+    let firstpoint = null
+    if (this.points && this.points.length > 0) firstpoint = this.points[0]
+
+    const sx = firstpoint ? firstpoint.x : 0
+    const sy = firstpoint ? firstpoint.y : 0
+
+    strings.push(
+      'M' +
+        (this.points[0].x - sx).toFixed(2) +
+        ',' +
+        (this.points[0].y - sy).toFixed(2) +
+        ' '
+    )
+    for (let i = 1; i < this.points.length; i++) {
+      const cp = this.points[i]
+      strings.push(
+        'L' + (cp.x - sx).toFixed(2) + ',' + (cp.y - sy).toFixed(2) + ' '
+      )
+    }
+    strings.push('Z')
+    this.svgpath = strings.join()
+
+    this.pathdirty = false
+  }
+
+  getRenderObject(args) {
+    if (this.pathdirty || !this.jsxobj) {
+      if (this.pathdirty) this.buildPath()
+      const viewbox =
+        Math.round(this.area.left) +
+        ' ' +
+        Math.round(this.area.top) +
+        ' ' +
+        Math.round(this.area.right - this.area.left) +
+        ' ' +
+        Math.round(this.area.bottom - this.area.top) +
+        ' '
+
+      const style = {
+        position: 'absolute',
+        zIndex: args.zIndex,
+        left:
+          Math.round(
+            ((this.area.left + this.spx) * args.pixelwidth) / this.svgscale
+          ) + 'px',
+        width:
+          Math.round(
+            ((this.area.right - this.area.left) * args.pixelwidth) /
+              this.svgscale
+          ) + 'px',
+        top:
+          Math.round(
+            ((this.area.top + this.spy) * args.pixelwidth) / this.svgscale
+          ) + 'px',
+        height:
+          Math.round(
+            ((this.area.bottom - this.area.top) * args.pixelwidth) /
+              this.svgscale
+          ) + 'px',
+        pointerEvents: 'none' // deactive this option , if you like to pick an svg element by cursor for debugging
+      }
+      this.jsxobj = (
+        <svg viewBox={viewbox} style={style}>
+          {this.svgpath && (
+            <path
+              d={this.svgpath}
+              stroke='#80ffff'
+              strokeWidth={(this.mw * args.pixelwidth) / this.svgscale}
+              fill='#80ffff'
+              strokeDasharray='10, 10'
+              strokeLinecap='round'
+              fillOpacity='0.5'
+            ></path>
+          )}
+        </svg>
+      )
+      return this.jsxobj
+    } else return this.jsxobj
+  }
+}
+
 export class SVGSpotlight extends Component {
   constructor(args) {
     super(args)
@@ -656,6 +774,27 @@ export class Blackboard extends Component {
     return { drawversion: state.drawversion + 1 }
   }
 
+  startMagicPath(x, y) {
+    // TODO remove old selections
+    this.magicobject = new MagicObject()
+    this.magicobject.addPoint(x, y)
+    this.isdirty = true
+  }
+
+  addToMagicPath(x, y) {
+    if (this.magicobject) {
+      this.magicobject.addPoint(x, y)
+      this.isdirty = true
+    }
+  }
+
+  finishMagic() {
+    // TODO selection stuff
+    if (this.magicobject) this.isdirty = true
+    delete this.magicobject
+    return 0
+  }
+
   startPath(time, objnum, curclient, x, y, type, color, width, pressure) {
     // console.log("startPath",x,y,type,color,width, pressure);
 
@@ -996,6 +1135,10 @@ export class Blackboard extends Component {
       this.setState({
         cursor: { mode: 'menu' }
       })
+    } else if (args.mode === 'magic') {
+      this.setState({
+        cursor: { mode: 'magic' }
+      })
     }
   }
 
@@ -1003,6 +1146,9 @@ export class Blackboard extends Component {
     if (!this.state.cursor) return 'auto'
     if (this.state.cursor.mode === 'laserpointer') return 'none'
     if (this.state.cursor.mode === 'picture') return 'crosshair'
+    if (this.state.cursor.mode === 'magic') {
+      return ['crosshair']
+    }
     if (this.state.cursor.mode !== 'drawing') return 'auto'
     const circleradius = this.state.cursor.size * 0.5
     let color = this.state.cursor.color
@@ -1188,6 +1334,11 @@ export class Blackboard extends Component {
                 ref={this.addpictimage}
               ></ImageHelper>
             )}
+            {this.magicobject &&
+              this.magicobject.getRenderObject({
+                zIndex: 51 /* z Index */,
+                pixelwidth: this.props.bbwidth
+              })}
 
             <SVGSpotlight
               ref={this.spotlight}
@@ -1529,7 +1680,18 @@ export class BlackboardNotepad extends Component {
     if (this.laserpointer && this.addpictmode === 0) return
 
     const pos = { x: event.clientX, y: event.clientY }
+
     this.rightmousescroll = false
+
+    if (this.magictool && this.addpictmode === 0) {
+      this.magicpointerid = event.pointerId
+      if (this.realblackboard && this.realblackboard.current)
+        this.realblackboard.current.startMagicPath(
+          pos.x / this.props.bbwidth,
+          pos.y / this.props.bbwidth + this.getCalcScrollPos()
+        )
+      return
+    }
 
     if (event.pointerId in this.pointerdraw === true) {
       // finish stale paths
@@ -1812,9 +1974,13 @@ export class BlackboardNotepad extends Component {
       this.lastPenEvent = now
 
     if (!this.rightmousescroll) {
-      if (event.pointerId in this.pointerdraw === true && !this.laserpointer) {
+      if (
+        (event.pointerId in this.pointerdraw === true ||
+          (this.magictool && event.pointerId === this.magicpointerid)) &&
+        !this.laserpointer
+      ) {
         if (event.pointerType === 'touch') {
-          if (this.checkPalmReject(event)) {
+          if (this.checkPalmReject(event) && !this.magictool) {
             // dismiss object
             console.log('palm object dismissed')
             this.outgodispatcher.deleteObject(
@@ -1843,14 +2009,23 @@ export class BlackboardNotepad extends Component {
            console.log("last pos",this.lastpos );
            console.log("pointer id", event.pointerId);
            console.log("lastpos",this.lastpos[event.pointerId]); */
-        this.pointerdraw[event.pointerId]++
-        if (typeof event.nativeEvent.getCoalescedEvents === 'function') {
-          // are coalesced events supported, yes now process them all
-          const coalevents = event.nativeEvent.getCoalescedEvents()
-          coalevents.forEach(this.processEvent)
-          this.pointerdraw[event.pointerId] += coalevents.length
+        if (this.magictool) {
+          const pos = { x: event.clientX, y: event.clientY }
+          if (this.realblackboard && this.realblackboard.current)
+            this.realblackboard.current.addToMagicPath(
+              pos.x / this.props.bbwidth,
+              pos.y / this.props.bbwidth + this.getCalcScrollPos()
+            )
+        } else {
+          this.pointerdraw[event.pointerId]++
+          if (typeof event.nativeEvent.getCoalescedEvents === 'function') {
+            // are coalesced events supported, yes now process them all
+            const coalevents = event.nativeEvent.getCoalescedEvents()
+            coalevents.forEach(this.processEvent)
+            this.pointerdraw[event.pointerId] += coalevents.length
+          }
+          this.processEvent(event)
         }
-        this.processEvent(event)
       } else if (this.addpictmode !== 0) {
         const pos = { x: event.clientX, y: event.clientY }
         if (now - this.lastpictmovetime > 25) {
@@ -1925,7 +2100,31 @@ export class BlackboardNotepad extends Component {
 
     const pos = { x: event.clientX, y: event.clientY }
 
-    if (event.pointerId in this.pointerdraw === true) {
+    if (event.pointerId === this.magicpointerid && this.magictool) {
+      console.log(
+        'magic pointerup pointerId:',
+        event.pointerId,
+        'pointerType',
+        event.pointerType,
+        'isPrimary',
+        event.isPrimary,
+        'width',
+        event.width,
+        'height',
+        event.height,
+        'button',
+        event.button,
+        'cX',
+        event.clientX,
+        'cY',
+        event.clientY
+      )
+      if (this.realblackboard && this.realblackboard.current) {
+        const selected = this.realblackboard.current.finishMagic()
+        if (selected !== 0) console.log('we have selected objects')
+      }
+      delete this.magicpointerid
+    } else if (event.pointerId in this.pointerdraw === true) {
       const objid = this.pointerobjids[event.pointerId]
       console.log(
         'pointerup pointerId:',
@@ -2059,6 +2258,7 @@ export class BlackboardNotepad extends Component {
 
   activateLaserPointer() {
     this.laserpointer = true
+    this.magictool = false
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
         mode: 'laserpointer'
@@ -2086,8 +2286,18 @@ export class BlackboardNotepad extends Component {
       })
   }
 
+  setMagicTool() {
+    this.laserpointer = false
+    this.magictool = true
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.setcursor({
+        mode: 'magic'
+      })
+  }
+
   setPenTool(color, size) {
     this.laserpointer = false
+    this.magictool = false
     this.tooltype = 0
     this.toolsize = size
     this.toolcolor = color
@@ -2102,6 +2312,7 @@ export class BlackboardNotepad extends Component {
 
   setMarkerTool(color, size) {
     this.laserpointer = false
+    this.magictool = false
     this.tooltype = 1
     this.toolsize = size
     this.toolcolor = color
@@ -2117,6 +2328,7 @@ export class BlackboardNotepad extends Component {
 
   setEraserTool(size) {
     this.laserpointer = false
+    this.magictool = false
     this.tooltype = 2
     this.toolsize = size
     if (this.realblackboard && this.realblackboard.current)

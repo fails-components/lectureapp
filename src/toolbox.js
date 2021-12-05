@@ -46,7 +46,8 @@ import {
   fiWristTopRight,
   fiWristTopLeft,
   fiWristMiddleLeft,
-  fiWristBottomLeft
+  fiWristBottomLeft,
+  fiMagicwand
 } from './icons/icons.js'
 
 class ColorPickerButton2 extends Component {
@@ -296,6 +297,11 @@ export class ToolBox extends Component {
         this.addRemoveSecondToolGuardian(true)
         this.lasttool = 7
         break
+      case 8:
+        if (this.blackboard()) this.blackboard().setMagicTool()
+        this.addRemoveSecondToolGuardian(false)
+        this.lasttool = 8
+        break
       default:
         break
     }
@@ -304,6 +310,7 @@ export class ToolBox extends Component {
       let secondtoolstep = 0
       let newbuttonid = state.selectedButtonid
       switch (buttonid) {
+        case 8:
         case 7:
         case 3:
           newbuttonid = buttonid
@@ -609,6 +616,18 @@ export class ToolBox extends Component {
       />
     )
 
+    const magicbutton = (
+      <Button
+        icon={fiMagicwand}
+        tooltip='Select magically'
+        tooltipOptions={ttopts}
+        key={8}
+        onClick={(e) => this.selectTool(8)}
+        disabled
+        className={selbuttonclass(this.state.selectedButtonid === 8)}
+      />
+    )
+
     const eraserbutton = (
       <Button
         icon={<FontAwesomeIcon icon={faEraser} />}
@@ -650,7 +669,7 @@ export class ToolBox extends Component {
         icon={<FontAwesomeIcon icon={faUndoAlt} />}
         tooltip='Undo last command'
         tooltipOptions={ttopts}
-        key={8}
+        key={9}
         onClick={this.undo}
         className={setclass}
       />
@@ -671,6 +690,7 @@ export class ToolBox extends Component {
     maintools.push(penbutton)
     maintools.push(markerbutton)
     maintools.push(eraserbutton)
+    maintools.push(magicbutton)
     maintools.push(laserbutton)
     maintools.push(scrollbutton)
     if (this.state.canundo) maintools.push(undobutton)
