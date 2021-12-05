@@ -174,6 +174,9 @@ export class ToolBox extends Component {
     this.scrollPointerup = this.scrollPointerup.bind(this)
     this.scrollPointermove = this.scrollPointermove.bind(this)
     this.changeBBConfig = this.changeBBConfig.bind(this)
+    this.addRemoveTouchToolGuardian = this.addRemoveTouchToolGuardian.bind(this)
+    this.addRemoveWristToolGuardian = this.addRemoveWristToolGuardian.bind(this)
+
     this.undo = this.undo.bind(this)
 
     this.scrollButtonRef = React.createRef()
@@ -231,7 +234,29 @@ export class ToolBox extends Component {
       this.secondtoolnum = setTimeout(() => {
         if (oldbuttonid) this.selectTool(oldbuttonid)
         this.setState({ secondtoolstep: 0 })
+      }, 8000)
+  }
+
+  addRemoveTouchToolGuardian(newguard) {
+    if (this.touchtoolnum) clearTimeout(this.touchtoolnum)
+    this.touchtoolnum = null
+    if (newguard) {
+      this.addRemoveSecondToolGuardian(newguard)
+      this.touchtoolnum = setTimeout(() => {
+        this.setState({ touchtool: null })
       }, 5000)
+    }
+  }
+
+  addRemoveWristToolGuardian(newguard) {
+    if (this.wristtoolnum) clearTimeout(this.wristtoolnum)
+    this.wristtoolnum = null
+    if (newguard) {
+      this.addRemoveTouchToolGuardian(true)
+      this.wristtoolnum = setTimeout(() => {
+        this.setState({ wristtool: null })
+      }, 5000)
+    }
   }
 
   selectTool(buttonid) {
@@ -759,7 +784,18 @@ export class ToolBox extends Component {
         tooltipOptions={ttopts}
         key={6}
         onClick={(e) => {
-          this.changeBBConfig('touchOn', !this.state.touchOn)
+          if (this.state.touchOn && !this.state.touchtool) {
+            this.setState({ touchtool: true })
+            this.addRemoveTouchToolGuardian(true)
+          } else if (this.state.touchOn) {
+            this.setState({ touchtool: null })
+            this.addRemoveTouchToolGuardian(false)
+            this.changeBBConfig('touchOn', false)
+          } else {
+            this.setState({ touchtool: true })
+            this.addRemoveTouchToolGuardian(true)
+            this.changeBBConfig('touchOn', true)
+          }
         }}
         className={selbuttonclass(this.state.touchOn)}
       />
@@ -798,7 +834,18 @@ export class ToolBox extends Component {
         tooltipOptions={ttopts}
         key={9}
         onClick={(e) => {
-          this.changeBBConfig('touchWrist', !this.state.touchWrist)
+          if (this.state.touchWrist && !this.state.wristtool) {
+            this.setState({ wristtool: true })
+            this.addRemoveWristToolGuardian(true)
+          } else if (this.state.touchWrist) {
+            this.setState({ wristtool: null })
+            this.addRemoveWristToolGuardian(false)
+            this.changeBBConfig('touchWrist', false)
+          } else {
+            this.setState({ wristtool: true })
+            this.addRemoveWristToolGuardian(true)
+            this.changeBBConfig('touchWrist', true)
+          }
         }}
         className={selbuttonclass(this.state.touchWrist)}
       />
@@ -887,22 +934,20 @@ export class ToolBox extends Component {
     settingswheel.push(casttoscreenbutton)
     if (!mainstate.bgpdf) settingswheel.push(backbwbutton)
     settingswheel.push(infobutton)
-
-    if (this.state.touchOn) {
-      settingswheel2.push(touchonbutton)
+    settingswheel.push(touchonbutton)
+    if (this.state.touchtool) {
+      // settingswheel2.push(touchonbutton)
       settingswheel2.push(touchpenpreventbutton)
       settingswheel2.push(touchcontactareabutton)
-      if (this.state.touchWrist) {
-        settingswheel3.push(touchwristbutton)
+      settingswheel2.push(touchwristbutton)
+      if (this.state.wristtool) {
         settingswheel3.push(touchposbrbutton)
         settingswheel3.push(touchposmrbutton)
         settingswheel3.push(touchpostrbutton)
         settingswheel3.push(touchpostlbutton)
         settingswheel3.push(touchposmlbutton)
         settingswheel3.push(touchposblbutton)
-      } else settingswheel2.push(touchwristbutton)
-    } else {
-      settingswheel.push(touchonbutton)
+      }
     }
 
     let setwheelpcpos = false
