@@ -47,7 +47,9 @@ import {
   fiWristTopLeft,
   fiWristMiddleLeft,
   fiWristBottomLeft,
-  fiMagicwand
+  fiMagicwand,
+  fiTouchOn,
+  fiTouchOff
 } from './icons/icons.js'
 
 class ColorPickerButton2 extends Component {
@@ -799,7 +801,7 @@ export class ToolBox extends Component {
 
     const touchonbutton = (
       <Button
-        icon={<div>T</div>}
+        icon={this.state.touchOn ? fiTouchOn : fiTouchOff}
         tooltip='Toggle touch'
         tooltipOptions={ttopts}
         key={6}

@@ -20,8 +20,10 @@
 
 import React from 'react'
 
+import touchOnIcon from './touchon.svg'
+import touchOffIcon from './touchoff.svg'
 // Please read README for licensing
-/*
+
 function iconMaker(importObj, alttext, size) {
   const msize = size || '40px'
   return () => (
@@ -36,7 +38,6 @@ function iconMaker(importObj, alttext, size) {
     </React.Fragment>
   )
 }
-*/
 
 function iconMakerInl(objs, alttext, size) {
   const msize = size || '40px'
@@ -1258,3 +1259,6 @@ export const fiWristTopRight = iconMakerInl(
   wristTopRightIcon,
   'wrist top right'
 )
+
+export const fiTouchOn = iconMaker(touchOnIcon, 'touch on', '30px')
+export const fiTouchOff = iconMaker(touchOffIcon, 'touch off', '30px')
