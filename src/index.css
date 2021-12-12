@@ -63,3 +63,33 @@ code {
   fill: currentColor;
   stroke: currentColor;
 }
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: 1000;
+  }
+}
+
+.magicPath {
+  fill: #80ffff;
+  animation: dash 15s linear infinite;
+  stroke-dasharray: 10, 10;
+  stroke-linecap: round;
+  fill-opacity: 0.5;
+}
+
+.selectedPath {
+  stroke: #33ffff;
+  animation: dash 60s linear infinite;
+  stroke-dasharray: 3, 3;
+  stroke-width: 3;
+/*  stroke-linecap: round;*/
+}
+
+.selectedImage {
+  border: 3px solid #33ffff;
+  animation: dash 60s linear infinite;
+  stroke-dasharray: 3, 3;
+  stroke-width: 3;
+  border-style: dashed;
+}

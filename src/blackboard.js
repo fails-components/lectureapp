@@ -41,91 +41,6 @@ window.addEventListener('contextmenu', function (e) {
   return false
 })
 
-export class SVGWriting extends Component {
-  render() {
-    /* { color:  this.state.workcolor, alpha: , objnum: this.state.workobjnum ,
-                 path: path ,
-                 startradius: this.state.workstartradius, endpoint: {x: wx-sx, y: wy-sy },
-                endradius: this.curpenwidth   } */
-    // <svg viewBox="-20 -20 40 40" width="100%" height="100%">
-    // console.log(this.props.glyph);
-    const glyph = this.props.glyph
-    const viewbox =
-      Math.round(glyph.workarea.left) +
-      ' ' +
-      Math.round(glyph.workarea.top) +
-      ' ' +
-      Math.round(glyph.workarea.right - glyph.workarea.left) +
-      ' ' +
-      Math.round(glyph.workarea.bottom - glyph.workarea.top) +
-      ' '
-    // svgscale={this.svgscale} pixelwidth={this.pixelwidth}
-    // console.log("svgscale",this.props.svgscale);
-    // console.log("pixelwidth",this.props.pixelwidth);
-    const style = {
-      position: 'absolute',
-      zIndex: this.props.zIndex,
-      left:
-        Math.round(
-          ((glyph.workarea.left + glyph.startpoint.x) * this.props.pixelwidth) /
-            this.props.svgscale
-        ) + 'px',
-      width:
-        Math.round(
-          ((glyph.workarea.right - glyph.workarea.left) *
-            this.props.pixelwidth) /
-            this.props.svgscale
-        ) + 'px',
-      top:
-        Math.round(
-          ((glyph.workarea.top + glyph.startpoint.y) * this.props.pixelwidth) /
-            this.props.svgscale
-        ) + 'px',
-      height:
-        Math.round(
-          ((glyph.workarea.bottom - glyph.workarea.top) *
-            this.props.pixelwidth) /
-            this.props.svgscale
-        ) + 'px',
-      pointerEvents: 'none'
-    }
-    // console.log("tyle",style);
-    // console.log("workarea",glyph.workarea);
-
-    return (
-      <svg viewBox={viewbox} style={style}>
-        <circle
-          cx={0}
-          cy={0}
-          r={glyph.startradius}
-          stroke='none'
-          fill={glyph.color}
-          fillOpacity={glyph.alpha}
-        ></circle>
-        {glyph.endpoint && (
-          <circle
-            cx={glyph.endpoint.x}
-            cy={glyph.endpoint.y}
-            r={glyph.endradius}
-            stroke='none'
-            fill={glyph.color}
-            fillOpacity={glyph.alpha}
-          ></circle>
-        )}
-
-        {glyph.path && (
-          <path
-            d={glyph.path}
-            stroke='none'
-            fill={glyph.color}
-            fillOpacity={glyph.alpha}
-          ></path>
-        )}
-      </svg>
-    )
-  }
-}
-
 export class SVGWriting2 extends Component {
   render() {
     /* { color:  this.state.workcolor, alpha: , objnum: this.state.workobjnum ,
@@ -146,6 +61,7 @@ export class SVGWriting2 extends Component {
       ' '
 
     let stroke = 'none'
+    let classname = ''
 
     let scolor = glyph.color
     let alpha = 1
@@ -205,11 +121,16 @@ export class SVGWriting2 extends Component {
 
     if (this.props.preview) stroke = 'purple'
     if (this.props.predraw) stroke = 'cyan'
+    if (glyph.isSelected()) {
+      stroke = null
+      classname += 'selectedPath'
+    }
 
     return (
       <svg viewBox={viewbox} style={style}>
         {pathstring && (
           <path
+            className={classname}
             d={pathstring}
             stroke={stroke}
             fill={scolor}
@@ -226,7 +147,67 @@ export class MagicObject {
     this.points = []
     this.pathdirty = true
     this.svgscale = 2000 // should be kept constant
+    this.isvgscale = 1 / this.svgscale
     this.mw = 5
+
+    this.ref = React.createRef()
+    this.svgref = React.createRef()
+
+    this.selectedObj = []
+  }
+
+  testAndSelectDrawObject(obj) {
+    const obarea = obj.getArea()
+    if (!this.rectInterSectiontest(obarea)) {
+      return false
+    }
+    if (obj.doPointTest(this)) {
+      obj.select()
+      this.selectedObj.push(obj)
+      return true
+    } else {
+      return false
+    }
+  }
+
+  getObjIds() {
+    return this.selectedObj.map((el) => ({
+      objid: el.objid,
+      storagenum: el.storagenum()
+    }))
+  }
+
+  cleanup() {
+    this.selectedObj.forEach((el) => el.deselect())
+
+    this.selectedObj = []
+  }
+
+  rectInterSectiontest(area) {
+    const myarea = {
+      left: (this.area.left + this.spx) * this.isvgscale,
+      right: (this.area.right + this.spx) * this.isvgscale,
+      top: (this.area.top + this.spy) * this.isvgscale,
+      bottom: (this.area.bottom + this.spy) * this.isvgscale
+    }
+    if (myarea.left === myarea.right || myarea.top === myarea.bottom)
+      return false
+
+    if (area.left >= myarea.right || myarea.left >= area.right) return false
+
+    if (area.top >= myarea.bottom || myarea.top >= area.bottom) return false
+    return true
+  }
+
+  pointTest(point) {
+    const px = point.x - this.spx
+    const py = point.y - this.spy
+    if (this.ref.current && this.svgref.current) {
+      const sp = this.svgref.current.createSVGPoint() // it say it is deprecated, but chrome does not support the alternative
+      sp.x = px
+      sp.y = py
+      return this.ref.current.isPointInFill(sp)
+    } else return false
   }
 
   addPoint(x, y) {
@@ -283,6 +264,55 @@ export class MagicObject {
     this.pathdirty = false
   }
 
+  findDeleteBoxPos() {
+    // first identify, the area of the right edge
+    if (this.points.length === 0) return null
+    let left = this.points[0].x
+    let right = this.points[0].x
+    for (const pidx in this.points) {
+      const point = this.points[pidx]
+      left = Math.min(left, point.x)
+      right = Math.max(right, point.x)
+    }
+    // ok we like to place the box with in 20 % of the left side
+    left += (right - left) * 0.8
+    let selpoint = null
+    let top = 100000000
+    let bottom = -10000000
+    for (const pidx in this.points) {
+      const point = this.points[pidx]
+      if (point.x >= left && point.x <= right) {
+        top = Math.min(top, point.y)
+        bottom = Math.max(bottom, point.y)
+      }
+    }
+
+    top += (bottom - top) * 0.8
+    let selweight = -1
+    for (const pidx in this.points) {
+      const point = this.points[pidx]
+      if (
+        point.x >= left &&
+        point.x <= right &&
+        point.y >= top &&
+        point.y <= bottom
+      ) {
+        const weight =
+          (point.x - left) / (right - left) + (point.y - top) / (bottom - top)
+        if (!selpoint) selpoint = point
+        else if (weight > selweight) {
+          selpoint = point
+          selweight = weight
+        }
+      }
+    }
+    if (!selpoint) {
+      console.log('no point for delete box?')
+      return null
+    }
+    return { x: selpoint.x * this.isvgscale, y: selpoint.y * this.isvgscale }
+  }
+
   getRenderObject(args) {
     if (this.pathdirty || !this.jsxobj) {
       if (this.pathdirty) this.buildPath()
@@ -320,16 +350,14 @@ export class MagicObject {
         pointerEvents: 'none' // deactive this option , if you like to pick an svg element by cursor for debugging
       }
       this.jsxobj = (
-        <svg viewBox={viewbox} style={style}>
+        <svg viewBox={viewbox} style={style} ref={this.svgref}>
           {this.svgpath && (
             <path
               d={this.svgpath}
+              ref={this.ref}
+              class='magicPath'
               stroke='#80ffff'
               strokeWidth={(this.mw * args.pixelwidth) / this.svgscale}
-              fill='#80ffff'
-              strokeDasharray='10, 10'
-              strokeLinecap='round'
-              fillOpacity='0.5'
             ></path>
           )}
         </svg>
@@ -429,9 +457,12 @@ export class ImageHelper extends Component {
 
     if (this.props.width) style.width = this.props.width + 'px'
     if (this.props.height) style.height = this.props.height + 'px'
+    let classname = ''
+    if (this.props.selected) classname += 'selectedImage'
 
     return (
       <img
+        className={classname}
         src={this.props.url}
         alt={this.props.uuid}
         style={style}
@@ -774,25 +805,62 @@ export class Blackboard extends Component {
     return { drawversion: state.drawversion + 1 }
   }
 
+  turnOffMagic() {
+    if (this.magicobject) {
+      this.magicobject.cleanup()
+      // TODO cleanup magicobject
+      delete this.magicobject
+    }
+  }
+
+  getMagicObjIds() {
+    if (this.magicobject) return this.magicobject.getObjIds()
+    else return []
+  }
+
   startMagicPath(x, y) {
     // TODO remove old selections
+    this.turnOffMagic()
     this.magicobject = new MagicObject()
     this.magicobject.addPoint(x, y)
     this.isdirty = true
   }
 
   addToMagicPath(x, y) {
+    const now = Date.now()
     if (this.magicobject) {
       this.magicobject.addPoint(x, y)
       this.isdirty = true
+      if (this.toolbox() && now - this.lastrpd > 200) {
+        // this is quite expensive, do not do this during a redraw, but this is never a redraw
+        this.lastrpd = now
+        this.toolbox().reportDrawPos(
+          x,
+          y - this.state.curscrollpos - this.state.scrolloffset
+        )
+      }
     }
   }
 
-  finishMagic() {
+  finishMagic(setdeletepos) {
     // TODO selection stuff
-    if (this.magicobject) this.isdirty = true
-    delete this.magicobject
-    return 0
+    if (this.magicobject) {
+      this.isdirty = true
+      const magicobj = this.magicobject
+      setTimeout(() => {
+        const objects = this.work.objects
+        if (magicobj) {
+          for (const id in objects) {
+            const obj = objects[id]
+            magicobj.testAndSelectDrawObject(obj)
+          }
+          const deletepos = magicobj.findDeleteBoxPos()
+          setdeletepos(deletepos)
+        }
+        this.isdirty = true
+      }, 0)
+      // delete this.magicobject
+    }
   }
 
   startPath(time, objnum, curclient, x, y, type, color, width, pressure) {
@@ -1195,6 +1263,7 @@ export class Blackboard extends Component {
       } else if (el.type === 'image') {
         rendercache = (
           <ImageHelper
+            selected={el.isSelected()}
             x={el.posx * this.props.bbwidth}
             y={el.posy * this.props.bbwidth}
             zIndex={el.preview ? 10 : 50}
@@ -1493,11 +1562,19 @@ export class BlackboardNotepad extends Component {
   toolbox() {
     if (this.props.notepadscreen && this.props.notepadscreen.toolbox)
       return this.props.notepadscreen.toolbox.current
+    return null
   }
 
   confirmbox() {
     if (this.props.notepadscreen && this.props.notepadscreen.confirmbox)
       return this.props.notepadscreen.confirmbox.current
+    return null
+  }
+
+  deletebox() {
+    if (this.props.notepadscreen && this.props.notepadscreen.deletebox)
+      return this.props.notepadscreen.deletebox.current
+    return null
   }
 
   curPictAspect() {
@@ -1685,6 +1762,7 @@ export class BlackboardNotepad extends Component {
 
     if (this.magictool && this.addpictmode === 0) {
       this.magicpointerid = event.pointerId
+      if (this.deletebox()) this.deletebox().deactivate()
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.startMagicPath(
           pos.x / this.props.bbwidth,
@@ -1816,21 +1894,23 @@ export class BlackboardNotepad extends Component {
     this.setState((state) => {
       const size = this.calcAddPictSize(state, pos)
       if (reactivate) {
-        this.confirmbox().reactivate({
-          x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
-          y:
-            state.addpictposy +
-            /* this.state.addpictheight */ size.ny -
-            this.getCalcScrollPos()
-        })
+        if (this.confirmbox())
+          this.confirmbox().reactivate({
+            x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
+            y:
+              state.addpictposy +
+              /* this.state.addpictheight */ size.ny -
+              this.getCalcScrollPos()
+          })
       } else {
-        this.confirmbox().setPosition({
-          x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
-          y:
-            state.addpictposy +
-            /* this.state.addpictheight */ size.ny -
-            this.getCalcScrollPos()
-        })
+        if (this.confirmbox())
+          this.confirmbox().setPosition({
+            x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
+            y:
+              state.addpictposy +
+              /* this.state.addpictheight */ size.ny -
+              this.getCalcScrollPos()
+          })
       }
       return { addpictwidth: size.nx, addpictheight: size.ny }
     })
@@ -2085,7 +2165,7 @@ export class BlackboardNotepad extends Component {
     }
   }
 
-  pointerup(event) {
+  async pointerup(event) {
     if (event.button === 2 && event.pointerType === 'mouse') {
       this.rightup(event)
       return
@@ -2119,11 +2199,16 @@ export class BlackboardNotepad extends Component {
         'cY',
         event.clientY
       )
-      if (this.realblackboard && this.realblackboard.current) {
-        const selected = this.realblackboard.current.finishMagic()
-        if (selected !== 0) console.log('we have selected objects')
-      }
       delete this.magicpointerid
+      if (this.realblackboard && this.realblackboard.current) {
+        await this.realblackboard.current.finishMagic((pos) => {
+          if (this.deletebox())
+            this.deletebox().reactivate({
+              x: pos.x,
+              y: pos.y - this.getCalcScrollPos()
+            })
+        })
+      }
     } else if (event.pointerId in this.pointerdraw === true) {
       const objid = this.pointerobjids[event.pointerId]
       console.log(
@@ -2278,6 +2363,14 @@ export class BlackboardNotepad extends Component {
     }
   }
 
+  deselectOldTool() {
+    if (this.magictool && this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.turnOffMagic()
+    if (this.deletebox()) this.deletebox().deactivate()
+    this.laserpointer = false
+    this.magictool = false
+  }
+
   setMenuMode() {
     this.saveLastCursorState()
     if (this.realblackboard && this.realblackboard.current)
@@ -2286,8 +2379,34 @@ export class BlackboardNotepad extends Component {
       })
   }
 
+  deleteMagicButtonPressed() {
+    if (this.magictool && this.realblackboard && this.realblackboard.current) {
+      const magicobjids = this.realblackboard.current.getMagicObjIds()
+      console.log('delete button pressed', magicobjids)
+      for (let pos = 0; pos < magicobjids.length; pos++) {
+        const element = magicobjids[pos]
+        console.log(
+          'delete request',
+          element.objid,
+          element.storagenum,
+          element
+        )
+        this.outgodispatcher.deleteObject(
+          null,
+          element.objid,
+          null,
+          element.storagenum
+        )
+      }
+    }
+  }
+
   setMagicTool() {
-    this.laserpointer = false
+    this.deselectOldTool()
+    this.undostack = []
+    if (this.toolbox()) {
+      this.toolbox().setCanUndo(false)
+    }
     this.magictool = true
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
@@ -2296,8 +2415,7 @@ export class BlackboardNotepad extends Component {
   }
 
   setPenTool(color, size) {
-    this.laserpointer = false
-    this.magictool = false
+    this.deselectOldTool()
     this.tooltype = 0
     this.toolsize = size
     this.toolcolor = color
@@ -2311,8 +2429,7 @@ export class BlackboardNotepad extends Component {
   }
 
   setMarkerTool(color, size) {
-    this.laserpointer = false
-    this.magictool = false
+    this.deselectOldTool()
     this.tooltype = 1
     this.toolsize = size
     this.toolcolor = color
@@ -2327,8 +2444,7 @@ export class BlackboardNotepad extends Component {
   }
 
   setEraserTool(size) {
-    this.laserpointer = false
-    this.magictool = false
+    this.deselectOldTool()
     this.tooltype = 2
     this.toolsize = size
     if (this.realblackboard && this.realblackboard.current)

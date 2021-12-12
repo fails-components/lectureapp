@@ -19,7 +19,7 @@
 
 import React, { Component } from 'react'
 import { Blackboard, BlackboardNotepad } from './blackboard.js'
-import { ToolBox, ConfirmBox } from './toolbox.js'
+import { ToolBox, ConfirmBox, DeleteBox } from './toolbox.js'
 
 export class NoteScreenBase extends Component {
   constructor(props) {
@@ -37,6 +37,7 @@ export class NoteScreenBase extends Component {
     this.blackboard = React.createRef()
     this.toolbox = React.createRef()
     this.confirmbox = React.createRef()
+    this.deletebox = React.createRef()
 
     this.running = false
 
@@ -311,6 +312,14 @@ export class NoteScreenBase extends Component {
         {this.props.isnotepad && (
           <ConfirmBox
             ref={this.confirmbox}
+            bbwidth={this.state.bbwidth}
+            bbheight={this.state.bbheight}
+            notepad={this}
+          />
+        )}
+        {this.props.isnotepad && (
+          <DeleteBox
+            ref={this.deletebox}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
             notepad={this}

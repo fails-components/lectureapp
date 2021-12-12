@@ -625,7 +625,6 @@ export class ToolBox extends Component {
         tooltipOptions={ttopts}
         key={8}
         onClick={(e) => this.selectTool(8)}
-        disabled
         className={selbuttonclass(this.state.selectedButtonid === 8)}
       />
     )
@@ -1307,6 +1306,106 @@ export class ConfirmBox extends Component {
           <Fragment>
             <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
               {okcancel}
+            </div>
+          </Fragment>
+        )}
+      </div>
+    )
+  }
+}
+
+export class DeleteBox extends Component {
+  constructor(props) {
+    super(props)
+
+    this.state = { activated: false }
+
+    this.moveButtonRef = React.createRef()
+
+    this.state.posx = 0
+    this.state.posy = 0
+
+    this.deleteButtonPressed = this.deleteButtonPressed.bind(this)
+  }
+
+  blackboard() {
+    if (this.props.notepad && this.props.notepad.blackboard)
+      return this.props.notepad.blackboard.current
+  }
+
+  reactivate(position) {
+    this.setState({
+      posx: position.x,
+      posy: position.y,
+      activated: true,
+      activationTime: Date.now()
+    })
+  }
+
+  deactivate() {
+    this.setState({
+      activated: false,
+      activationTime: null
+    })
+  }
+
+  setPosition(position) {
+    this.setState({
+      posx: position.x,
+      posy: position.y
+    })
+  }
+
+  deleteButtonPressed() {
+    this.blackboard().deleteMagicButtonPressed()
+    this.setState({ activated: false })
+  }
+
+  render() {
+    let buttons = []
+
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top',
+      showDelay: 1000
+    }
+
+    const deletebutton = (
+      <Button
+        icon='pi pi-trash'
+        key={1}
+        tooltip='Delete selected objects'
+        tooltipOptions={ttopts}
+        onClick={(e) => {
+          if (Date.now() - this.state.activationTime > 1000)
+            this.deleteButtonPressed()
+        }}
+        className='p-button-danger p-button-raised p-button-rounded tbChild'
+      />
+    )
+
+    buttons.push(deletebutton)
+
+    buttons = buttons.map((ele, it) => (
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
+        {ele}
+      </div>
+    ))
+
+    return (
+      <div
+        className='toolboxStatic'
+        style={{
+          position: 'absolute',
+          top: this.state.posy * this.props.bbwidth + 'px',
+          left: this.state.posx * this.props.bbwidth + 'px',
+          zIndex: 200
+        }}
+      >
+        {this.state.activated && (
+          <Fragment>
+            <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+              {buttons}
             </div>
           </Fragment>
         )}
