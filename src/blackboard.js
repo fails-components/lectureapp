@@ -2382,7 +2382,7 @@ export class BlackboardNotepad extends Component {
   deleteMagicButtonPressed() {
     if (this.magictool && this.realblackboard && this.realblackboard.current) {
       const magicobjids = this.realblackboard.current.getMagicObjIds()
-      console.log('delete button pressed', magicobjids)
+      this.realblackboard.current.turnOffMagic()
       for (let pos = 0; pos < magicobjids.length; pos++) {
         const element = magicobjids[pos]
         console.log(
