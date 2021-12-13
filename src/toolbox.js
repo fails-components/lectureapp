@@ -1377,7 +1377,7 @@ export class DeleteBox extends Component {
         tooltip='Delete selected objects'
         tooltipOptions={ttopts}
         onClick={(e) => {
-          if (Date.now() - this.state.activationTime > 1000)
+          if (Date.now() - this.state.activationTime > 500)
             this.deleteButtonPressed()
         }}
         className='p-button-danger p-button-raised p-button-rounded tbChild'
