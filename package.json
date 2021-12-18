@@ -1,6 +1,6 @@
 {
   "name": "@fails-components/lectureapp",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "description": "Lecture app of fails",
   "author": "Marten Richter",
   "license": "AGPL-3.0-or-later",
@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@fails-components/config": ">=0.0.5",
-    "@fails-components/data": ">=0.0.11",
+    "@fails-components/data": ">=0.0.13",
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/react-fontawesome": "^0.1.16",

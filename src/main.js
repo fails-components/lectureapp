@@ -187,7 +187,7 @@ class ChannelEdit extends Component {
       return <React.Fragment>Waiting for data...</React.Fragment>
     const channels = this.props.channelinfo.map((el, ind) => {
       let type = 'Unknown'
-      if (el.type === 'notebooks') type = 'Writing'
+      if (el.type === 'notebooks') type = 'Note pile'
       const notescreens = el.notescreens.map((el2) => {
         const index = this.props.availscreens.findIndex(
           (el3) => el3.uuid === el2.uuid
@@ -343,6 +343,39 @@ export class FailsBasis extends Component {
     this.state.reloading = true
 
     this.screenm = new ScreenManager()
+
+    this.periodicStatusCheck = this.periodicStatusCheck.bind(this)
+
+    window.setInterval(this.periodicStatusCheck, 1000)
+  }
+
+  periodicStatusCheck() {
+    const token = this.decodedToken()
+    let expired = true
+    if (token && token.exp && token.exp - Date.now() / 1000 > 0) expired = false
+    if (this.state.tokenexpired !== expired)
+      this.setState({ tokenexpired: expired })
+  }
+
+  expiredTokenDialog() {
+    return (
+      <Dialog
+        footer=''
+        style={{ width: '30vw' }}
+        closeOnEscape={false}
+        closable={false}
+        showHeader={false}
+        modal
+        header='Session token time out'
+        visible={this.state.tokenexpired}
+      >
+        <p>
+          {' '}
+          Your authentication token expired! <br></br> You have to close the
+          window or tab and reopen Fails from your LMS!
+        </p>
+      </Dialog>
+    )
   }
 
   netSendSocket(command, data) {
@@ -1447,7 +1480,8 @@ export class FailsBoard extends FailsBasis {
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
         {this.screenOverlay()}
-        {this.loadDataDialog()}
+        {!this.state.tokenexpired && this.loadDataDialog()}
+        {this.expiredTokenDialog()}
         <NoteScreenBase
           arrangebuttoncallback={this.arrangebuttonCallback}
           netsend={
@@ -1846,6 +1880,7 @@ export class FailsScreen extends FailsBasis {
       <div onPointerMove={pointermove}>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
         {this.screenOverlay()}
+        {this.expiredTokenDialog()}
         <NoteScreenBase
           isnotepad={false}
           showscreennumber={this.state.showscreennumber}
@@ -2108,7 +2143,8 @@ export class FailsNotes extends FailsBasis {
     return (
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
-        {this.loadDataDialog()}
+        {!this.state.tokenexpired && this.loadDataDialog()}
+        {this.expiredTokenDialog()}
         <OverlayPanel
           ref={(el) => {
             this.ossinfo = el
