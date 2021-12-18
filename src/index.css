@@ -76,6 +76,7 @@ code {
   stroke-dasharray: 10, 10;
   stroke-linecap: round;
   fill-opacity: 0.5;
+  cursor: grab;
 }
 
 .selectedPath {

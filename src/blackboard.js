@@ -95,12 +95,19 @@ export class SVGWriting2 extends Component {
     const sx = firstpoint ? firstpoint.x : 0
     const sy = firstpoint ? firstpoint.y : 0
 
+    let ox = 0
+    let oy = 0
+    if (glyph.preshift) {
+      ox = glyph.preshift.x
+      oy = glyph.preshift.y
+    }
     const style = {
       position: 'absolute',
       zIndex: this.props.zIndex,
       left:
         Math.round(
-          ((glyph.area.left + sx) * this.props.pixelwidth) / glyph.svgscale
+          ((glyph.area.left + sx) * this.props.pixelwidth) / glyph.svgscale +
+            ox * this.props.pixelwidth
         ) + 'px',
       width:
         Math.round(
@@ -109,7 +116,8 @@ export class SVGWriting2 extends Component {
         ) + 'px',
       top:
         Math.round(
-          ((glyph.area.top + sy) * this.props.pixelwidth) / glyph.svgscale
+          ((glyph.area.top + sy) * this.props.pixelwidth) / glyph.svgscale +
+            oy * this.props.pixelwidth
         ) + 'px',
       height:
         Math.round(
@@ -143,17 +151,29 @@ export class SVGWriting2 extends Component {
 }
 
 export class MagicObject {
-  constructor() {
+  constructor(args) {
     this.points = []
     this.pathdirty = true
     this.svgscale = 2000 // should be kept constant
     this.isvgscale = 1 / this.svgscale
     this.mw = 5
+    this.changemagic = args.changemagic
+    this.datatarget = args.datatarget
+
+    this.bbwidth = 2000
 
     this.ref = React.createRef()
     this.svgref = React.createRef()
 
     this.selectedObj = []
+
+    this.pointerdown = this.pointerdown.bind(this)
+    this.pointerup = this.pointerup.bind(this)
+    this.pointermove = this.pointermove.bind(this)
+  }
+
+  activateMove() {
+    this.moveison = true
   }
 
   testAndSelectDrawObject(obj) {
@@ -310,12 +330,98 @@ export class MagicObject {
       console.log('no point for delete box?')
       return null
     }
-    return { x: selpoint.x * this.isvgscale, y: selpoint.y * this.isvgscale }
+    let ox = 0
+    let oy = 0
+    if (this.preshift && this.preshift.x && this.preshift.y) {
+      ox = this.preshift.x
+      oy = this.preshift.y
+    }
+    return {
+      x: ox + selpoint.x * this.isvgscale,
+      y: oy + selpoint.y * this.isvgscale
+    }
+  }
+
+  pointerdown(event) {
+    if (!this.moveison) return
+    console.log('pointerdown magic hi')
+    if (event && event.target && event.target.id !== 'theMagicPath') return // only if the path is hit, we will proceed, says joda
+    if (this.svgref.current) {
+      this.svgref.current.setPointerCapture(event.pointerId)
+    }
+    this.movemodeactiv = true
+    this.moveid = event.pointerId
+    this.movestartx = event.clientX
+    this.movestarty = event.clientY
+    this.lastmovetime = Date.now()
+    event.stopPropagation()
+  }
+
+  pointermove(event) {
+    if (!this.moveison) return
+    // by pass for better smoothness
+    const now = Date.now()
+    if (
+      this.movemodeactiv &&
+      this.moveid === event.pointerId &&
+      now - this.lastmovetime > 16
+    ) {
+      this.updatePreShift(
+        (event.clientX - this.movestartx) / this.bbwidth,
+        (event.clientY - this.movestarty) / this.bbwidth
+      )
+      this.lastmovetime = now
+    }
+    event.stopPropagation()
+  }
+
+  pointerup(event) {
+    if (!this.moveison) return
+    if (this.movemodeactiv && this.moveid === event.pointerId) {
+      if (event.clientY)
+        this.updatePreShift(
+          (event.clientX - this.movestartx) / this.bbwidth,
+          (event.clientY - this.movestarty) / this.bbwidth,
+          true
+        )
+      this.movemodeactiv = false
+      this.commitPreShift(this.datatarget)
+    }
+    event.stopPropagation()
+  }
+
+  updatePreShift(x, y, nochange) {
+    this.pathdirty = true
+    this.preshift = { x: x, y: y }
+    this.selectedObj.forEach((el) => el.setPreshift(this.preshift))
+    if (!nochange) this.changemagic()
+  }
+
+  commitPreShift() {
+    this.points.forEach((el) => {
+      el.x += this.preshift.x * this.svgscale
+      el.y += this.preshift.y * this.svgscale
+    })
+    this.spx += this.preshift.x * this.svgscale
+    this.spy += this.preshift.y * this.svgscale
+
+    this.pathdirty = true
+    this.selectedObj.forEach((el) => el.commitPreshift(this.datatarget))
+    this.preshift = null
+    this.changemagic()
   }
 
   getRenderObject(args) {
     if (this.pathdirty || !this.jsxobj) {
       if (this.pathdirty) this.buildPath()
+      let ox = 0
+      let oy = 0
+      if (args.pixelwidth) this.bbwidth = args.pixelwidth
+      if (this.preshift && this.preshift.x && this.preshift.y) {
+        ox = this.preshift.x * this.svgscale
+        oy = this.preshift.y * this.svgscale
+      }
+
       const viewbox =
         Math.round(this.area.left) +
         ' ' +
@@ -331,7 +437,7 @@ export class MagicObject {
         zIndex: args.zIndex,
         left:
           Math.round(
-            ((this.area.left + this.spx) * args.pixelwidth) / this.svgscale
+            ((this.area.left + this.spx + ox) * args.pixelwidth) / this.svgscale
           ) + 'px',
         width:
           Math.round(
@@ -340,22 +446,30 @@ export class MagicObject {
           ) + 'px',
         top:
           Math.round(
-            ((this.area.top + this.spy) * args.pixelwidth) / this.svgscale
+            ((this.area.top + this.spy + oy) * args.pixelwidth) / this.svgscale
           ) + 'px',
         height:
           Math.round(
             ((this.area.bottom - this.area.top) * args.pixelwidth) /
               this.svgscale
           ) + 'px',
-        pointerEvents: 'none' // deactive this option , if you like to pick an svg element by cursor for debugging
+        pointerEvents: 'fill' // deactive this option , if you like to pick an svg element by cursor for debugging
       }
       this.jsxobj = (
-        <svg viewBox={viewbox} style={style} ref={this.svgref}>
+        <svg
+          viewBox={viewbox}
+          style={style}
+          ref={this.svgref}
+          onPointerDown={this.pointerdown}
+          onPointerMove={this.pointermove}
+          onPointerUp={this.pointerup}
+        >
           {this.svgpath && (
             <path
               d={this.svgpath}
               ref={this.ref}
-              class='magicPath'
+              id='theMagicPath'
+              className='magicPath'
               stroke='#80ffff'
               strokeWidth={(this.mw * args.pixelwidth) / this.svgscale}
             ></path>
@@ -722,8 +836,18 @@ export class Blackboard extends Component {
     this.renderFilter = this.renderFilter.bind(this)
     console.log('Blackboard start up completed!')
     this.updateObjects = this.updateObjects.bind(this)
+    this.changeMagic = this.changeMagic.bind(this)
     this.updateObjectsId = setInterval(this.updateObjects, 40)
     this.isdirty = false
+  }
+
+  changeMagic() {
+    this.isdirty = true
+    if (this.magicobject) {
+      const deletepos = this.magicobject.findDeleteBoxPos()
+      if (deletepos && this.currentSetDeletePos)
+        this.currentSetDeletePos(deletepos)
+    }
   }
 
   updateObjects() {
@@ -818,10 +942,13 @@ export class Blackboard extends Component {
     else return []
   }
 
-  startMagicPath(x, y) {
+  startMagicPath(x, y, datatarget) {
     // TODO remove old selections
     this.turnOffMagic()
-    this.magicobject = new MagicObject()
+    this.magicobject = new MagicObject({
+      changemagic: this.changeMagic,
+      datatarget: datatarget
+    })
     this.magicobject.addPoint(x, y)
     this.isdirty = true
   }
@@ -850,12 +977,19 @@ export class Blackboard extends Component {
       setTimeout(() => {
         const objects = this.work.objects
         if (magicobj) {
+          let selected = false
           for (const id in objects) {
             const obj = objects[id]
-            magicobj.testAndSelectDrawObject(obj)
+            selected = magicobj.testAndSelectDrawObject(obj) || selected
           }
-          const deletepos = magicobj.findDeleteBoxPos()
-          setdeletepos(deletepos)
+          if (selected) {
+            const deletepos = magicobj.findDeleteBoxPos()
+            this.currentSetDeletePos = setdeletepos
+            if (deletepos) setdeletepos(deletepos)
+            magicobj.activateMove()
+          } else {
+            this.turnOffMagic()
+          }
         }
         this.isdirty = true
       }, 0)
@@ -1261,11 +1395,17 @@ export class Blackboard extends Component {
           ></SVGWriting2>
         )
       } else if (el.type === 'image') {
+        let ox = 0
+        let oy = 0
+        if (el.preshift) {
+          ox = el.preshift.x
+          oy = el.preshift.y
+        }
         rendercache = (
           <ImageHelper
             selected={el.isSelected()}
-            x={el.posx * this.props.bbwidth}
-            y={el.posy * this.props.bbwidth}
+            x={(el.posx + ox) * this.props.bbwidth}
+            y={(el.posy + oy) * this.props.bbwidth}
             zIndex={el.preview ? 10 : 50}
             width={el.width * this.props.bbwidth}
             height={el.height * this.props.bbwidth}
@@ -1489,6 +1629,7 @@ export class BlackboardNotepad extends Component {
     this.calcAddPictSize = this.calcAddPictSize.bind(this)
     this.processEvent = this.processEvent.bind(this)
     this.processPointerReject = this.processPointerReject.bind(this)
+    this.recycleObjId = this.recycleObjId.bind(this)
 
     this.pointerRejectInterval = setInterval(this.processPointerReject, 100)
 
@@ -1603,6 +1744,18 @@ export class BlackboardNotepad extends Component {
             this.clientId +
               this.pointerobjnum[pointerId].toString(36) +
               pointerId
+          )
+          .substr(0, 8)
+    )
+    return res
+  }
+
+  recycleObjId(oldid) {
+    const res = parseInt(
+      '0x' +
+        new SHA1()
+          .hex(
+            this.clientId + oldid + Math.random().toString(36).substr(2, 9) // we need something random
           )
           .substr(0, 8)
     )
@@ -1766,7 +1919,18 @@ export class BlackboardNotepad extends Component {
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.startMagicPath(
           pos.x / this.props.bbwidth,
-          pos.y / this.props.bbwidth + this.getCalcScrollPos()
+          pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+          {
+            // datatarget
+            sink: this.outgodispatcher,
+            newobjid: (oldid) => this.recycleObjId(oldid),
+            deselect: () => {
+              if (this.realblackboard && this.realblackboard.current)
+                this.realblackboard.current.turnOffMagic()
+
+              if (this.deletebox()) this.deletebox().deactivate()
+            }
+          }
         )
       return
     }
@@ -2485,6 +2649,7 @@ export class BlackboardNotepad extends Component {
   pictButtonPressed() {
     this.setblocked(true)
     this.saveLastCursorState()
+    this.deselectOldTool()
     this.props.notepadscreen.pictButtonPressed()
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
