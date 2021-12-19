@@ -11,11 +11,13 @@ After the lecture is completed a pdf can be downloaded at anytime.
 
 FAILS components is completely integrated using LTI into LMS such as Moodle.
 
-It is the reincarnation of a system, we are using at our theoretical physics institute for several years and currently under heavy *initial development*.
+It is the reincarnation of a system, we are using at our theoretical physics institute for several years. Now *initial development* is almost complete, and the software is tested in current winter term by few docents.
 
 The system is written with containerization and scalability in mind.
 
-Currently it is advided to **not use** FAILS in a productive environment.
+Currently it is advised to **not use** FAILS in a large productive environment.
+However, you can **use** it for small groups of lectures for **initial tests**.
+Feedback on error/issues is appreciated via githubs functions.
 
 FAILS is licensed via GNU Affero GPL version 3.0 
 
