@@ -1504,16 +1504,16 @@ export class Blackboard extends Component {
 
     const ystart = this.calcCurpos()
     const yend = this.calcCurpos() + this.scrollheight()
-
     return (
       <div
+        className={this.props.backclass}
         style={{
-          backgroundColor: this.props.backcolor,
           width: '100%',
           height: '100%',
           cursor: cursor,
           overscrollBehavior: 'none',
-          touchAction: 'none'
+          touchAction: 'none',
+          backgroundPosition: '0px ' + stylespan.top
         }}
       >
         {this.state.bgpdf && (
@@ -2831,6 +2831,7 @@ export class BlackboardNotepad extends Component {
         )}
         <Blackboard
           backcolor={this.props.backcolor}
+          backclass={this.props.backclass}
           bbwidth={this.props.bbwidth}
           addpict={addpict}
           bbheight={this.props.bbheight}

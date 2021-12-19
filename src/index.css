@@ -94,3 +94,25 @@ code {
   stroke-width: 3;
   border-style: dashed;
 }
+
+.blackboardBlackNote {
+  background-color: #505050;
+  opacity: 1.0;
+  background-image: radial-gradient(#696969 0.8px, #505050 0.8px);
+  background-size: 30px 30px;
+}
+
+.blackboardWhiteNote {
+  background-color: #efefef;
+  opacity: 1.0;
+  background-image: radial-gradient( #c0c0c0  0.8px,#efefef 0.8px);
+  background-size: 30px 30px; 
+}
+
+.blackboardBlack {
+  background-color: #505050;
+}
+
+.blackboardWhite {
+  background-color: #efefef;
+}

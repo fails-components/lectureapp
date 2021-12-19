@@ -1504,6 +1504,13 @@ export class FailsBoard extends FailsBasis {
               ? '#505050'
               : '#efefef'
           }
+          backclass={
+            this.state.bgpdf
+              ? ''
+              : blackbackground
+              ? 'blackboardBlackNote'
+              : 'blackboardWhiteNote'
+          }
           screennumbercolor={blackbackground ? '#FFFFFF' : '#000000'}
           screennumber={this.state.notescreenid}
           startpoll={this.onStartPoll}
@@ -1892,6 +1899,13 @@ export class FailsScreen extends FailsBasis {
               ? '#505050'
               : '#efefef'
           }
+          backclass={
+            this.state.bgpdf
+              ? ''
+              : this.state.blackbackground
+              ? 'blackboardBlack'
+              : 'blackboardWhite'
+          }
           screennumbercolor={
             this.state.blackbackground && this.state.casttoscreens
               ? '#FFFFFF'
@@ -2174,6 +2188,13 @@ export class FailsNotes extends FailsBasis {
               : this.state.blackbackground
               ? '#505050'
               : '#efefef'
+          }
+          backclass={
+            this.state.bgpdf
+              ? ''
+              : this.state.blackbackground
+              ? 'blackboardBlack'
+              : 'blackboardWhite'
           }
           screennumbercolor={
             this.state.blackbackground && this.state.casttoscreens

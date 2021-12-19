@@ -692,12 +692,12 @@ export class ToolBox extends Component {
     maintools.push(markerbutton)
     maintools.push(eraserbutton)
     maintools.push(magicbutton)
-    maintools.push(laserbutton)
-    maintools.push(scrollbutton)
     if (this.state.canundo) maintools.push(undobutton)
-    maintools.push(endbutton)
     maintools.push(pictbutton)
+    maintools.push(laserbutton)
     maintools.push(pollbutton)
+    maintools.push(endbutton)
+    maintools.push(scrollbutton)
 
     maintools = maintools.map((ele, it) => (
       <div className='p-mr-2 p-mb-2' id={it} key={it}>
@@ -954,7 +954,6 @@ export class ToolBox extends Component {
     settingswheel.push(fsbutton)
     settingswheel.push(casttoscreenbutton)
     if (!mainstate.bgpdf) settingswheel.push(backbwbutton)
-    settingswheel.push(infobutton)
     settingswheel.push(touchonbutton)
     if (this.state.touchtool) {
       // settingswheel2.push(touchonbutton)
@@ -970,6 +969,7 @@ export class ToolBox extends Component {
         settingswheel3.push(touchposblbutton)
       }
     }
+    settingswheel.push(infobutton)
 
     let setwheelpcpos = false
     if (this.state.selectedButtonid === 1) {

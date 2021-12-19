@@ -126,12 +126,6 @@ export class NoteScreenBase extends Component {
     // console.log(this.blackboard.current)
     if (this.blackboard && this.blackboard.current)
       this.blackboard.current.setScrollOffset(scrolloffset)
-    if (this.backgroundbw) this.setBackgroundColor(this.backcolornormal)
-    else this.setBackgroundColor(this.backcolorwhite)
-  }
-
-  setBackgroundColor(bgcolor) {
-    this.setState({ backgroundColor: bgcolor })
   }
 
   componentWillUnmount() {
@@ -277,6 +271,7 @@ export class NoteScreenBase extends Component {
           <Blackboard
             ref={this.blackboard}
             backcolor={this.props.backgroundcolor}
+            backclass={this.props.backclass}
             notepadscreen={this}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
@@ -289,6 +284,7 @@ export class NoteScreenBase extends Component {
           <BlackboardNotepad
             ref={this.blackboard}
             backcolor={this.props.backgroundcolor}
+            backclass={this.props.backclass}
             notepadscreen={this}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
