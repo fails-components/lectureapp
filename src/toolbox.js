@@ -17,6 +17,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 import React, { Component, Fragment } from 'react'
+import failsLogo from './logo/logo2.svg'
 import { Button } from 'primereact/button'
 import { OverlayPanel } from 'primereact/overlaypanel'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -29,7 +30,6 @@ import {
   faArrowsAltV as faUpdown,
   faBars,
   faAdjust,
-  faInfo,
   faUndoAlt
 } from '@fortawesome/free-solid-svg-icons'
 import {
@@ -49,7 +49,8 @@ import {
   fiWristBottomLeft,
   fiMagicwand,
   fiTouchOn,
-  fiTouchOff
+  fiTouchOff,
+  fiFailsLogo
 } from './icons/icons.js'
 
 class ColorPickerButton2 extends Component {
@@ -787,7 +788,7 @@ export class ToolBox extends Component {
 
     const infobutton = (
       <Button
-        icon={<FontAwesomeIcon icon={faInfo} />}
+        icon={fiFailsLogo}
         tooltip='Info about fails'
         tooltipOptions={ttopts}
         key={5}
@@ -1096,17 +1097,30 @@ export class ToolBox extends Component {
           }}
           showCloseIcon
         >
-          <h4>
-            Fancy automated internet lecture system (<b>FAILS </b>) - components{' '}
-          </h4>
-          <p>
-            Copyright (C) 2015-2017 (original FAILS), <br />
-            2021- (FAILS Components) Marten Richter <br /> <br />
-            Released under GNU Affero General Public License Version 3<br />{' '}
-            <br />
-            Build upon the shoulders of giants, see{' '}
-            <a href='/static/oss'> OSS attribution and licensing.</a>
-          </p>
+          <div className='p-grid'>
+            <div className='p-col-3'>
+              <img src={failsLogo} alt='FAILS logo' />
+            </div>
+            <div className='p-col-9'>
+              <h4>
+                <b>FAILS</b> - components <br />
+                (Fancy automated internet lecture system)
+              </h4>
+              Copyright (C) 2015-2017 (original FAILS), <br />
+              2021- (FAILS Components) Marten Richter
+            </div>
+          </div>
+          FAILS logo by chadkills <br />
+          Custom icons by icon_xpert786 <br /> <br />
+          Released under GNU Affero General Public License Version 3. <br />{' '}
+          <br />
+          Download the source code from{' '}
+          <a href='https://github.com/fails-components'>
+            https://github.com/fails-components
+          </a>{' '}
+          <br /> <br />
+          Build upon the shoulders of giants, see{' '}
+          <a href='/static/oss'> OSS attribution and licensing.</a>
         </OverlayPanel>
         {this.state.activated && (
           <Fragment>

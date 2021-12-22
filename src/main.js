@@ -31,16 +31,19 @@ import { Toast } from 'primereact/toast'
 import { confirmPopup } from 'primereact/confirmpopup'
 import { Steps } from 'primereact/steps'
 import { ListBox } from 'primereact/listbox'
+import { ProgressBar } from 'primereact/progressbar'
 import { Chart } from 'primereact/chart'
-import { ProgressSpinner } from 'primereact/progressspinner'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faDesktop, faBars, faInfo } from '@fortawesome/free-solid-svg-icons'
+import { faDesktop, faBars } from '@fortawesome/free-solid-svg-icons'
+import failsLogo from './logo/logo2.svg'
+import failsLogoLong from './logo/logo1.svg'
 import {
   fiAddNotepad,
   fiAddScreen,
   fiEyeOn,
+  fiFailsLogo,
   fiMoveToTop,
   fiScreenNumberOff,
   fiScreenNumberOn,
@@ -369,11 +372,18 @@ export class FailsBasis extends Component {
         header='Session token time out'
         visible={this.state.tokenexpired}
       >
-        <p>
-          {' '}
-          Your authentication token expired! <br></br> You have to close the
-          window or tab and reopen Fails from your LMS!
-        </p>
+        <div className='p-grid p-align-center'>
+          <div className='p-col-3'>
+            <img src={failsLogo} alt='FAILS logo' />
+          </div>
+          <div className='p-col-9'>
+            <p>
+              {' '}
+              Your authentication token expired! <br /> <br /> You have to close
+              the window or tab and reopen FAILS from your LMS!
+            </p>
+          </div>
+        </div>
       </Dialog>
     )
   }
@@ -620,12 +630,19 @@ export class FailsBasis extends Component {
       >
         <div className='p-grid p-align-center'>
           <div className='p-col-3'>
-            <ProgressSpinner />
+            <img src={failsLogo} alt='FAILS logo' />
           </div>
           <div className='p-col-9'>
-            Board data is currently loaded or server is disconnected.
-            <br />
-            Please be patient.
+            <div className='p-d-flex p-flex-column'>
+              <div className='p-mb-2 p-p-2'>
+                Board data is currently loaded or server is disconnected.
+                <br />
+                Please be patient. <br />
+              </div>
+              <div className='p-mb-2  p-p-2'>
+                <ProgressBar style={{ height: '6px' }} mode='indeterminate' />
+              </div>
+            </div>
           </div>
         </div>
       </Dialog>
@@ -819,7 +836,12 @@ class ShortcutsMessage extends React.Component {
       <React.Fragment>
         <span className='p-toast-message-icon pi pi-info-circle'></span>
         <div className='p-toast-message-text'>
-          <h2> Welcome!</h2>
+          <h2>
+            <div className='p-d-flex'>
+              <div className='p-mr-2'>{fiFailsLogo} </div>
+              <div className='p-mr-2'>Welcome!</div>
+            </div>
+          </h2>
           <h3> Common initial tasks</h3>
           <div className='p-grid p-align-center'>
             <div className='p-col-9'>Toggle fullscreen:</div>
@@ -1795,6 +1817,16 @@ export class FailsScreen extends FailsBasis {
   }
 
   renderScreenText() {
+    const failslogo = (
+      <div className='p-p-6'>
+        <img
+          src={failsLogoLong}
+          style={{ width: '20vw' }}
+          alt='FAILS logo long'
+        />
+      </div>
+    )
+
     let lectinfo = null
     if (this.state.lectdetail) {
       lectinfo = (
@@ -1829,6 +1861,8 @@ export class FailsScreen extends FailsBasis {
                 Start casting lecture!{' '}
               </React.Fragment>
             )}
+            <br />
+            {failslogo}
           </div>
         )
 
@@ -1839,6 +1873,7 @@ export class FailsScreen extends FailsBasis {
             {lectinfo && lectinfo}
             <h2> Screen disconnected: </h2>{' '}
             <h3>ID: {this.state.notescreenid + 1} </h3>
+            {failslogo}
           </div>
         )
 
@@ -1856,6 +1891,8 @@ export class FailsScreen extends FailsBasis {
                 Start casting lecture!{' '}
               </React.Fragment>
             )}{' '}
+            <br />
+            {failslogo}
           </div>
         )
 
@@ -2165,17 +2202,30 @@ export class FailsNotes extends FailsBasis {
           }}
           showCloseIcon
         >
-          <h4>
-            Fancy automated internet lecture system (<b>FAILS </b>) - components{' '}
-          </h4>
-          <p>
-            Copyright (C) 2015-2017 (original FAILS), <br />
-            2021- (FAILS Components) Marten Richter <br /> <br />
-            Released under GNU Affero General Public License Version 3<br />{' '}
-            <br />
-            Build upon the shoulders of giants, see{' '}
-            <a href='/static/oss'> OSS attribution and licensing.</a>
-          </p>
+          <div className='p-grid'>
+            <div className='p-col-3'>
+              <img src={failsLogo} alt='FAILS logo' />
+            </div>
+            <div className='p-col-9'>
+              <h4>
+                <b>FAILS</b> - components <br />
+                (Fancy automated internet lecture system)
+              </h4>
+              Copyright (C) 2015-2017 (original FAILS), <br />
+              2021- (FAILS Components) Marten Richter
+            </div>
+          </div>
+          FAILS logo by chadkills <br />
+          Custom icons by icon_xpert786 <br /> <br />
+          Released under GNU Affero General Public License Version 3. <br />{' '}
+          <br />
+          Download the source code from{' '}
+          <a href='https://github.com/fails-components'>
+            https://github.com/fails-components
+          </a>{' '}
+          <br /> <br />
+          Build upon the shoulders of giants, see{' '}
+          <a href='/static/oss'> OSS attribution and licensing.</a>
         </OverlayPanel>
 
         <NoteScreenBase
@@ -2267,7 +2317,7 @@ export class FailsNotes extends FailsBasis {
               aria-controls='overlay_panel'
             />
             <Button
-              icon={<FontAwesomeIcon icon={faInfo} />}
+              icon={fiFailsLogo}
               key={4}
               onClick={(e) => {
                 if (this.ossinfo) this.ossinfo.toggle(e)
