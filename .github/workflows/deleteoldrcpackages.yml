@@ -1,0 +1,26 @@
+name: Node.js Package deletion
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'next'
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Testing node.js package deletion workflow'
+
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/delete-package-versions@v2
+      with: 
+        package-name: 'lectureapp'
+        min-versions-to-keep: 10
+        delete-only-pre-release-versions: "true"
