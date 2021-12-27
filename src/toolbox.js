@@ -1075,7 +1075,6 @@ export class ToolBox extends Component {
     //  this.tmcolorwheel.filters = [this.BloomFilter];
     let tbclass = 'toolboxMove'
     if (this.state.scrollmodeactiv) tbclass = 'toolboxStatic'
-
     return (
       <div
         className={tbclass}
@@ -1110,6 +1109,7 @@ export class ToolBox extends Component {
               2021- (FAILS Components) Marten Richter
             </div>
           </div>
+          Lectureapp version {process.env.REACT_APP_VERSION} <br /> <br />
           FAILS logo by chadkills <br />
           Custom icons by icon_xpert786 <br /> <br />
           Released under GNU Affero General Public License Version 3. <br />{' '}

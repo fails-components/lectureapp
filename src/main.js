@@ -2215,6 +2215,7 @@ export class FailsNotes extends FailsBasis {
               2021- (FAILS Components) Marten Richter
             </div>
           </div>
+          Lectureapp version {process.env.REACT_APP_VERSION} <br /> <br />
           FAILS logo by chadkills <br />
           Custom icons by icon_xpert786 <br /> <br />
           Released under GNU Affero General Public License Version 3. <br />{' '}
