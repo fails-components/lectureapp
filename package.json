@@ -10,7 +10,7 @@
   },
   "homepage": "/static/lecture/",
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -19,8 +19,8 @@
     "eject": "react-scripts eject"
   },
   "dependencies": {
-    "@fails-components/config": "^1.0.0-rc.1",
-    "@fails-components/data": "^1.0.0-rc.0",
+    "@fails-components/config": "^1.0.0-rc.3",
+    "@fails-components/data": "^1.0.0-rc.2",
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/react-fontawesome": "^0.1.16",
