@@ -61,93 +61,8 @@ import jwt_decode from 'jwt-decode'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
+import { ScreenManager } from './screenmanager'
 // import screenfull from 'screenfull'
-
-class ScreenManager {
-  constructor() {
-    this.inited = false
-    this.nextotherscreenid = 0
-  }
-
-  isFullscreen() {
-    /* console.log(
-      'FS element',
-      document.fullscreenElement,
-      document.webkitFullscreenElement
-    ) */
-    if (document.fullscreenElement) return true
-    else if (document.webkitFullscreenElement) return true
-    return false
-  }
-
-  async exitFullscreen() {
-    if (document.exitFullscreen) await document.exitFullscreen()
-    else if (document.webkitExitFullscreen)
-      await document.webkitExitFullscreen()
-    else console.log('exit fullscreen failed')
-  }
-
-  async requestFullscreen() {
-    if (document.documentElement.requestFullscreen)
-      await document.documentElement.requestFullscreen()
-    else if (document.documentElement.webkitRequestFullscreen)
-      await document.documentElement.webkitRequestFullscreen()
-  }
-
-  async initializeScreenInfo() {
-    if ('getScreens' in window) {
-      // The Multi-Screen Window Placement API is supported.
-      console.log('multi screen supported!')
-      this.multiscreen = true
-      try {
-        this.screens = await window.getScreens()
-      } catch (error) {
-        console.log('getScreens fails', error)
-        this.screens = {}
-        this.screens.screens = window.screen
-      }
-    } else {
-      console.log('multi screen unsupported!')
-      this.multiscreen = false
-      this.screens = {}
-      this.screens.screens = [window.screen]
-      window.screen.isExtended = false
-    }
-    console.log('Available screens', this.screens)
-    this.inited = true
-  }
-
-  async toggleFullscreen() {
-    if (this.isFullscreen()) {
-      await this.exitFullscreen()
-      return { status: 'ready' }
-    }
-    if (!this.inited) await this.initializeScreenInfo()
-    if (!window.screen.isExtended) {
-      console.log('screen is not extended', this.screens)
-      this.requestFullscreen()
-      return { status: 'ready' }
-    }
-    const cur = this.screens.currentScreen
-
-    const retobj = {
-      screens: this.screens.screens.map((el, index) => ({
-        screen: el,
-        isCurrent: el === cur,
-        number: index,
-        toggle: () => {
-          if (document.documentElement.requestFullscreen)
-            document.documentElement.requestFullscreen({ screen: el })
-          else if (document.documentElement.webkitRequestFullscreen)
-            document.documentElement.webkitRequestFullscree({ screen: el })
-        }
-      })),
-      status: 'selector'
-    }
-
-    return retobj
-  }
-}
 
 class ChannelEdit extends Component {
   constructor(props) {
@@ -704,6 +619,7 @@ export class FailsBasis extends Component {
             ? 'p-button-primary  p-button-rounded p-m-2'
             : 'p-button-secondary p-button-rounded p-m-2'
         }
+        key={el.number}
         icon={<FontAwesomeIcon icon={faDesktop} className='p-m-1' />}
         label={
           ' ' + (el.number + 1) + (el.isCurrent ? ' (current)' : ' (other)')
@@ -1237,8 +1153,14 @@ export class FailsBoard extends FailsBasis {
           if (postcount === 50) window.clearInterval(intervalId) // if it was not loaded after 10 seconds forget about it
           postcount++
         }, 200)
+        const messageHandle = (event) => {
+          if (event && event.data && event.data.failsTokenOk) {
+            window.clearInterval(intervalId)
+            window.removeEventListener(messageHandle)
+          }
+        }
+        window.addEventListener('message', messageHandle)
       }
-      console.log('createscreen answer ', ret)
     })
   }
 
@@ -1277,8 +1199,14 @@ export class FailsBoard extends FailsBasis {
           if (postcount === 50) window.clearInterval(intervalId) // if it was not loaded after 10 seconds forget about it
           postcount++
         }, 200)
+        const messageHandle = (event) => {
+          if (event && event.data && event.data.failsTokenOk) {
+            window.clearInterval(intervalId)
+            window.removeEventListener(messageHandle)
+          }
+        }
+        window.addEventListener('message', messageHandle)
       }
-      console.log('createnotepad answer ', ret)
     })
   }
 
@@ -1856,9 +1784,7 @@ export class FailsScreen extends FailsBasis {
             {lectinfo && lectinfo}
             {screenunassigned && (
               <React.Fragment>
-                <h2> Screen connected: </h2>{' '}
-                <h3>ID: {this.state.notescreenid + 1} </h3>
-                Start casting lecture!{' '}
+                <h2> Screen connected </h2> Start casting lecture!{' '}
               </React.Fragment>
             )}
             <br />
@@ -1871,8 +1797,7 @@ export class FailsScreen extends FailsBasis {
           <div style={{ textAlign: 'center', zIndex: 100, fontSize: '3vh' }}>
             {' '}
             {lectinfo && lectinfo}
-            <h2> Screen disconnected: </h2>{' '}
-            <h3>ID: {this.state.notescreenid + 1} </h3>
+            <h2> Screen disconnected </h2>
             {failslogo}
           </div>
         )
@@ -1885,8 +1810,7 @@ export class FailsScreen extends FailsBasis {
             {screenunassigned && (
               <React.Fragment>
                 {' '}
-                <h2> Screen connected: </h2>{' '}
-                <h3>ID: {this.state.notescreenid + 1} </h3>
+                <h2> Screen connected </h2>
                 Screen was removed! <br></br>
                 Start casting lecture!{' '}
               </React.Fragment>

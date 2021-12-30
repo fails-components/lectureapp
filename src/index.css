@@ -116,3 +116,12 @@ code {
 .blackboardWhite {
   background-color: #efefef;
 }
+
+.fade-in-welcome {
+  animation: fadeInWelcome linear 3s;
+}
+
+@keyframes fadeInWelcome {
+  0% {opacity:0;}
+  100% {opacity:1;}
+}

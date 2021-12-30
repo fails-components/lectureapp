@@ -25,6 +25,7 @@ import { FailsBoard, FailsScreen, FailsNotes } from './main.js'
 import './index.css'
 
 import { FailsConfig } from '@fails-components/config'
+import { Welcome } from './welcome.js'
 
 const cfg = new FailsConfig({ react: true })
 
@@ -58,6 +59,9 @@ window.addEventListener(
       sessionStorage.setItem('failstoken', event.data.token)
       console.log('purpose', event.data.purpose)
       purposesetter(event.data.purpose)
+      if (event.source) {
+        event.source.postMessage({ failsTokenOk: true })
+      }
     }
   },
   false
@@ -77,7 +81,7 @@ const App = () => {
   } else if (purpose === 'notes') {
     return <FailsNotes width='100vw' height='100vh'></FailsNotes>
   } else {
-    return <div>Loading, waiting for authorization token and purpose!</div>
+    return <Welcome purposesetter={purposesetter}></Welcome>
   }
 }
 
