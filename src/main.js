@@ -1156,7 +1156,7 @@ export class FailsBoard extends FailsBasis {
         const messageHandle = (event) => {
           if (event && event.data && event.data.failsTokenOk) {
             window.clearInterval(intervalId)
-            window.removeEventListener(messageHandle)
+            window.removeEventListener('message', messageHandle)
           }
         }
         window.addEventListener('message', messageHandle)
@@ -1202,7 +1202,7 @@ export class FailsBoard extends FailsBasis {
         const messageHandle = (event) => {
           if (event && event.data && event.data.failsTokenOk) {
             window.clearInterval(intervalId)
-            window.removeEventListener(messageHandle)
+            window.removeEventListener('message', messageHandle)
           }
         }
         window.addEventListener('message', messageHandle)
