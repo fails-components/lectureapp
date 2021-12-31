@@ -258,10 +258,10 @@ export class NoteScreenBase extends Component {
               top: '2vw',
               left: '4vw',
               fontSize: '10vw',
+              zIndex: 50,
               textShadow: '2px 2px 8px ' + this.props.screennumbercolor,
               color: this.props.screennumbercolor
             }}
-            zIndex={50}
           >
             {' '}
             {this.props.screennumber + 1}{' '}
