@@ -643,7 +643,19 @@ export class FailsBasis extends Component {
     )
   }
 
-  commonMount() {}
+  commonMount() {
+    // check for features
+    if (document.featurePolicy) {
+      console.log(
+        'allowed website features',
+        document.featurePolicy.allowedFeatures()
+      )
+      console.log(
+        'allowed origins for feature camera',
+        document.featurePolicy.getAllowlistForFeature('camera')
+      )
+    }
+  }
 
   commonUnmount() {
     if (this.reauthorizeTimeout) {
