@@ -7,6 +7,7 @@ import { ScreenManager } from './screenmanager'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faDesktop } from '@fortawesome/free-solid-svg-icons'
 import { io } from 'socket.io-client'
+import { v4 as uuidv4 } from 'uuid'
 
 export class Welcome extends Component {
   constructor(args) {
@@ -26,6 +27,9 @@ export class Welcome extends Component {
     this.toggleFullscreen = this.toggleFullscreen.bind(this)
     this.sendRequests = this.sendRequests.bind(this)
     this.changePurpose = this.changePurpose.bind(this)
+    this.messageHandle = this.messageHandle.bind(this)
+    this.openWindow = this.openWindow.bind(this)
+    this.reqprocessed = this.reqprocessed.bind(this)
 
     this.clientId = Math.random().toString(36).substr(2, 9)
 
@@ -34,6 +38,27 @@ export class Welcome extends Component {
     const myrequest = { purpose: 'lecture', id: this.clientId }
     this.requests.push(myrequest)
     this.requestpoint[this.clientId] = myrequest
+  }
+
+  reqprocessed(data) {
+    if (Array.isArray(data)) {
+      let mytoken = null
+      for (let i = 0; i < data.length; i++) {
+        const cur = data[i]
+        if (cur.id === this.clientId) mytoken = cur
+        else {
+          // post to respective client
+          if (this.requestpoint[cur.id] && this.requestpoint[cur.id].win) {
+            this.requestpoint[cur.id].win.postMessage({ reqprocessed: data })
+          }
+        }
+      }
+      if (mytoken) {
+        sessionStorage.setItem('failspurpose', mytoken.purpose)
+        sessionStorage.setItem('failstoken', mytoken.token)
+        this.props.purposesetter(mytoken.purpose)
+      }
+    }
   }
 
   componentDidMount() {
@@ -49,27 +74,8 @@ export class Welcome extends Component {
     })
 
     this.socket.removeAllListeners('reqprocessed')
-    this.socket.on('reqprocessed', (data) => {
-      console.log('reqprocessed', data)
-      if (Array.isArray(data)) {
-        let mytoken = null
-        for (let i = 0; i < data.length; i++) {
-          const cur = data[i]
-          if (cur.id === this.clientId) mytoken = cur
-          else {
-            // post to respective client
-            if (this.requestpoint[cur.id]) {
-              this.requestpoint[cur.id].win.postMessage('reqprocessed', cur)
-            }
-          }
-        }
-        if (mytoken) {
-          sessionStorage.setItem('failspurpose', mytoken.purpose)
-          sessionStorage.setItem('failstoken', mytoken.token)
-          this.props.purposesetter(mytoken.purpose)
-        }
-      }
-    })
+    this.socket.on('reqprocessed', this.reqprocessed)
+    window.addEventListener('message', this.messageHandle)
     this.sendRequests()
   }
 
@@ -81,16 +87,37 @@ export class Welcome extends Component {
     }
     if (this.requestTimer) window.clearTimeout(this.requestTimer)
     delete this.requestTimer
+    window.removeEventListener('message', this.messageHandle)
+  }
+
+  notSlave() {
+    return (
+      !this.master || (this.master && Date.now() - this.master > 60 * 2 * 1000)
+    )
   }
 
   sendRequests() {
     if (this.requestTimer) window.clearTimeout(this.requestTimer)
     console.log('send requests')
-    this.socket.emit('request', { reqs: this.requests }, (code) => {
-      console.log('got answer', this.requests)
-      this.setState({ logincode: code })
-    })
+    if (this.notSlave()) {
+      const srequests = this.requests.map((el) => ({
+        id: el.id,
+        purpose: el.purpose
+      }))
+      this.socket.emit('request', { reqs: srequests }, (code) => {
+        if (this.notSlave()) this.distributeLogincode(code)
+      })
+    }
     this.requestTimer = window.setTimeout(this.sendRequests, 10 * 60 * 1000)
+  }
+
+  distributeLogincode(code) {
+    for (let i = 0; i < this.requests.length; i++) {
+      const cur = this.requests[i]
+      if (cur.id !== this.clientId && cur.win)
+        cur.win.postMessage({ logincode: code })
+    }
+    this.setState({ logincode: code })
   }
 
   screenChange() {
@@ -115,7 +142,106 @@ export class Welcome extends Component {
   changePurpose(val) {
     this.setState({ purpose: val })
     this.requestpoint[this.clientId].purpose = val
+    if (this.masterwin) {
+      this.masterwin.postMessage({
+        changePurpose: true,
+        purpose: val,
+        id: this.clientId
+      })
+    }
     this.sendRequests()
+  }
+
+  openWindow() {
+    const targeturl =
+      window.location.protocol +
+      '//' +
+      window.location.hostname +
+      (window.location.port !== '' ? ':' + window.location.port : '') +
+      '/static/lecture/'
+    console.log('debug target url', targeturl)
+
+    const newwindow = window.open(
+      targeturl,
+      uuidv4(),
+      'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
+    )
+
+    if (!newwindow) console.log('Opening window failed')
+    else {
+      let postcount = 0
+      const intervalId = setInterval(() => {
+        newwindow.postMessage({
+          slavemode: true,
+          logincode: this.state.logincode
+        })
+        if (postcount === 50) window.clearInterval(intervalId) // if it was not loaded after 10 seconds forget about it
+        postcount++
+      }, 200)
+      const messageHandle = (event) => {
+        if (event && event.data && event.data.slavemodeAck) {
+          window.clearInterval(intervalId)
+          window.removeEventListener('message', messageHandle)
+        }
+      }
+      window.addEventListener('message', messageHandle)
+    }
+  }
+
+  messageHandle(event) {
+    if (event && event.data) {
+      if (event.data.slavemode) {
+        if (event.source) {
+          console.log('enter slave mode', event.data.logincode)
+          this.setState({ logincode: event.data.logincode })
+          const slreqs = this.requests.map((el) => ({
+            purpose: el.purpose,
+            id: el.id
+          }))
+          const mess = {
+            slavemodeAck: true,
+            slaveRequests: slreqs,
+            slaveId: this.clientID
+          }
+          event.source.postMessage(mess)
+          this.master = Date.now()
+          this.masterwin = event.source
+        }
+      } else if (event.data.reqprocessed) {
+        // we have a token
+        this.reqprocessed(event.data.reqprocessed)
+      } else if (event.data.logincode) {
+        console.log('got logincode', event.data.logincode)
+        this.distributeLogincode(event.data.logincode)
+        this.master = Date.now()
+      } else if (
+        event.data.changePurpose &&
+        event.data.id &&
+        event.data.purpose
+      ) {
+        this.requestpoint[event.data.id].purpose = event.data.purpose
+        if (this.masterwin) {
+          this.masterwin.postMessage({
+            changePurpose: true,
+            purpose: event.data.purpose,
+            id: event.data.id
+          })
+        }
+        this.sendRequests()
+      } else if (event.data.slaveRequests && event.source) {
+        if (this.masterwin) this.masterwin.postMessage(event.data)
+        const requests = event.data.slaveRequests
+        requests.forEach((el) => {
+          if (el.purpose && el.id) {
+            const newel = { purpose: el.purpose, id: el.id }
+            newel.win = event.source
+            this.requestpoint[el.id] = newel
+            this.requests.push(newel)
+          }
+        })
+        this.sendRequests()
+      }
+    }
   }
 
   render() {
@@ -177,34 +303,46 @@ export class Welcome extends Component {
                   </p>
                 </div>
                 <div className='p-mb-2 p-as-center'>
-                  <h2> Function </h2>
-                  <span>
-                    <div className='p-field-radiobutton'>
-                      <RadioButton
-                        inputId='lecture'
-                        name='notepad'
-                        value='lecture'
-                        onChange={(e) => this.changePurpose(e.value)}
-                        checked={this.state.purpose === 'lecture'}
-                      />
-                      <label htmlFor='lecture'>Notepad (draw and edit)</label>
+                  <div className='p-grid p-align-center'>
+                    <div className='p-col-6'>
+                      <h2> Window function </h2>
+                      <span>
+                        <div className='p-field-radiobutton'>
+                          <RadioButton
+                            inputId='lecture'
+                            name='notepad'
+                            value='lecture'
+                            onChange={(e) => this.changePurpose(e.value)}
+                            checked={this.state.purpose === 'lecture'}
+                          />
+                          <label htmlFor='lecture'>
+                            Notepad (draw and edit)
+                          </label>
+                        </div>
+                        <div className='p-field-radiobutton'>
+                          <RadioButton
+                            inputId='screen'
+                            name='screen'
+                            value='screen'
+                            onChange={(e) => this.changePurpose(e.value)}
+                            checked={this.state.purpose === 'screen'}
+                          />
+                          <label htmlFor='screen'>
+                            Screen (shows the lecture)
+                          </label>
+                        </div>
+                      </span>
                     </div>
-                    <div className='p-field-radiobutton'>
-                      <RadioButton
-                        inputId='screen'
-                        name='screen'
-                        value='screen'
-                        onChange={(e) => this.changePurpose(e.value)}
-                        checked={this.state.purpose === 'screen'}
+                    <div className='p-col-6'>
+                      <h2> Multi-window </h2>
+                      <Button
+                        className='p-button-primary  p-button-rounded p-m-2'
+                        label='Open additional window'
+                        icon='pi pi-plus'
+                        onClick={this.openWindow}
                       />
-                      <label htmlFor='screen'>Screen (shows the lecture)</label>
                     </div>
-                  </span>
-                  <Button
-                    className='p-button-primary  p-button-rounded p-m-2'
-                    label='Open additional window'
-                    icon='pi pi-plus'
-                  />
+                  </div>
                 </div>
               </div>
             </div>
@@ -220,7 +358,13 @@ export class Welcome extends Component {
                     }}
                   >
                     <h1>Logincode </h1>
-                    <p style={{ fontSize: '3.0vw' }}>
+                    <p
+                      style={{
+                        fontSize: '3.0vw',
+                        fontFamily: 'monospace',
+                        fontVariantNumeric: 'slashed-zero'
+                      }}
+                    >
                       <big>{this.state.logincode} </big>
                     </p>
                   </div>
