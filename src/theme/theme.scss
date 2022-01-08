@@ -10,20 +10,20 @@ $black_12: rgba(0, 0, 0, 0.12);
 $black_40: rgba(0, 0, 0, 0.4);
 $surface_border: #dee2e6; // attention is also used for some backgrounds manuel split
 $text_on_highlight: #495057;
-$error_color: #f44336;
-$primary_color: #2196f3;
+$error_color: #e95100;
+$primary_color: #0077b6;
 $focus_outline: color.scale($primary_color, $lightness: 85%);
 $highlight_background: #e3f2fd;
-$info_background: #0b7ad1;
+$info_background: #00b4d8;
 $mine_shaft: #323232; // color picker
 $color_cod_gray_approx: #191919; // not used
 $color_azure_radiance_approx: #0d89ec;
-$danger_background: #d32f2f;
-$warning_background: #fbc02d;
-$success_background: #689f38;
+$danger_background: #B63F00;
+$warning_background: #FF7C37;
+$success_background: #00b663;
 $primary_color_4: rgba($primary-color, 0.04);
 $primary_color_16: rgba($primary-color, 0.16);
-$secondary_background: #607d8b; // also border for buttons
+$secondary_background: #00456A; // also border for buttons
 $secondary_background_bitdark: color.scale($secondary_background, $lightness: -11%);
 $secondary_background_light: color.scale($secondary_background, $lightness: 85%);
 $secondary_background_dark: color.scale($secondary_background, $lightness: -20%);
@@ -44,7 +44,7 @@ $warning_background_light: color.scale($warning_background, $lightness: 85%);
 $warning_background_dark: color.scale($warning_background, $lightness: -20%);
 $warning_background_4: rgba($warning_background, 0.04);
 $warning_background_16: rgba($warning_background, 0.16);
-$help_background: #9c27b0;
+$help_background: #6e4571;
 $help_background_dark: color.scale($help_background, $lightness: -20%);
 $help_background_light: color.scale($help_background, $lightness: 85%);
 $help_background_4: rgba($help_background, 0.04);
@@ -58,16 +58,16 @@ $color_limed_spruce_approx: #343a40;
 $color_alabaster_approx: #fcfcfc;
 $white_10: rgba(255, 255, 255, 0.1);
 $white_20: rgba(255, 255, 255, 0.2);
-$message_info: #b3e5fc;
+$message_info: #ade8f4;
 $message_info_dark: color.scale($message_info, $lightness: -50%);
 $message_info_darker: color.scale($message_info, $lightness: -75%);
-$message_success: #c8e6c9;
+$message_success: #dff3ec;
 $message_success_dark: color.scale($message_success, $lightness: -50%);
 $message_success_darker: color.scale($message_success, $lightness: -75%);
-$message_warning: #ffecb3;
+$message_warning: #fdfac5;
 $message_warning_dark: color.scale($message_warning, $lightness: -50%);
 $message_warning_darker: color.scale($message_warning, $lightness: -75%);
-$message_error: #ffcdd2;
+$message_error: #e1a6ad;
 $message_error_dark: color.scale($message_error, $lightness: -50%);
 $message_error_darker: color.scale($message_error, $lightness: -75%);
 $white_30: rgba(255, 255, 255, 0.3);
