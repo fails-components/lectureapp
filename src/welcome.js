@@ -30,6 +30,7 @@ export class Welcome extends Component {
     this.messageHandle = this.messageHandle.bind(this)
     this.openWindow = this.openWindow.bind(this)
     this.reqprocessed = this.reqprocessed.bind(this)
+    this.networkerror = this.networkerror.bind(this)
 
     this.clientId = Math.random().toString(36).substr(2, 9)
 
@@ -61,6 +62,10 @@ export class Welcome extends Component {
     }
   }
 
+  networkerror(data) {
+    this.setState({ logincode: null })
+  }
+
   componentDidMount() {
     console.log('Component mount welcome')
     const authhandler =
@@ -75,6 +80,8 @@ export class Welcome extends Component {
 
     this.socket.removeAllListeners('reqprocessed')
     this.socket.on('reqprocessed', this.reqprocessed)
+    this.socket.removeAllListeners('error')
+    this.socket.on('error', this.networkerror)
     window.addEventListener('message', this.messageHandle)
     this.sendRequests()
   }
@@ -376,6 +383,20 @@ export class Welcome extends Component {
                       level={'L'}
                       fgColor={'#023e8a'}
                     ></QRCode>
+                  </div>
+                </div>
+              )}
+              {!this.state.logincode && (
+                <div className='p-grid p-justify-center'>
+                  <div
+                    className='p-col-fixed'
+                    style={{
+                      fontSize: '1.2vw',
+                      width: '30vw',
+                      color: '#023e8a'
+                    }}
+                  >
+                    <h1> No internet or Server disconnected!</h1>
                   </div>
                 </div>
               )}
