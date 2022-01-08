@@ -575,8 +575,8 @@ export class FailsBasis extends Component {
   authCB(cb) {
     const token = this.getToken()
     // console.log("authCB",cb);
-    // eslint-disable-next-line node/no-callback-literal
-    cb({ token: token })
+    // eslint-disable-next-line n/no-callback-literal
+    cb({ token })
   }
 
   decodedToken() {
@@ -1235,7 +1235,7 @@ export class FailsBoard extends FailsBasis {
 
   onRemoveChannel(channeluuid) {
     console.log('Remove channel', channeluuid)
-    this.socket.emit('removechannel', { channeluuid: channeluuid })
+    this.socket.emit('removechannel', { channeluuid })
   }
 
   pictbuttonCallback() {
@@ -1330,7 +1330,7 @@ export class FailsBoard extends FailsBasis {
   addNotescreenToChannel(channeluuid, uuid) {
     console.log('Add screen with uuid')
     this.socket.emit('addnotescreentochannel', {
-      channeluuid: channeluuid,
+      channeluuid,
       notescreenuuid: uuid
     })
   }
@@ -1454,7 +1454,7 @@ export class FailsBoard extends FailsBasis {
           isnotepad={true}
           pictbuttoncallback={this.pictbuttonCallback}
           mainstate={{
-            blackbackground: blackbackground,
+            blackbackground,
             bgpdf: this.state.bgpdf,
             showscreennumber: this.state.showscreennumber,
             casttoscreens: this.state.casttoscreens

@@ -334,7 +334,7 @@ export class ToolBox extends Component {
           break
       }
 
-      return { selectedButtonid: newbuttonid, secondtoolstep: secondtoolstep }
+      return { selectedButtonid: newbuttonid, secondtoolstep }
     })
   }
 

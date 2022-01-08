@@ -201,7 +201,7 @@ export class NoteScreenBase extends Component {
   }
 
   reportFoG(x, y, clientid) {
-    this.props.netsend('FoG', { x: x, y: y, clientid: clientid })
+    this.props.netsend('FoG', { x, y, clientid })
   }
 
   receiveFoG(data) {

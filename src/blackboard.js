@@ -31,6 +31,7 @@ import { SHA1 } from 'jshashes'
 import Color from 'color'
 
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.js'
+// eslint-disable-next-line import/no-webpack-loader-syntax
 import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry'
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
@@ -392,7 +393,7 @@ export class MagicObject {
 
   updatePreShift(x, y, nochange) {
     this.pathdirty = true
-    this.preshift = { x: x, y: y }
+    this.preshift = { x, y }
     this.selectedObj.forEach((el) => el.setPreshift(this.preshift))
     if (!nochange) this.changemagic()
   }
@@ -497,7 +498,7 @@ export class SVGSpotlight extends Component {
 
   setFogpos(fogpos) {
     this.lastfogtime = Date.now()
-    this.setState({ fogpos: fogpos })
+    this.setState({ fogpos })
   }
 
   render() {
@@ -637,7 +638,7 @@ export class BackgroundPDFPage extends Component {
 
     const renderContext = {
       canvasContext: context,
-      viewport: viewport
+      viewport
     }
     context.clearRect(0, 0, canvas.width, canvas.height)
 
@@ -648,7 +649,7 @@ export class BackgroundPDFPage extends Component {
       console.log('Render pdf page ', page.pagenum)
       this.inrendering = false
 
-      this.setState({ page: page, bbwidth: bbwidth })
+      this.setState({ page, bbwidth })
     } catch (error) {
       console.log('problem pdf page render', error)
       this.inrendering = false
@@ -714,7 +715,7 @@ export class BackgroundPDF extends Component {
           curpos += pageinfo[pidx].height
           pageinfo[pidx].to = curpos
         }
-        this.setState({ pageinfo: pageinfo, url: this.props.url })
+        this.setState({ pageinfo, url: this.props.url })
       } catch (error) {
         console.log('loadPDF failed', error)
       }
@@ -888,7 +889,7 @@ export class Blackboard extends Component {
   }
 
   setScrollOffset(scrolloffset) {
-    this.setState({ scrolloffset: scrolloffset })
+    this.setState({ scrolloffset })
     // console.log('setScrollOffset', scrolloffset)
     this.scrollBoard(0, 'myself', 0, this.getCurScrollPos())
   }
@@ -947,7 +948,7 @@ export class Blackboard extends Component {
     this.turnOffMagic()
     this.magicobject = new MagicObject({
       changemagic: this.changeMagic,
-      datatarget: datatarget
+      datatarget
     })
     this.magicobject.addPoint(x, y)
     this.isdirty = true
@@ -1510,7 +1511,7 @@ export class Blackboard extends Component {
         style={{
           width: '100%',
           height: '100%',
-          cursor: cursor,
+          cursor,
           overscrollBehavior: 'none',
           touchAction: 'none',
           backgroundPosition: '0px ' + stylespan.top
@@ -1767,7 +1768,7 @@ export class BlackboardNotepad extends Component {
       if (this.toolbox()) {
         this.toolbox().setCanUndo(true)
       }
-      this.undostack.push({ objid: objid, storagenum: storagenum })
+      this.undostack.push({ objid, storagenum })
     }
     if (this.undostack.length > 20) this.undostack.shift()
   }
@@ -2015,7 +2016,7 @@ export class BlackboardNotepad extends Component {
           this.pointerrejectcheck.push({
             time: event.timeStamp,
             objid: this.pointerobjids[event.pointerId],
-            event: event,
+            event,
             storagenum: this.pointerstoragenum[event.pointerId]
           })
         }
@@ -2051,7 +2052,7 @@ export class BlackboardNotepad extends Component {
     } else {
       ny = nx / aspectratio
     }
-    return { nx: nx, ny: ny }
+    return { nx, ny }
   }
 
   addPictureMovePos(pos, reactivate) {
@@ -2085,7 +2086,7 @@ export class BlackboardNotepad extends Component {
 
     if (!this.fogtime[pointerid]) {
       this.fogtime[pointerid] = newtime
-      this.lastfogpos[pointerid] = { x: x, y: y }
+      this.lastfogpos[pointerid] = { x, y }
       return
     }
 
@@ -2114,8 +2115,8 @@ export class BlackboardNotepad extends Component {
       this.props.notepadscreen.reportFoG(x, y, this.clientId)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preReceiveFoG({
-          x: x,
-          y: y,
+          x,
+          y,
           clientid: this.clientId
         })
 
@@ -2587,7 +2588,7 @@ export class BlackboardNotepad extends Component {
       this.realblackboard.current.setcursor({
         mode: 'drawing',
         size: size * this.props.devicePixelRatio,
-        color: color
+        color
       })
     // console.log("sPT",this.tooltype, this.toolsize,this.toolcolor );
   }
@@ -2601,7 +2602,7 @@ export class BlackboardNotepad extends Component {
       this.realblackboard.current.setcursor({
         mode: 'drawing',
         size: size * this.props.devicePixelRatio,
-        color: color,
+        color,
         alpha: 0.3
       })
     // console.log("sMT",this.tooltype, this.toolsize,this.toolcolor );
