@@ -18,7 +18,8 @@
 */
 
 import React, { useState } from 'react'
-import 'primereact/resources/themes/nova/theme.css'
+// import 'primereact/resources/themes/nova/theme.css'
+import './theme/theme.scss' // fails theme based on saga blue
 import 'primereact/resources/primereact.min.css'
 
 import { FailsBoard, FailsScreen, FailsNotes } from './main.js'
