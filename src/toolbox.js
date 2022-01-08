@@ -52,6 +52,7 @@ import {
   fiTouchOff,
   fiFailsLogo
 } from './icons/icons.js'
+import { UAParser } from 'ua-parser-js'
 
 class ColorPickerButton2 extends Component {
   constructor(props) {
@@ -1075,6 +1076,7 @@ export class ToolBox extends Component {
     //  this.tmcolorwheel.filters = [this.BloomFilter];
     let tbclass = 'toolboxMove'
     if (this.state.scrollmodeactiv) tbclass = 'toolboxStatic'
+    const uaparser = new UAParser()
     return (
       <div
         className={tbclass}
@@ -1109,7 +1111,6 @@ export class ToolBox extends Component {
               2021- (FAILS Components) Marten Richter
             </div>
           </div>
-          Lectureapp version {process.env.REACT_APP_VERSION} <br /> <br />
           FAILS logo by chadkills <br />
           Custom icons by icon_xpert786 <br /> <br />
           Released under GNU Affero General Public License Version 3. <br />{' '}
@@ -1121,6 +1122,18 @@ export class ToolBox extends Component {
           <br /> <br />
           Build upon the shoulders of giants, see{' '}
           <a href='/static/oss'> OSS attribution and licensing.</a>
+          <br /> <br />
+          Lectureapp version {process.env.REACT_APP_VERSION} <br /> Browser:{' '}
+          {uaparser.getBrowser().name} (Version: {uaparser.getBrowser().version}
+          ) with Engine: {uaparser.getEngine().name} (Version:{' '}
+          {uaparser.getEngine().version})
+          {uaparser.getEngine().name !== 'Blink' && (
+            <React.Fragment>
+              <br /> <br />
+              Fails is developed for browsers with Blink engine like Chrome,
+              Chromium, Edge, etc. consider using another browser.
+            </React.Fragment>
+          )}{' '}
         </OverlayPanel>
         {this.state.activated && (
           <Fragment>

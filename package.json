@@ -14,7 +14,9 @@
   },
   "scripts": {
     "start": "GENERATE_SOURCEMAP=false react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false react-scripts  build",
+    "winStart": "set \"GENERATE_SOURCEMAP=false\" && react-scripts start",
+    "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "winBuild": "set \"GENERATE_SOURCEMAP=false\" && react-scripts build",
     "test": "GENERATE_SOURCEMAP=false react-scripts  test",
     "eject": "GENERATE_SOURCEMAP=false react-scripts eject"
   },
@@ -40,6 +42,7 @@
     "react-transition-group": "^4.4.1",
     "sass": "^1.47.0",
     "socket.io-client": "^4.3.2",
+    "ua-parser-js": "^1.0.2",
     "uuid": "^8.3.2"
   },
   "devDependencies": {

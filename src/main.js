@@ -29,6 +29,7 @@ import { OverlayPanel } from 'primereact/overlaypanel'
 import { InputTextarea } from 'primereact/inputtextarea'
 import { Toast } from 'primereact/toast'
 import { confirmPopup } from 'primereact/confirmpopup'
+import { confirmDialog } from 'primereact/confirmdialog'
 import { Steps } from 'primereact/steps'
 import { ListBox } from 'primereact/listbox'
 import { ProgressBar } from 'primereact/progressbar'
@@ -61,6 +62,7 @@ import jwt_decode from 'jwt-decode'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
+import { UAParser } from 'ua-parser-js'
 import { ScreenManager } from './screenmanager'
 // import screenfull from 'screenfull'
 
@@ -654,6 +656,14 @@ export class FailsBasis extends Component {
         'allowed origins for feature camera',
         document.featurePolicy.getAllowlistForFeature('camera')
       )
+    }
+    if (new UAParser().getEngine().name !== 'Blink') {
+      confirmDialog({
+        message:
+          'Please use a Blink based browser such as Chrome, Chromium, Edge, etc..!',
+        header: 'Unsupported browser warning',
+        icon: 'pi pi-exclamation-triangle'
+      })
     }
   }
 
