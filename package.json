@@ -32,6 +32,7 @@
     "jshashes": "^1.0.8",
     "jwt-decode": "^3.1.2",
     "katex": "^0.13.18",
+    "pdfjs-dist": "^2.12.313",
     "primeflex": "^2.0.0",
     "primeicons": "^4.1.0",
     "primereact": "^6.6.0",
@@ -50,7 +51,6 @@
     "eslint-config-react-app": "^7.0.0",
     "eslint-config-standard": "^17.0.0-0",
     "eslint-plugin-prettier": "^4.0.0",
-    "pdfjs-dist": "^2.12.313",
     "prettier": "^2.5.1"
   },
   "eslintConfig": {
