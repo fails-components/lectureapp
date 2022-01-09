@@ -396,7 +396,7 @@ export class Welcome extends Component {
                       color: '#023e8a'
                     }}
                   >
-                    <h1> No internet or Server disconnected!</h1>
+                    <h1> No internet or server disconnected!</h1>
                   </div>
                 </div>
               )}
