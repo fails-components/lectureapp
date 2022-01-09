@@ -197,6 +197,10 @@ export class Welcome extends Component {
 
   messageHandle(event) {
     if (event && event.data) {
+      if (event.origin !== window.location.origin) {
+        console.log('origin check', event.origin)
+        return
+      }
       if (event.data.slavemode) {
         if (event.source) {
           console.log('enter slave mode', event.data.logincode)
