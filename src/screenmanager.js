@@ -49,14 +49,14 @@ export class ScreenManager {
   }
 
   async initializeScreenInfo() {
-    if ('getScreens' in window) {
+    if ('getScreenDetails' in window) {
       // The Multi-Screen Window Placement API is supported.
       console.log('multi screen supported!')
       this.multiscreen = true
       try {
-        this.screens = await window.getScreens()
+        this.screens = await window.getScreenDetails()
       } catch (error) {
-        console.log('getScreens fails', error)
+        console.log('getScreenDetails fails', error)
         this.screens = {}
         this.screens.screens = [window.screen]
       }
@@ -80,7 +80,7 @@ export class ScreenManager {
           this.statusChanged()
         })
       }
-      window.screen.isExtended = false
+      // window.screen.isExtended = false
     }
     // console.log('Available screens', this.screens)
     this.inited = true
