@@ -75,12 +75,12 @@ export class ScreenManager {
       this.multiscreen = false
       this.screens = {}
       this.screens.screens = [window.screen]
-      window.screen.isExtended = false
       if (!this.inited) {
         document.addEventListener('fullscreenchange', () => {
           this.statusChanged()
         })
       }
+      window.screen.isExtended = false
     }
     // console.log('Available screens', this.screens)
     this.inited = true
