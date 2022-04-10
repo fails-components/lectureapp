@@ -56,14 +56,14 @@ import {
   fiWristTopRight
 } from './icons/icons.js'
 import { NoteScreenBase } from './notepad.js'
-import { io } from 'socket.io-client'
+
 // eslint-disable-next-line camelcase
-import jwt_decode from 'jwt-decode'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
 import { UAParser } from 'ua-parser-js'
 import { ScreenManager } from './screenmanager'
+import { SocketInterface } from './socketinterface'
 // import screenfull from 'screenfull'
 
 class ChannelEdit extends Component {
@@ -153,7 +153,8 @@ class ChannelEdit extends Component {
                     className='p-button-rounded p-button-text p-button-sm'
                     onClick={(event) => {
                       this.selchannel = el.channeluuid
-                      this.availscreensmenu.current.toggle(event)
+                      this.availscreensmenu.current.hide(event)
+                      this.availscreensmenu.current.show(event)
                     }}
                     aria-controls='availscreen_menu'
                     aria-haspopup
@@ -194,6 +195,7 @@ class ChannelEdit extends Component {
             <Menu
               model={availscreensitems}
               popup
+              baseZIndex={3000}
               ref={this.availscreensmenu}
               id='availscreen_menu'
             />
@@ -248,15 +250,15 @@ class ChannelEdit extends Component {
 export class FailsBasis extends Component {
   constructor(props) {
     super(props)
-    this.myauthtoken = sessionStorage.getItem('failstoken')
+
     this.noteref = null
     this.getNoteRef = this.getNoteRef.bind(this)
     this.updateSizes = this.updateSizes.bind(this)
-    this.requestReauthor = this.requestReauthor.bind(this)
-    this.getToken = this.getToken.bind(this)
-    this.authCB = this.authCB.bind(this)
+
     this.toggleFullscreen = this.toggleFullscreen.bind(this)
-    this.reauthorizeTimeout = null
+    this.servererrorhandler = this.servererrorhandler.bind(this)
+    this.setReloading = this.setReloading.bind(this)
+    this.setExpiredToken = this.setExpiredToken.bind(this)
 
     this.state = {}
     this.state.screensToSel = []
@@ -264,17 +266,28 @@ export class FailsBasis extends Component {
 
     this.screenm = new ScreenManager()
 
-    this.periodicStatusCheck = this.periodicStatusCheck.bind(this)
+    this.socket = SocketInterface.getInterface()
+    this.socket.setServerErrorHandler(this.servererrorhandler)
+    this.socket.setReloadingHandler(this.setReloading)
+    this.socket.setExpiredTokenHandler(this.setExpiredToken)
 
-    window.setInterval(this.periodicStatusCheck, 1000)
+    const bbchannel = new MessageChannel()
+    this.socket.setBoardChannel(bbchannel.port1)
+    this.bbchannel = bbchannel.port2
+
+    // TODO add purpose stuff
   }
 
-  periodicStatusCheck() {
-    const token = this.decodedToken()
-    let expired = true
-    if (token && token.exp && token.exp - Date.now() / 1000 > 0) expired = false
-    if (this.state.tokenexpired !== expired)
-      this.setState({ tokenexpired: expired })
+  setReloading(reloading) {
+    this.setState({ reloading })
+  }
+
+  setExpiredToken(tokenexpired) {
+    this.setState({ tokenexpired })
+  }
+
+  decodedToken() {
+    return this.socket.decodedToken()
   }
 
   expiredTokenDialog() {
@@ -306,55 +319,23 @@ export class FailsBasis extends Component {
   }
 
   netSendSocket(command, data) {
-    if (this.socket) this.socket.emit(command, data)
+    if (this.socket) this.socket.simpleEmit(command, data)
   }
 
   initializeCommonSocket(commonsocket) {
-    commonsocket.removeAllListeners('authtoken')
-    commonsocket.on(
-      'authtoken',
-      function (data) {
-        // console.log('authtoken renewed', data)
-        // console.log('oldauthtoken' /* , this.myauthtoken */)
-        this.myauthtoken = data.token
-        sessionStorage.setItem('failstoken', data.token)
-        // console.log('newauthtoken' /* , this.myauthtoken */)
-        console.log('authtoken renewed')
-        this.scheduleReauthor() // request renewal
-      }.bind(this)
-    )
+    // commonsocket.removeAllListeners('availscreens')
+    commonsocket.on('availscreens', (data) => {
+      // we can also figure out a notescreen id
+      // console.log('availscreens', data)
+      if (data.screens) {
+        const notescreenuuid = this.decodedToken().notescreenuuid
 
-    commonsocket.removeAllListeners('reloadBoard')
-    commonsocket.on(
-      'reloadBoard',
-      function (data) {
-        // console.log('reloadboard', data, this.noteref)
-        this.setState({ reloading: !data.last })
-        if (this.noteref) {
-          this.noteref.replaceData(data)
-          // if (data.last) this.noteref.setHasControl(true)
-        }
-      }.bind(this)
-    )
+        const nsid = data.screens.findIndex((el) => el.uuid === notescreenuuid)
 
-    commonsocket.removeAllListeners('availscreens')
-    commonsocket.on(
-      'availscreens',
-      function (data) {
-        // we can also figure out a notescreen id
-        // console.log('availscreens', data)
-        if (data.screens) {
-          const notescreenuuid = this.decodedToken().notescreenuuid
-
-          const nsid = data.screens.findIndex(
-            (el) => el.uuid === notescreenuuid
-          )
-
-          this.setState({ availscreens: data.screens, notescreenid: nsid })
-          console.log('notescreenid', nsid)
-        }
-      }.bind(this)
-    )
+        this.setState({ availscreens: data.screens, notescreenid: nsid })
+        console.log('notescreenid', nsid)
+      }
+    })
 
     commonsocket.on('presinfo', (data) => {
       console.log('data presinfo', data)
@@ -438,88 +419,19 @@ export class FailsBasis extends Component {
               blackbackground: data.backgroundbw=="true"  } */
     })
 
-    commonsocket.removeAllListeners('drawcommand')
-    commonsocket.on(
-      'drawcommand',
-      function (data) {
-        // console.log("drawcommand commoncocket",data );
-        // console.log("noteref",this.noteref);
-        if (this.noteref) this.noteref.receiveData(data)
-      }.bind(this)
-    )
-
-    commonsocket.removeAllListeners('pictureinfo')
-    commonsocket.on(
-      'pictureinfo',
-      function (data) {
-        if (this.noteref) {
-          data.forEach((el) => {
-            this.noteref.receivePictInfo({
-              uuid: el.sha,
-              url: el.url,
-              mimetype: el.mimetype
-            })
-          })
-        }
-      }.bind(this)
-    )
-
-    commonsocket.removeAllListeners('bgpdfinfo')
-    commonsocket.on(
-      'bgpdfinfo',
-      function (data) {
-        console.log('bgpdfinfo commonsocket', data)
-        if (data.bgpdfurl) {
-          this.updateSizes({ blackbackground: false })
-          this.setState({ bgpdf: true })
-        }
-        if (data.none) this.setState({ bgpdf: false })
-        if (this.noteref) {
-          this.noteref.receiveBgpdfInfo({
-            url: data.bgpdfurl,
-            none: !!data.none
-          })
-        }
-      }.bind(this)
-    )
-
-    commonsocket.removeAllListeners('FoG')
-    commonsocket.on(
-      'FoG',
-      function (data) {
-        if (this.noteref) this.noteref.receiveFoG(data)
-      }.bind(this)
-    )
-
-    commonsocket.removeAllListeners('error')
-    commonsocket.on(
-      'error',
-      function (data) {
-        console.log('Socketio error', data)
-        this.servererrorhandler(data.code, data.message, data.type)
-        this.setState({ reloading: true })
-        if (commonsocket) {
-          commonsocket.disconnect()
-        }
-      }.bind(this)
-    )
-
-    commonsocket.on('unauthorized', (error) => {
-      console.log('unauthorized', error)
-      if (
-        error.data.type === 'UnauthorizedError' ||
-        error.data.code === 'invalid_token'
-      ) {
-        this.servererrorhandler(null, 'unauthorized', null)
-        // redirect user to login page perhaps?
-        console.log('User token has expired')
+    commonsocket.on('bgpdfinfo', (data) => {
+      console.log('bgpdfinfo commonsocket', data)
+      if (data.bgpdfurl) {
+        this.updateSizes({ blackbackground: false })
+        this.setState({ bgpdf: true })
       }
-    })
-
-    commonsocket.on('connect_error', (err) => {
-      console.log('connect error', err.message)
-      this.setState({ reloading: true })
-      this.servererrorhandler(null, 'connect error: ' + err.message, null)
+      if (data.none) this.setState({ bgpdf: false })
+      if (this.noteref) {
+        this.noteref.receiveBgpdfInfo({
+          url: data.bgpdfurl,
+          none: !!data.none
+        })
+      }
     })
   }
 
@@ -564,43 +476,6 @@ export class FailsBasis extends Component {
         </div>
       </Dialog>
     )
-  }
-
-  scheduleReauthor() {
-    if (this.reauthorizeTimeout) {
-      clearTimeout(this.reauthorizeTimeout)
-      this.reauthorizeTime = null
-    }
-    this.reauthorizeTimeout = setTimeout(this.requestReauthor, 5 * 60 * 1000) // renew every 5 Minutes, a token last 10 minutes
-  }
-
-  authCB(cb) {
-    const token = this.getToken()
-    // console.log("authCB",cb);
-    // eslint-disable-next-line n/no-callback-literal
-    cb({ token })
-  }
-
-  decodedToken() {
-    const curtoken = this.getToken()
-    // console.log("tokens internal",curtoken,this.decoded_token_int, window.failstoken, this.lastdectoken);
-    if (curtoken !== this.lastdectoken) {
-      try {
-        this.decoded_token_int = jwt_decode(curtoken)
-        this.lastdectoken = curtoken
-      } catch (error) {
-        console.log('curtoken', curtoken)
-        console.log('token error', error)
-      }
-    }
-    // console.log("tokens",curtoken,this.decoded_token_int);
-
-    return this.decoded_token_int
-  }
-
-  getToken() {
-    // console.log("gettoken",this.myauthtoken);
-    if (this.myauthtoken) return this.myauthtoken
   }
 
   async toggleFullscreen(event) {
@@ -672,10 +547,6 @@ export class FailsBasis extends Component {
       clearTimeout(this.reauthorizeTimeout)
       this.reauthorizeTime = null
     }
-  }
-
-  requestReauthor() {
-    this.netSendSocket('reauthor', {})
   }
 
   getNoteRef(ref) {
@@ -911,7 +782,6 @@ export class FailsBoard extends FailsBasis {
 
     // this.notepaduuid=uuidv4(); // may be get it later from server together with token?, yes that is how it is handled
 
-    this.netSendShortCircuit = this.netSendShortCircuit.bind(this)
     this.netSendSocket = this.netSendSocket.bind(this)
 
     this.onHideArrangeDialog = this.onHideArrangeDialog.bind(this)
@@ -930,6 +800,7 @@ export class FailsBoard extends FailsBasis {
     this.onFinishSelPoll = this.onFinishSelPoll.bind(this)
   }
 
+  /*
   netSendShortCircuit(command, data) {
     if (command === 'lecturedetail') {
       this.setState({ lecturedetail: data })
@@ -951,43 +822,31 @@ export class FailsBoard extends FailsBasis {
       }
     }
   }
+  */
 
   componentDidMount() {
     console.log('Component mount Failsboard')
-    if (this.decodedToken().notepadhandler) {
-      let notepadhandler = this.decodedToken().notepadhandler
-      if (notepadhandler === '/')
-        notepadhandler =
-          window.location.protocol +
-          '//' +
-          window.location.hostname +
-          (window.location.port !== '' ? ':' + window.location.port : '')
+    // call connect socket?
 
-      this.socket = io(notepadhandler + '/notepads', {
-        auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
-        path: '/notepad.io',
-        multiplex: false
+    this.socket.connectNotepad()
+    this.initializeNotepadSocket(this.socket)
+    // this.updateSizes() // no argument no effect
+
+    if (!this.welcomeMessageSend) {
+      this.toast.show({
+        severity: 'info',
+        sticky: true,
+        content: <ShortcutsMessage parent={this} />
       })
-      this.initializeNotepadSocket(this.socket)
-      this.updateSizes() // no argument no effect
-      if (!this.welcomeMessageSend) {
-        this.toast.show({
-          severity: 'info',
-          sticky: true,
-          content: <ShortcutsMessage parent={this} />
-        })
-        this.welcomeMessageSend = 1
-      }
+      this.welcomeMessageSend = 1
     }
+
     this.commonMount()
   }
 
   componentWillUnmount() {
     console.log('Component unmount Failsboard')
-    if (this.socket) {
-      this.socket.disconnect()
-      this.socket = null
-    }
+    this.socket.disconnect()
     this.commonUnmount()
   }
 
@@ -1013,122 +872,101 @@ export class FailsBoard extends FailsBasis {
       }.bind(this)
     )
 
-    notepadsocket.removeAllListeners('connect')
-    notepadsocket.on(
-      'connect',
-      function (data) {
-        // if (this.noteref) this.noteref.setHasControl(false) // do not emit while reloading!
-        setTimeout(function () {
+    notepadsocket.on('connect', (data) => {
+      // if (this.noteref) this.noteref.setHasControl(false) // do not emit while reloading!
+      /* setTimeout(function () {
           notepadsocket.emit('sendboards', {})
-        }, 500)
-        this.updateSizes() // inform sizes
-        this.scheduleReauthor()
-      }.bind(this)
-    )
+        }, 500) */
+      this.updateSizes() // inform sizes
+    })
 
-    notepadsocket.removeAllListeners('chatquestion')
-    notepadsocket.on(
-      'chatquestion',
-      function (data) {
-        console.log('Incoming chat', data)
-        const retobj = (
-          <React.Fragment>
-            <span className='p-toast-message-icon pi pi-info-circle'></span>
-            <div className='p-toast-message-text'>
-              {data.displayname && <h3>{data.displayname + ':'}</h3>}
-              {this.convertToLatex(data.text)} <br></br>
-              <Button
-                icon='pi pi-ban'
-                className='p-button-danger p-button-outlined p-button-rounded p-m-2'
-                onClick={(event) => {
-                  confirmPopup({
-                    target: event.currentTarget,
-                    message:
-                      'Do you want to block ' +
-                      data.displayname +
-                      ' from sending messages for the remaining session!',
-                    icon: 'pi pi-exclamation-triangle',
-                    accept: () => this.blockChat(data.userhash)
-                  })
-                }}
-              />
-              <Button
-                icon='pi pi-info-circle'
-                className='p-button-danger p-button-outlined p-button-rounded p-m-2'
-                onClick={(event) => {
-                  confirmPopup({
-                    target: event.currentTarget,
-                    message:
-                      'Forensic report: userhash: ' +
-                      data.userhash +
-                      '  Displayname: ' +
-                      data.displayname +
-                      '  Message: "' +
-                      data.text +
-                      '" You can copy and paste this and send it to your admin as evidence!',
-                    icon: 'pi pi-exclamation-triangle'
-                  })
-                }}
-              />
-            </div>
-          </React.Fragment>
-        )
-        if (this.blockchathash.indexOf(data.userhash) === -1) {
-          this.toast.show({ severity: 'info', content: retobj, sticky: true })
-        } else console.log('chat had been blocked')
-      }.bind(this)
-    )
+    notepadsocket.on('chatquestion', (data) => {
+      console.log('Incoming chat', data)
+      const retobj = (
+        <React.Fragment>
+          <span className='p-toast-message-icon pi pi-info-circle'></span>
+          <div className='p-toast-message-text'>
+            {data.displayname && <h3>{data.displayname + ':'}</h3>}
+            {this.convertToLatex(data.text)} <br></br>
+            <Button
+              icon='pi pi-ban'
+              className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+              onClick={(event) => {
+                confirmPopup({
+                  target: event.currentTarget,
+                  message:
+                    'Do you want to block ' +
+                    data.displayname +
+                    ' from sending messages for the remaining session!',
+                  icon: 'pi pi-exclamation-triangle',
+                  accept: () => this.blockChat(data.userhash)
+                })
+              }}
+            />
+            <Button
+              icon='pi pi-info-circle'
+              className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+              onClick={(event) => {
+                confirmPopup({
+                  target: event.currentTarget,
+                  message:
+                    'Forensic report: userhash: ' +
+                    data.userhash +
+                    '  Displayname: ' +
+                    data.displayname +
+                    '  Message: "' +
+                    data.text +
+                    '" You can copy and paste this and send it to your admin as evidence!',
+                  icon: 'pi pi-exclamation-triangle'
+                })
+              }}
+            />
+          </div>
+        </React.Fragment>
+      )
+      if (this.blockchathash.indexOf(data.userhash) === -1) {
+        this.toast.show({ severity: 'info', content: retobj, sticky: true })
+      } else console.log('chat had been blocked')
+    })
 
-    notepadsocket.removeAllListeners('startPoll')
-    notepadsocket.on(
-      'startPoll',
-      function (data) {
-        console.log('startpoll incoming', data)
+    notepadsocket.on('startPoll', (data) => {
+      console.log('startpoll incoming', data)
 
-        this.setState({
-          polltask: 1,
-          curpoll: data,
-          pollsel: undefined,
-          pollvotes: {},
-          pollballots: []
+      this.setState({
+        polltask: 1,
+        curpoll: data,
+        pollsel: undefined,
+        pollvotes: {},
+        pollballots: []
+      })
+    })
+
+    notepadsocket.on('finishPoll', (data) => {
+      console.log('finishpoll incoming', data)
+
+      this.setState({ polltask: 2, pollsel: undefined })
+    })
+
+    notepadsocket.on('castvote', (data) => {
+      console.log('castvote incoming', data)
+      if (
+        data.ballotid &&
+        data.vote &&
+        data.pollid &&
+        data.pollid === this.state.curpoll.id
+      ) {
+        this.setState((state) => {
+          const ballots = state.pollballots
+          ballots.push({ data })
+          const votes = state.pollvotes
+          votes[data.ballotid] = data.vote
+
+          return { pollballots: ballots, pollvotes: votes }
         })
-      }.bind(this)
-    )
+      }
 
-    notepadsocket.removeAllListeners('finishPoll')
-    notepadsocket.on(
-      'finishPoll',
-      function (data) {
-        console.log('finishpoll incoming', data)
-
-        this.setState({ polltask: 2, pollsel: undefined })
-      }.bind(this)
-    )
-
-    notepadsocket.removeAllListeners('castvote')
-    notepadsocket.on(
-      'castvote',
-      function (data) {
-        console.log('castvote incoming', data)
-        if (
-          data.ballotid &&
-          data.vote &&
-          data.pollid &&
-          data.pollid === this.state.curpoll.id
-        ) {
-          this.setState((state) => {
-            const ballots = state.pollballots
-            ballots.push({ data })
-            const votes = state.pollvotes
-            votes[data.ballotid] = data.vote
-
-            return { pollballots: ballots, pollvotes: votes }
-          })
-        }
-
-        // this.setState({ polltask: 2,  pollsel: undefined} );
-      }.bind(this)
-    )
+      // this.setState({ polltask: 2,  pollsel: undefined} );
+    })
   }
 
   blockChat(userhash) {
@@ -1140,9 +978,10 @@ export class FailsBoard extends FailsBasis {
     this.setState({ arrangebuttondialog: true })
   }
 
-  onOpenNewScreen() {
-    const authtoken = this.myauthtoken
-    this.socket.emit('createscreen', function (ret) {
+  async onOpenNewScreen() {
+    try {
+      const authtoken = sessionStorage.getItem('failstoken')
+      const ret = await this.socket.createScreen()
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
 
@@ -1183,12 +1022,15 @@ export class FailsBoard extends FailsBasis {
         }
         window.addEventListener('message', messageHandle)
       }
-    })
+    } catch (error) {
+      console.log('createScreen failed', error)
+    }
   }
 
-  onOpenNewNotepad() {
-    const authtoken = this.myauthtoken
-    this.socket.emit('createnotepad', function (ret) {
+  async onOpenNewNotepad() {
+    try {
+      const authtoken = this.myauthtoken
+      const ret = await this.socket.createNotepad()
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
 
@@ -1229,12 +1071,14 @@ export class FailsBoard extends FailsBasis {
         }
         window.addEventListener('message', messageHandle)
       }
-    })
+    } catch (error) {
+      console.log('createNotepad failed', error)
+    }
   }
 
   onNewWriting() {
     console.log('onnewwriting!')
-    this.socket.emit('createchannel')
+    this.socket.simpleEmit('createchannel')
   }
 
   /* onRemoveScreen()
@@ -1245,24 +1089,21 @@ export class FailsBoard extends FailsBasis {
 
   onRemoveChannel(channeluuid) {
     console.log('Remove channel', channeluuid)
-    this.socket.emit('removechannel', { channeluuid })
+    this.socket.simpleEmit('removechannel', { channeluuid })
   }
 
-  pictbuttonCallback() {
+  async pictbuttonCallback() {
     // Picture button was pressed
-    this.socket.emit(
-      'getAvailablePicts',
-      function (ret) {
-        console.log('getAvailablePicts', ret)
-        const picts = ret.map((el) => ({
-          itemImageSrc: el.url,
-          thumbnailImageSrc: el.urlthumb,
-          id: el.sha,
-          alt: el.name
-        }))
-        this.setState({ pictbuttondialog: true, pictures: picts })
-      }.bind(this)
-    )
+    const ret = await this.socket.getAvailablePicts()
+
+    console.log('getAvailablePicts', ret)
+    const picts = ret.map((el) => ({
+      itemImageSrc: el.url,
+      thumbnailImageSrc: el.urlthumb,
+      id: el.sha,
+      alt: el.name
+    }))
+    this.setState({ pictbuttondialog: true, pictures: picts })
 
     /* let dummypicthelp=dummypict.default;
 
@@ -1300,17 +1141,14 @@ export class FailsBoard extends FailsBasis {
     }
   }
 
-  onStartPoll() {
+  async onStartPoll() {
     this.setState({ polltask: 0 })
     this.onHideArrangeDialog()
 
-    this.socket.emit(
-      'getPolls',
-      function (ret) {
-        console.log('getPolls', ret)
-        this.setState({ pollcoll: ret })
-      }.bind(this)
-    )
+    const ret = await this.socket.getPolls()
+
+    console.log('getPolls', ret)
+    this.setState({ pollcoll: ret })
   }
 
   onStartSelPoll() {
@@ -1318,7 +1156,7 @@ export class FailsBoard extends FailsBasis {
     const polfind = this.state.pollcoll.find(
       (el) => el.id === this.state.pollsel
     )
-    this.socket.emit('startPoll', {
+    this.socket.simpleEmit('startPoll', {
       poll: polfind
     })
   }
@@ -1331,7 +1169,7 @@ export class FailsBoard extends FailsBasis {
       const mine = this.state.curpoll.children.find((el) => el.id === res)
       tresult.push({ id: res, data: result[res], name: mine.name })
     }
-    this.socket.emit('finishPoll', {
+    this.socket.simpleEmit('finishPoll', {
       pollid: this.state.curpoll.id,
       result: tresult
     })
@@ -1339,7 +1177,7 @@ export class FailsBoard extends FailsBasis {
 
   addNotescreenToChannel(channeluuid, uuid) {
     console.log('Add screen with uuid')
-    this.socket.emit('addnotescreentochannel', {
+    this.socket.simpleEmit('addnotescreentochannel', {
       channeluuid,
       notescreenuuid: uuid
     })
@@ -1456,12 +1294,9 @@ export class FailsBoard extends FailsBasis {
         {this.expiredTokenDialog()}
         <NoteScreenBase
           arrangebuttoncallback={this.arrangebuttonCallback}
-          netsend={
-            this.decodedToken() && this.decodedToken().notepadhandler
-              ? this.netSendSocket
-              : this.netSendShortCircuit
-          }
+          netsend={this.netSendSocket}
           isnotepad={true}
+          bbchannel={this.bbchannel}
           pictbuttoncallback={this.pictbuttonCallback}
           mainstate={{
             blackbackground,
@@ -1676,38 +1511,22 @@ export class FailsScreen extends FailsBasis {
 
   componentDidMount() {
     console.log('Component mount FailsScreen')
-    if (this.decodedToken().notepadhandler) {
-      let notepadhandler = this.decodedToken().notepadhandler
-      if (notepadhandler === '/')
-        notepadhandler =
-          window.location.protocol +
-          '//' +
-          window.location.hostname +
-          (window.location.port !== '' ? ':' + window.location.port : '')
+    this.socket.connectScreen()
+    this.initializeScreenSocket(this.socket)
 
-      this.socket = io(notepadhandler + '/screens', {
-        auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
-        path: '/notepad.io',
-        multiplex: false
-      })
-      this.initializeScreenSocket(this.socket)
-    }
     this.commonMount()
   }
 
   componentWillUnmount() {
     console.log('Component unmount FailsScreen')
-    if (this.socket) {
-      this.socket.disconnect()
-      this.socket = null
-    }
+
+    this.socket.disconnect()
     this.commonUnmount()
   }
 
   initializeScreenSocket(screensocket) {
     this.initializeCommonSocket(screensocket)
     // TODO convert to react
-    screensocket.removeAllListeners('lecturedetail')
     screensocket.on(
       'lecturedetail',
       function (data) {
@@ -1716,7 +1535,7 @@ export class FailsScreen extends FailsBasis {
       }.bind(this)
     )
 
-    /* screensocket.removeAllListeners('removeScreen');
+    /* 
     screensocket.on('removeScreen',function(data) {
         
         this.setState((state)=> {let newld=state.lecturedetail;
@@ -1730,7 +1549,6 @@ export class FailsScreen extends FailsBasis {
         this.setState({casttoscreens: false  } );
     }.bind(this)); */
 
-    screensocket.removeAllListeners('connect')
     screensocket.on(
       'connect',
       function (data) {
@@ -1744,11 +1562,9 @@ export class FailsScreen extends FailsBasis {
             screenmode: 'connected'
           }
         })
-        this.scheduleReauthor()
       }.bind(this)
     )
 
-    screensocket.removeAllListeners('disconnect')
     screensocket.on(
       'disconnect',
       function (data) {
@@ -1875,6 +1691,7 @@ export class FailsScreen extends FailsBasis {
           isnotepad={false}
           showscreennumber={this.state.showscreennumber}
           screennumber={this.state.notescreenid}
+          bbchannel={this.bbchannel}
           backgroundcolor={
             this.state.bgpdf
               ? '#FFFFFF'
@@ -1950,93 +1767,50 @@ export class FailsNotes extends FailsBasis {
 
   componentDidMount() {
     console.log('Component mount FailsNotes')
-    console.log('decoded token', this.decodedToken())
-    if (this.decodedToken().noteshandler) {
-      let noteshandler = this.decodedToken().noteshandler
-      if (noteshandler === '/')
-        noteshandler =
-          window.location.protocol +
-          '//' +
-          window.location.hostname +
-          (window.location.port !== '' ? ':' + window.location.port : '')
-
-      this.socket = io(noteshandler + '/notes', {
-        auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
-        path: '/notes.io',
-        multiplex: false
-      })
-      this.initializeNotesSocket(this.socket)
-    }
+    this.socket.connectNotes()
+    this.initializeNotesSocket(this.socket)
     this.commonMount()
   }
 
   componentWillUnmount() {
     console.log('Component unmount FailsScreen')
-    if (this.socket) {
-      this.socket.disconnect()
-      this.socket = null
-    }
+    this.socket.disconnect()
     this.commonUnmount()
   }
 
   initializeNotesSocket(notessocket) {
     this.initializeCommonSocket(notessocket)
     // TODO convert to react
-    notessocket.removeAllListeners('lecturedetail')
-    notessocket.on(
-      'lecturedetail',
-      function (data) {
-        console.log('got lecture detail', data)
-        this.setState({ lectdetail: data })
-      }.bind(this)
-    )
+    notessocket.on('lecturedetail', (data) => {
+      console.log('got lecture detail', data)
+      this.setState({ lectdetail: data })
+    })
 
-    notessocket.removeAllListeners('connect')
-    notessocket.on(
-      'connect',
-      function (data) {
-        // todo imform size
-
-        console.log('notessocket connect', data)
-
-        this.scheduleReauthor()
-      }.bind(this)
-    )
-
-    notessocket.removeAllListeners('disconnect')
-    notessocket.on('disconnect', function (data) {
+    notessocket.on('disconnect', (data) => {
       console.log('notessocket disconnect')
     })
 
-    notessocket.removeAllListeners('startPoll')
-    notessocket.on(
-      'startPoll',
-      function (data) {
-        console.log('startpoll incoming', data)
+    notessocket.on('startPoll', (data) => {
+      console.log('startpoll incoming', data)
 
-        this.setState({
-          polltask: 1,
-          curpoll: data,
-          votesel: [],
-          pollvotes: {},
-          polldata: undefined
-        })
-      }.bind(this)
-    )
+      this.setState({
+        polltask: 1,
+        curpoll: data,
+        votesel: [],
+        pollvotes: {},
+        polldata: undefined
+      })
+    })
 
-    notessocket.removeAllListeners('finishPoll')
-    notessocket.on(
-      'finishPoll',
-      function (data) {
-        console.log('finishpoll incoming', data)
+    notessocket.on('finishPoll', (data) => {
+      console.log('finishpoll incoming', data)
 
-        this.setState({
-          polltask: 2,
-          pollsel: undefined,
-          polldata: data.result
-        })
-      }.bind(this)
-    )
+      this.setState({
+        polltask: 2,
+        pollsel: undefined,
+        polldata: data.result
+      })
+    })
   }
 
   toggleScrollUnlock() {
@@ -2079,16 +1853,15 @@ export class FailsNotes extends FailsBasis {
     }
   }
 
-  onCastvote() {
-    this.socket.emit(
-      'castvote',
-      { selection: this.state.votesel, pollid: this.state.curpoll.id },
-      function (ret) {
-        console.log('cast vote incl ballot id', ret)
-        this.setState({ pollballotid: ret.ballot })
-      }.bind(this)
-    )
+  async onCastvote() {
     this.setState({ polltask: 2, votesel: undefined })
+    const ret = await this.socket.castVote({
+      selection: this.state.votesel,
+      pollid: this.state.curpoll.id
+    })
+
+    console.log('cast vote incl ballot id', ret)
+    this.setState({ pollballotid: ret.ballot })
   }
 
   render() {
@@ -2179,6 +1952,7 @@ export class FailsNotes extends FailsBasis {
           isnotepad={false}
           pageoffset={this.state.pageoffset}
           pageoffsetabsolute={this.state.scrollunlock}
+          bbchannel={this.bbchannel}
           backgroundcolor={
             this.state.bgpdf
               ? '#FFFFFF'

@@ -831,6 +831,8 @@ export class Blackboard extends Component {
 
     this.stage = props.stage
 
+    this.handleBBChannel = this.handleBBChannel.bind(this)
+
     this.stepDrawVersion = this.stepDrawVersion.bind(this)
     this.renderObjectsWithCache = this.renderObjectsWithCache.bind(this)
     this.renderObjectsWithoutCache = this.renderObjectsWithoutCache.bind(this)
@@ -863,6 +865,58 @@ export class Blackboard extends Component {
       this.objdirty = false
     }
   }
+
+  handleBBChannel(event) {
+    const data = event.data
+    const type = data.type
+    switch (type) {
+      case 'replaceData':
+        {
+          const callback = (cs) => {
+            if (this.props.outgodispatcher)
+              this.props.outgodispatcher.setTimeandScrollPos(
+                cs.time,
+                cs.scrollx,
+                cs.scrolly
+              )
+          }
+          this.replaceData(data.data, callback)
+        }
+        break
+      case 'receiveData':
+        if (typeof data.data.timeSet !== 'undefined') {
+          if (data.data.timeSet) {
+            // console.log('initialscroll', data)
+            if (this.props.outgodispatcher)
+              this.props.outgodispatcher.setTimeandScrollPos(data.data.time)
+          }
+        }
+        this.networkreceive.receiveData(data.data)
+        break
+      case 'receivePictInfo':
+        this.receivePictInfo(data.data)
+        break
+      case 'receiveFoG':
+        this.receiveFoG(data.data)
+        break
+      default:
+        throw new Error('Unknown bbchannel type ' + type)
+    }
+  }
+
+  componentDidMount() {
+    if (this.props.bbchannel) {
+      this.props.bbchannel.onmessage = this.handleBBChannel
+    }
+  }
+
+  /* componentWillUnmount()
+  {
+    if (this.props.bbchannel)
+    {
+    }
+
+  } */
 
   componentDidUpdate(prevprops) {
     if (
@@ -1239,13 +1293,6 @@ export class Blackboard extends Component {
     return this.state.curscrollpos + this.state.scrolloffset
   }
 
-  receiveData(data) {
-    // console.log("receivedata!");
-
-    // console.log("Blackboard receive data",data);
-    this.networkreceive.receiveData(data)
-  }
-
   replaceData(data, callback) {
     if (data.data) {
       this.collection.replaceStoredData(data.number, data.data) // also do this only if the container is non empty
@@ -1577,9 +1624,11 @@ export class BlackboardNotepad extends Component {
     this.outgodispatcher = new Dispatcher()
     // this.outgodispatcher.blocked = true // we block initially, not any more
 
-    const locnotepadscreen = this.props.notepadscreen
-    this.networksender = new NetworkSink(function (data) {
-      locnotepadscreen.netSend('drawcommand', data)
+    this.networksender = new NetworkSink((data) => {
+      this.props.bbchannel.postMessage({
+        command: 'drawcommand',
+        data
+      })
     })
     this.outgodispatcher.addSink(this.networksender)
 
@@ -2081,6 +2130,13 @@ export class BlackboardNotepad extends Component {
     })
   }
 
+  reportFoG(x, y, clientid) {
+    this.props.bbchannel.postMessage({
+      command: 'FoG',
+      data: { x, y, clientid }
+    })
+  }
+
   fogHandle(x, y, pointerid, now) {
     const newtime = now
 
@@ -2112,7 +2168,7 @@ export class BlackboardNotepad extends Component {
         this.state.curscrollpos,
         this.state.scrolloffset
       ) */
-      this.props.notepadscreen.reportFoG(x, y, this.clientId)
+      this.reportFoG(x, y, this.clientId)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preReceiveFoG({
           x,
@@ -2732,19 +2788,6 @@ export class BlackboardNotepad extends Component {
     // this.addChild(this.addpictsprite);
   }
 
-  receiveData(data) {
-    if (typeof data.timeSet !== 'undefined') {
-      if (data.timeSet) {
-        // console.log('initialscroll', data)
-        if (this.outgodispatcher)
-          this.outgodispatcher.setTimeandScrollPos(data.time)
-      }
-    }
-    // console.log("rcD",data);
-    if (this.realblackboard && this.realblackboard.current)
-      this.realblackboard.current.receiveData(data)
-  }
-
   receivePictInfo(data) {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.receivePictInfo(data)
@@ -2753,19 +2796,6 @@ export class BlackboardNotepad extends Component {
   receiveBgpdfInfo(data) {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.receiveBgpdfInfo(data)
-  }
-
-  replaceData(data) {
-    const callback = (cs) => {
-      if (this.outgodispatcher)
-        this.outgodispatcher.setTimeandScrollPos(
-          cs.time,
-          cs.scrollx,
-          cs.scrolly
-        )
-    }
-    if (this.realblackboard && this.realblackboard.current)
-      this.realblackboard.current.replaceData(data, callback)
   }
 
   getStartScrollboardTB() {
@@ -2781,11 +2811,6 @@ export class BlackboardNotepad extends Component {
   getCalcScrollPos() {
     if (this.realblackboard && this.realblackboard.current)
       return this.realblackboard.current.getCalcScrollPos()
-  }
-
-  receiveFoG(data) {
-    if (this.realblackboard && this.realblackboard.current)
-      return this.realblackboard.current.receiveFoG(data)
   }
 
   render() {
@@ -2833,6 +2858,8 @@ export class BlackboardNotepad extends Component {
         <Blackboard
           backcolor={this.props.backcolor}
           backclass={this.props.backclass}
+          bbchannel={this.props.bbchannel}
+          outgodispatcher={this.outgodispatcher}
           bbwidth={this.props.bbwidth}
           addpict={addpict}
           bbheight={this.props.bbheight}

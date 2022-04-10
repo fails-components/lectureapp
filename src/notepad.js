@@ -175,12 +175,6 @@ export class NoteScreenBase extends Component {
     this.props.pictbuttoncallback()
   }
 
-  receiveData(data) {
-    // console.log("notepad receive Data",this.blackbaord,data);
-    if (this.blackboard && this.blackboard.current)
-      this.blackboard.current.receiveData(data)
-  }
-
   receivePictInfo(data) {
     if (this.blackboard && this.blackboard.current)
       this.blackboard.current.receivePictInfo(data)
@@ -189,24 +183,6 @@ export class NoteScreenBase extends Component {
   receiveBgpdfInfo(data) {
     if (this.blackboard && this.blackboard.current)
       this.blackboard.current.receiveBgpdfInfo(data)
-  }
-
-  replaceData(data) {
-    if (this.blackboard && this.blackboard.current)
-      this.blackboard.current.replaceData(data)
-  }
-
-  netSend(command, data) {
-    this.props.netsend(command, data)
-  }
-
-  reportFoG(x, y, clientid) {
-    this.props.netsend('FoG', { x, y, clientid })
-  }
-
-  receiveFoG(data) {
-    if (this.blackboard && this.blackboard.current)
-      this.blackboard.current.receiveFoG(data)
   }
 
   enterAddPictureMode(uuid, url) {
@@ -272,6 +248,7 @@ export class NoteScreenBase extends Component {
             ref={this.blackboard}
             backcolor={this.props.backgroundcolor}
             backclass={this.props.backclass}
+            bbchannel={this.props.bbchannel}
             notepadscreen={this}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
@@ -285,6 +262,7 @@ export class NoteScreenBase extends Component {
             ref={this.blackboard}
             backcolor={this.props.backgroundcolor}
             backclass={this.props.backclass}
+            bbchannel={this.props.bbchannel}
             notepadscreen={this}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
