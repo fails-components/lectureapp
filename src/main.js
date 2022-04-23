@@ -2002,16 +2002,22 @@ export class FailsNotes extends FailsBasis {
     )
 
     notessocket.removeAllListeners('connect')
-    notessocket.on(
-      'connect',
-      function (data) {
-        // todo imform size
+    notessocket.on('connect', (data) => {
+      // todo imform size
 
-        console.log('notessocket connect', data)
+      console.log('notessocket connect', data)
 
-        this.scheduleReauthor()
-      }.bind(this)
-    )
+      this.scheduleReauthor()
+      // clear polling
+      this.setState({
+        polltask: undefined,
+        curpoll: undefined,
+        votesel: [],
+        pollvotes: {},
+        polldata: undefined,
+        pollballotid: undefined
+      })
+    })
 
     notessocket.removeAllListeners('disconnect')
     notessocket.on('disconnect', function (data) {
@@ -2029,7 +2035,8 @@ export class FailsNotes extends FailsBasis {
           curpoll: data,
           votesel: [],
           pollvotes: {},
-          polldata: undefined
+          polldata: undefined,
+          pollballotid: undefined
         })
       }.bind(this)
     )
