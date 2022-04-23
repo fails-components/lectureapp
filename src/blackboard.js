@@ -1353,7 +1353,9 @@ export class Blackboard extends Component {
       return ['crosshair']
     }
     if (this.state.cursor.mode !== 'drawing') return 'auto'
-    const circleradius = this.state.cursor.size * 0.5
+    const svgscale = 2000
+    const circleradius =
+      (this.state.cursor.size * 0.5 * this.props.bbwidth) / svgscale
     let color = this.state.cursor.color
 
     if (typeof color === 'string' || color instanceof String)
@@ -1601,6 +1603,8 @@ export class BlackboardNotepad extends Component {
     this.lastfogpos = {}
     this.fogtime = {}
     this.fogmeanvel = {}
+
+    this.svgscale = 2000 // should be kept constant
 
     this.interactive = true
     // props.stage.interactive=true;
@@ -1997,7 +2001,8 @@ export class BlackboardNotepad extends Component {
           pos.y / this.props.bbwidth + this.getCalcScrollPos(),
           this.tooltype,
           Color(this.toolcolor).rgbNumber(),
-          (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
+          // (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
+          this.toolsize / this.svgscale,
           event.pressure
         )
         if (this.realblackboard && this.realblackboard.current)
@@ -2009,7 +2014,8 @@ export class BlackboardNotepad extends Component {
             pos.y / this.props.bbwidth + this.getCalcScrollPos(),
             this.tooltype,
             Color(this.toolcolor).rgbNumber(),
-            (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
+            // (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
+            this.toolsize / this.svgscale,
             event.pressure
           )
         if (event.pointerType === 'touch') {
@@ -2587,7 +2593,7 @@ export class BlackboardNotepad extends Component {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
         mode: 'drawing',
-        size: size * this.props.devicePixelRatio,
+        size,
         color
       })
     // console.log("sPT",this.tooltype, this.toolsize,this.toolcolor );
@@ -2601,7 +2607,7 @@ export class BlackboardNotepad extends Component {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
         mode: 'drawing',
-        size: size * this.props.devicePixelRatio,
+        size,
         color,
         alpha: 0.3
       })
@@ -2615,7 +2621,7 @@ export class BlackboardNotepad extends Component {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
         mode: 'drawing',
-        size: size * this.props.devicePixelRatio,
+        size,
         color: this.props.backcolor
       })
     // console.log("sET",this.tooltype, this.toolsize,this.toolcolor );
