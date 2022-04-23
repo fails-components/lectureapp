@@ -130,6 +130,8 @@ export class ToolBox extends Component {
     this.state.selectedPickerid = 1
     this.state.canundo = false
 
+    this.svgscale = 2000 // should be kept constant
+
     this.lasttool = 5
 
     this.tbx = 0.8 // constant toolbox pos
@@ -164,7 +166,7 @@ export class ToolBox extends Component {
       '#FE8BF0',
       '#FFA8A8'
     ]
-    this.pensizesizes = [1, 1.5, 2, 3, 4, 6, 8, 11 /* , 16 */]
+    this.pensizesizes = [1, 1.5, 2, 3, 4, 6, 8, 11, 16]
     this.tmcolorwheelcolors = [
       '#FF0066',
       '#00FF00',
@@ -211,14 +213,27 @@ export class ToolBox extends Component {
 
   componentDidMount() {
     // select defaults after mount
+    let penselect = 2
+    for (penselect = 2; penselect < this.pensizesizes.length; penselect++) {
+      if (
+        this.pensizesizes[penselect] *
+          0.001 *
+          this.svgscale *
+          this.props.bbwidth *
+          this.props.devicePixelRatio >=
+        1.0
+      )
+        break
+    }
+
     this.selectColor(3, this.tmcolorwheelcolors[2], 20)
-    this.selectColor(2, this.colorwheelcolors[0], this.pensizesizes[2])
+    this.selectColor(2, this.colorwheelcolors[0], this.pensizesizes[penselect])
     this.selectColor(1, this.colorwheelcolors[0], 10)
 
     if (this.blackboard())
       this.blackboard().setPenTool(
         this.colorwheelcolors[0],
-        this.pensizesizes[2]
+        this.pensizesizes[penselect]
       )
   }
 
@@ -271,9 +286,7 @@ export class ToolBox extends Component {
     switch (buttonid) {
       case 3:
         if (this.blackboard())
-          this.blackboard().setEraserTool(
-            (12 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
-          ) // was 30
+          this.blackboard().setEraserTool(12 * 0.001 * this.svgscale) // was 30
         this.addRemoveSecondToolGuardian(false)
         this.lasttool = 3
         break
@@ -281,7 +294,7 @@ export class ToolBox extends Component {
         if (this.blackboard())
           this.blackboard().setMarkerTool(
             this.state.markercolor,
-            (12 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
+            12 * 0.001 * this.svgscale
           )
         this.addRemoveSecondToolGuardian(true)
         this.lasttool = 4
@@ -355,10 +368,7 @@ export class ToolBox extends Component {
       case 3:
         this.setState({ markercolor: color, selectedPickerid: pickerid })
         if (this.blackboard())
-          this.blackboard().setMarkerTool(
-            color,
-            (12 * 0.001 * this.props.bbwidth) / this.props.devicePixelRatio
-          )
+          this.blackboard().setMarkerTool(color, 12 * 0.001 * this.svgscale)
         break
       default:
         break
@@ -1031,20 +1041,24 @@ export class ToolBox extends Component {
             color={'#ffffff'}
             pickerid={2}
             selected={this.state.pensize === this.pensizesizes[it]}
-            size={
-              (this.pensizesizes[it] * 0.001 * this.props.bbwidth) /
-              this.props.devicePixelRatio
-            }
-            mysize={
-              (this.pensizesizes[it] * 0.001 * this.props.bbwidth) /
-              this.props.devicePixelRatio
-            }
-            sizefac={this.props.devicePixelRatio}
+            size={this.pensizesizes[it] * 0.001 * this.props.bbwidth}
+            mysize={this.pensizesizes[it] * 0.001 * this.props.bbwidth}
+            sizefac={/* this.props.devicePixelRatio */ 1.0}
             alpha={1}
             key={it}
           />
         </div>
       )
+
+      if (
+        this.pensizesizes[it] *
+          0.001 *
+          this.svgscale *
+          this.props.devicePixelRatio *
+          this.props.bbwidth <
+        1.0
+      )
+        continue
 
       pensizewheel.push(newcolorbutton)
     }

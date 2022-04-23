@@ -232,6 +232,7 @@ export class MagicObject {
   }
 
   addPoint(x, y) {
+    if (this.points.length < 3) console.log('magic add point', x, y)
     this.pathdirty = true
     const px = x * this.svgscale
     const py = y * this.svgscale
@@ -1400,7 +1401,9 @@ export class Blackboard extends Component {
       return ['crosshair']
     }
     if (this.state.cursor.mode !== 'drawing') return 'auto'
-    const circleradius = this.state.cursor.size * 0.5
+    const svgscale = 2000
+    const circleradius =
+      (this.state.cursor.size * 0.5 * this.props.bbwidth) / svgscale
     let color = this.state.cursor.color
 
     if (typeof color === 'string' || color instanceof String)
@@ -1650,6 +1653,8 @@ export class BlackboardNotepad extends Component {
     this.lastfogpos = {}
     this.fogtime = {}
     this.fogmeanvel = {}
+
+    this.svgscale = 2000 // should be kept constant
 
     this.interactive = true
     // props.stage.interactive=true;
@@ -1964,9 +1969,28 @@ export class BlackboardNotepad extends Component {
     this.rightmousescroll = false
 
     if (this.magictool && this.addpictmode === 0) {
+      console.log(
+        'magic pointerdown pointerId:',
+        event.pointerId,
+        'pointerType',
+        event.pointerType,
+        'isPrimary',
+        event.isPrimary,
+        'width',
+        event.width,
+        'height',
+        event.height,
+        'button',
+        event.button,
+        'cX',
+        event.clientX,
+        'cY',
+        event.clientY
+      )
       this.magicpointerid = event.pointerId
       if (this.deletebox()) this.deletebox().deactivate()
-      if (this.realblackboard && this.realblackboard.current)
+      if (this.realblackboard && this.realblackboard.current) {
+        console.log('start magic path begin')
         this.realblackboard.current.startMagicPath(
           pos.x / this.props.bbwidth,
           pos.y / this.props.bbwidth + this.getCalcScrollPos(),
@@ -1982,6 +2006,8 @@ export class BlackboardNotepad extends Component {
             }
           }
         )
+        console.log('start magic path end')
+      }
       return
     }
 
@@ -2046,7 +2072,8 @@ export class BlackboardNotepad extends Component {
           pos.y / this.props.bbwidth + this.getCalcScrollPos(),
           this.tooltype,
           Color(this.toolcolor).rgbNumber(),
-          (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
+          // (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
+          this.toolsize / this.svgscale,
           event.pressure
         )
         if (this.realblackboard && this.realblackboard.current)
@@ -2058,7 +2085,8 @@ export class BlackboardNotepad extends Component {
             pos.y / this.props.bbwidth + this.getCalcScrollPos(),
             this.tooltype,
             Color(this.toolcolor).rgbNumber(),
-            (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
+            // (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
+            this.toolsize / this.svgscale,
             event.pressure
           )
         if (event.pointerType === 'touch') {
@@ -2273,6 +2301,9 @@ export class BlackboardNotepad extends Component {
       // no is not true in this case it is a mixure of mouse and touch events emulating the pen
       // this would not work
       this.lastPenEvent = now
+
+    if (this.magictool && event.pointerId !== this.magicpointerid)
+      console.log('alien magic pointerid', this.magicpointerid)
 
     if (!this.rightmousescroll) {
       if (
@@ -2643,7 +2674,7 @@ export class BlackboardNotepad extends Component {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
         mode: 'drawing',
-        size: size * this.props.devicePixelRatio,
+        size,
         color
       })
     // console.log("sPT",this.tooltype, this.toolsize,this.toolcolor );
@@ -2657,7 +2688,7 @@ export class BlackboardNotepad extends Component {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
         mode: 'drawing',
-        size: size * this.props.devicePixelRatio,
+        size,
         color,
         alpha: 0.3
       })
@@ -2671,7 +2702,7 @@ export class BlackboardNotepad extends Component {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
         mode: 'drawing',
-        size: size * this.props.devicePixelRatio,
+        size,
         color: this.props.backcolor
       })
     // console.log("sET",this.tooltype, this.toolsize,this.toolcolor );
