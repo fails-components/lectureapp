@@ -1409,6 +1409,7 @@ export class FailsBoard extends FailsBasis {
 
   render() {
     let polldata = {}
+    const pollanswers = []
 
     if (this.state.polltask === 1 || this.state.polltask === 2) {
       const tpolldata = this.calcPollresults()
@@ -1427,10 +1428,18 @@ export class FailsBoard extends FailsBasis {
           }
         ]
       }
+      let ind = 0
       for (const choice in tpolldata) {
         const mine = this.state.curpoll.children.find((el) => el.id === choice)
-        polldata.labels.push(mine.name)
+        polldata.labels.push('A ' + (ind + 1))
+        pollanswers.push(
+          <div key={ind + 'anw'}>
+            {' '}
+            <b>{'A ' + (ind + 1) + ': '} </b> {mine.name}{' '}
+          </div>
+        )
         polldata.datasets[0].data.push(tpolldata[choice])
+        ind++
       }
       console.log('polldata', polldata)
     }
@@ -1608,11 +1617,12 @@ export class FailsBoard extends FailsBasis {
                 type='bar'
                 data={polldata}
                 options={{
-                  indexAxis: 'y',
-                  maintainAspectRation: false,
-                  aspectRatio: 0.8
+                  indexAxis: 'x',
+                  responsive: true,
+                  maintainAspectRation: false
                 }}
               />
+              {pollanswers}
               {this.state.polltask === 1 && (
                 <Button
                   label='Finish poll'
@@ -2071,7 +2081,7 @@ export class FailsNotes extends FailsBasis {
       } else
         this.setState((state) => {
           const temp = state.votesel
-          temp.votesel.splice(temp.votesel.indexOf(e.value), 1)
+          temp.splice(temp.indexOf(e.value), 1)
           return { votesel: temp }
         })
     } else {
@@ -2097,12 +2107,13 @@ export class FailsNotes extends FailsBasis {
     let pollsels = []
 
     let polldata = null
+    let pollanswers = null
 
     if (this.state.polltask === 2 && this.state.polldata) {
       const pd = this.state.polldata
 
       polldata = {
-        labels: pd.map((el) => el.name),
+        labels: pd.map((el, ind) => 'A ' + (ind + 1)),
         datasets: [
           {
             data: pd.map((el) => el.data),
@@ -2115,6 +2126,12 @@ export class FailsNotes extends FailsBasis {
           }
         ]
       }
+      pollanswers = pd.map((el, ind) => (
+        <div key={ind + 'anw'}>
+          {' '}
+          <b>{'A ' + (ind + 1) + ': '} </b> {el.name}{' '}
+        </div>
+      ))
     }
 
     if (this.state.polltask === 1 && this.state.curpoll) {
@@ -2303,6 +2320,7 @@ export class FailsNotes extends FailsBasis {
           header='Poll'
           visible={typeof this.state.polltask !== 'undefined'}
           closable={this.state.polltask === 2}
+          style={{ maxWidth: '80vw', maxHeight: '80vh' }}
           onHide={() => {
             this.setState({
               polltask: undefined,
@@ -2349,11 +2367,12 @@ export class FailsNotes extends FailsBasis {
                     type='bar'
                     data={polldata}
                     options={{
-                      indexAxis: 'y',
-                      maintainAspectRation: false,
-                      aspectRatio: 1.3
+                      indexAxis: 'x',
+                      responsive: true,
+                      maintainAspectRation: false
                     }}
                   />
+                  {pollanswers}
                   <h4> Voting is over!</h4>
                 </React.Fragment>
               )}
