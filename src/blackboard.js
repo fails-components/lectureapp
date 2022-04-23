@@ -232,6 +232,7 @@ export class MagicObject {
   }
 
   addPoint(x, y) {
+    if (this.points.length < 3) console.log('magic add point', x, y)
     this.pathdirty = true
     const px = x * this.svgscale
     const py = y * this.svgscale
@@ -1919,9 +1920,28 @@ export class BlackboardNotepad extends Component {
     this.rightmousescroll = false
 
     if (this.magictool && this.addpictmode === 0) {
+      console.log(
+        'magic pointerdown pointerId:',
+        event.pointerId,
+        'pointerType',
+        event.pointerType,
+        'isPrimary',
+        event.isPrimary,
+        'width',
+        event.width,
+        'height',
+        event.height,
+        'button',
+        event.button,
+        'cX',
+        event.clientX,
+        'cY',
+        event.clientY
+      )
       this.magicpointerid = event.pointerId
       if (this.deletebox()) this.deletebox().deactivate()
-      if (this.realblackboard && this.realblackboard.current)
+      if (this.realblackboard && this.realblackboard.current) {
+        console.log('start magic path begin')
         this.realblackboard.current.startMagicPath(
           pos.x / this.props.bbwidth,
           pos.y / this.props.bbwidth + this.getCalcScrollPos(),
@@ -1937,6 +1957,8 @@ export class BlackboardNotepad extends Component {
             }
           }
         )
+        console.log('start magic path end')
+      }
       return
     }
 
@@ -2223,6 +2245,9 @@ export class BlackboardNotepad extends Component {
       // no is not true in this case it is a mixure of mouse and touch events emulating the pen
       // this would not work
       this.lastPenEvent = now
+
+    if (this.magictool && event.pointerId !== this.magicpointerid)
+      console.log('alien magic pointerid', this.magicpointerid)
 
     if (!this.rightmousescroll) {
       if (
