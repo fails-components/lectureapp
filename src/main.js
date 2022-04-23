@@ -1573,6 +1573,7 @@ export class FailsBoard extends FailsBasis {
         <Dialog
           header='Poll'
           visible={typeof this.state.polltask !== 'undefined'}
+          closable={this.state.polltask === 2}
           onHide={() => {
             this.setState({ polltask: undefined, pollsel: undefined })
           }}
@@ -2008,6 +2009,11 @@ export class FailsNotes extends FailsBasis {
       console.log('notessocket connect', data)
 
       this.scheduleReauthor()
+    })
+
+    notessocket.removeAllListeners('disconnect')
+    notessocket.on('disconnect', (data) => {
+      console.log('notessocket disconnect')
       // clear polling
       this.setState({
         polltask: undefined,
@@ -2017,11 +2023,6 @@ export class FailsNotes extends FailsBasis {
         polldata: undefined,
         pollballotid: undefined
       })
-    })
-
-    notessocket.removeAllListeners('disconnect')
-    notessocket.on('disconnect', function (data) {
-      console.log('notessocket disconnect')
     })
 
     notessocket.removeAllListeners('startPoll')
