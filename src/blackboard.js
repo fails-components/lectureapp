@@ -168,6 +168,8 @@ export class MagicObject {
 
     this.selectedObj = []
 
+    this.inputhandling = false
+
     this.pointerdown = this.pointerdown.bind(this)
     this.pointerup = this.pointerup.bind(this)
     this.pointermove = this.pointermove.bind(this)
@@ -175,6 +177,10 @@ export class MagicObject {
 
   activateMove() {
     this.moveison = true
+  }
+
+  activateInputHandling() {
+    this.inputhandling = true
   }
 
   testAndSelectDrawObject(obj) {
@@ -436,6 +442,7 @@ export class MagicObject {
 
       const style = {
         position: 'absolute',
+        touchAction: 'none',
         zIndex: args.zIndex,
         left:
           Math.round(
@@ -457,27 +464,37 @@ export class MagicObject {
           ) + 'px',
         pointerEvents: 'fill' // deactive this option , if you like to pick an svg element by cursor for debugging
       }
-      this.jsxobj = (
-        <svg
-          viewBox={viewbox}
-          style={style}
-          ref={this.svgref}
-          onPointerDown={this.pointerdown}
-          onPointerMove={this.pointermove}
-          onPointerUp={this.pointerup}
-        >
-          {this.svgpath && (
-            <path
-              d={this.svgpath}
-              ref={this.ref}
-              id='theMagicPath'
-              className='magicPath'
-              stroke='#80ffff'
-              strokeWidth={(this.mw * args.pixelwidth) / this.svgscale}
-            ></path>
-          )}
-        </svg>
+      const innerobject = (
+        <path
+          d={this.svgpath}
+          ref={this.ref}
+          id='theMagicPath'
+          className='magicPath'
+          stroke='#80ffff'
+          strokeWidth={(this.mw * args.pixelwidth) / this.svgscale}
+        ></path>
       )
+      if (this.inputhandling)
+        this.jsxobj = (
+          <svg
+            viewBox={viewbox}
+            style={style}
+            ref={this.svgref}
+            onPointerDown={this.inputhandling && this.pointerdown}
+            onPointerMove={this.inputhandling && this.pointermove}
+            onPointerUp={this.inputhandling && this.pointerup}
+          >
+            {this.svgpath && innerobject}
+          </svg>
+        )
+      else {
+        style.pointerEvents = 'none'
+        this.jsxobj = (
+          <svg viewBox={viewbox} style={style} ref={this.svgref}>
+            {this.svgpath && innerobject}
+          </svg>
+        )
+      }
       return this.jsxobj
     } else return this.jsxobj
   }
@@ -976,6 +993,7 @@ export class Blackboard extends Component {
     if (this.magicobject) {
       this.isdirty = true
       const magicobj = this.magicobject
+      magicobj.activateInputHandling()
       setTimeout(() => {
         const objects = this.work.objects
         if (magicobj) {
@@ -1941,7 +1959,6 @@ export class BlackboardNotepad extends Component {
       this.magicpointerid = event.pointerId
       if (this.deletebox()) this.deletebox().deactivate()
       if (this.realblackboard && this.realblackboard.current) {
-        console.log('start magic path begin')
         this.realblackboard.current.startMagicPath(
           pos.x / this.props.bbwidth,
           pos.y / this.props.bbwidth + this.getCalcScrollPos(),
@@ -1957,7 +1974,6 @@ export class BlackboardNotepad extends Component {
             }
           }
         )
-        console.log('start magic path end')
       }
       return
     }
@@ -2245,9 +2261,6 @@ export class BlackboardNotepad extends Component {
       // no is not true in this case it is a mixure of mouse and touch events emulating the pen
       // this would not work
       this.lastPenEvent = now
-
-    if (this.magictool && event.pointerId !== this.magicpointerid)
-      console.log('alien magic pointerid', this.magicpointerid)
 
     if (!this.rightmousescroll) {
       if (
