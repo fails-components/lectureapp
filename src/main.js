@@ -1573,7 +1573,7 @@ export class FailsBoard extends FailsBasis {
         <Dialog
           header='Poll'
           visible={typeof this.state.polltask !== 'undefined'}
-          closable={this.state.polltask === 2}
+          closable={this.state.polltask === 2 || this.state.polltask === 0}
           onHide={() => {
             this.setState({ polltask: undefined, pollsel: undefined })
           }}
