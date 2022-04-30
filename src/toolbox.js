@@ -28,6 +28,8 @@ import {
   faImages,
   faArrowsAlt,
   faArrowsAltV as faUpdown,
+  faLongArrowAltDown as faArrowDownLong,
+  faLongArrowAltUp as faArrowUpLong,
   faBars,
   faAdjust,
   faUndoAlt
@@ -572,6 +574,15 @@ export class ToolBox extends Component {
     }
   }
 
+  goAway() {
+    const scrollheight = this.scrollheight()
+    if (this.state.posy < scrollheight * 0.5) {
+      this.setState({ posy: 0.8 * scrollheight })
+    } else {
+      this.setState({ posy: 0.2 * scrollheight })
+    }
+  }
+
   render() {
     // move to state ?
 
@@ -1105,6 +1116,9 @@ export class ToolBox extends Component {
       tmcolorwheel.push(newcolorbutton)
     }
 
+    let tbposabove = false
+    if (this.state.posy < this.scrollheight() * 0.5) tbposabove = true
+
     // this.tmcolorwheel.arrangeButtons();
     //  this.tmcolorwheel.filters = [this.BloomFilter];
     let tbclass = 'toolboxMove'
@@ -1172,6 +1186,19 @@ export class ToolBox extends Component {
           <Fragment>
             <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
               {maintools}
+              <div
+                className='p-d-flex p-ai-center p-mr-2 p-mb-2'
+                id='poarrow'
+                key='poarrow'
+              >
+                <FontAwesomeIcon
+                  icon={tbposabove ? faArrowDownLong : faArrowUpLong}
+                  inverse
+                  className='poIcon p-ai-center tbChild'
+                  size='lg'
+                  onClick={() => this.goAway()}
+                />
+              </div>
             </div>
             {cwheelcpos && (
               <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>

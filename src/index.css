@@ -64,6 +64,10 @@ code {
   stroke: currentColor;
 }
 
+.poIcon {
+  filter: drop-shadow(2px 2px 2px rgb(0 0 0 / 0.4));
+}
+
 @keyframes dash {
   to {
     stroke-dashoffset: 1000;
