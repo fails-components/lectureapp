@@ -32,9 +32,12 @@ import Color from 'color'
 
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.js'
 // eslint-disable-next-line import/no-webpack-loader-syntax
-import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry'
+// import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry'
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/legacy/build/pdf.worker',
+  import.meta.url
+)
 
 window.addEventListener('contextmenu', function (e) {
   e.preventDefault()
