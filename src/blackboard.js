@@ -1337,10 +1337,11 @@ export class Blackboard extends Component {
 
   setcursor(args) {
     if (args.mode === 'drawing') {
+      const svgscale = 2000
       this.setState({
         cursor: {
           mode: 'drawing',
-          size: Math.max(args.size, 4),
+          size: Math.max(args.size, (4 * svgscale) / this.props.bbwidth),
           color: args.color,
           alpha: args.alpha
         }
