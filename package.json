@@ -1,6 +1,6 @@
 {
   "name": "@fails-components/lectureapp",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Lecture app of fails",
   "author": "Marten Richter",
   "license": "AGPL-3.0-or-later",
@@ -13,12 +13,10 @@
     "node": ">=16"
   },
   "scripts": {
-    "start": "GENERATE_SOURCEMAP=false react-scripts start",
-    "winStart": "set \"GENERATE_SOURCEMAP=false\" && react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false react-scripts build",
-    "winBuild": "set \"GENERATE_SOURCEMAP=false\" && react-scripts build",
-    "test": "GENERATE_SOURCEMAP=false react-scripts  test",
-    "eject": "GENERATE_SOURCEMAP=false react-scripts eject"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts  test",
+    "eject": "react-scripts eject"
   },
   "dependencies": {
     "@fails-components/config": "^1.0.1",
