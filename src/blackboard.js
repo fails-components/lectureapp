@@ -169,6 +169,7 @@ export class MagicObject {
     this.selectedObj = []
 
     this.inputhandling = false
+    this.lastinputhandling = false
 
     this.pointerdown = this.pointerdown.bind(this)
     this.pointerup = this.pointerup.bind(this)
@@ -238,9 +239,18 @@ export class MagicObject {
   }
 
   addPoint(x, y) {
-    if (this.points.length < 3) console.log('magic add point', x, y)
+    // if (this.points.length < 3) console.log('magic add point', x, y)
     this.pathdirty = true
-    const px = x * this.svgscale
+
+    // the following lines rescale at the borders
+    const margin = 0.02
+    const marginscale = 2.5
+    let wx = x
+    if (wx > 1 - margin)
+      wx = marginscale * wx + (1 - marginscale) * (1 - margin)
+    else if (wx < margin) wx = marginscale * wx + (1 - marginscale) * margin
+
+    const px = wx * this.svgscale
     const py = y * this.svgscale
     this.points.push({ x: px, y: py })
     if (!this.area) {
@@ -420,8 +430,13 @@ export class MagicObject {
   }
 
   getRenderObject(args) {
-    if (this.pathdirty || !this.jsxobj) {
+    if (
+      this.pathdirty ||
+      !this.jsxobj ||
+      this.lastinputhandling !== this.inputhandling
+    ) {
       if (this.pathdirty) this.buildPath()
+      this.lastinputhandling = this.inputhandling
       let ox = 0
       let oy = 0
       if (args.pixelwidth) this.bbwidth = args.pixelwidth
