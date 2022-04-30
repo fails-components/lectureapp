@@ -153,7 +153,7 @@ export class ToolBox extends Component {
 
     this.colorwheelcolors = [
       '#FFFFFF',
-      '#844D18',
+      // '#844D18',
       '#BFBFBF',
       '#000000',
       '#FF7373',
@@ -161,7 +161,7 @@ export class ToolBox extends Component {
       '#FFF284',
       '#CAFEB8',
       '#99C7FF',
-      '#2F74D0',
+      // '#2F74D0',
       '#AE70ED',
       '#FE8BF0',
       '#FFA8A8'
