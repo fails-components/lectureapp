@@ -137,6 +137,7 @@ export class ToolBox extends Component {
     this.tbx = 0.8 // constant toolbox pos
     this.lastpostime = Date.now()
     this.divheight = 32
+    this.divwidth = 32
 
     this.secondtoolnum = 0
 
@@ -239,8 +240,12 @@ export class ToolBox extends Component {
 
   componentDidUpdate() {
     if (this.divref) {
-      if (this.divref.offsetHeight !== this.divheight) {
+      if (
+        this.divref.offsetHeight !== this.divheight ||
+        this.divref.offsetWidth !== this.divwidth
+      ) {
         this.divheight = this.divref.offsetHeight
+        this.divwidth = this.divref.offsetWidth
         // console.log('divheight changed', this.divheight)
         if (!this.scrollmodeactiv) this.reportDrawPos()
       }
@@ -440,7 +445,17 @@ export class ToolBox extends Component {
 
     let finaly = 0
     // ok the idea as as follows, if drawing is close, the toolbox is in an circle around the drawing
-    const circlerad = 0.2
+    const circlerad = 0.1 // 0.2
+    const circleradw = circlerad + (1.1 * this.divwidth) / this.props.bbwidth
+    const circleradh = circlerad + (1.1 * this.divheight) / this.props.bbwidth
+
+    /* console.log(
+      'circle stuff',
+      circleradw,
+      circleradh,
+      this.props.bbheight / this.props.bbwidth
+    ) */
+
     // now we try to figure out if the circle and the line are intersecting
     const d = this.tbx - x
 
@@ -459,13 +474,17 @@ export class ToolBox extends Component {
     ) */
 
     this.setState((state) => {
-      if (d * d > circlerad * circlerad) {
+      if (d * d > circleradw * circleradw) {
         // no intersection
         finaly = Math.max(Math.min(bottom, y), 0.1 * scrollheight)
         // console.log('stupid  finaly', finaly, d, circlerad)
       } else {
-        const finaly1 = y + Math.sqrt(circlerad * circlerad - d * d)
-        const finaly2 = y - Math.sqrt(circlerad * circlerad - d * d)
+        const finaly1 =
+          y +
+          (Math.sqrt(circleradw * circleradw - d * d) * circleradh) / circleradw
+        const finaly2 =
+          y -
+          (Math.sqrt(circleradw * circleradw - d * d) * circleradh) / circleradw
         let ofinaly
 
         if (Math.abs(finaly1 - state.posy) < Math.abs(finaly2 - state.posy)) {
