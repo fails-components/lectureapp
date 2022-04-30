@@ -44,6 +44,7 @@ import {
   fiAddNotepad,
   fiAddScreen,
   fiEyeOn,
+  fiEyeOff,
   fiFailsLogo,
   fiMoveToTop,
   fiScreenNumberOff,
@@ -1089,6 +1090,7 @@ export class FailsBoard extends FailsBasis {
           polltask: 1,
           curpoll: data,
           pollsel: undefined,
+          pollshowres: false,
           pollvotes: {},
           pollballots: []
         })
@@ -1325,7 +1327,7 @@ export class FailsBoard extends FailsBasis {
 
   onFinishSelPoll() {
     if (!this.state.curpoll) return
-    const result = this.calcPollresults()
+    const result = this.calcPollresults().data
     const tresult = []
     for (const res in result) {
       const mine = this.state.curpoll.children.find((el) => el.id === res)
@@ -1393,6 +1395,7 @@ export class FailsBoard extends FailsBasis {
         if (el2 in tpolldata) tpolldata[el2]++
       }
     }
+    let numballots = 0
     for (const el in this.state.pollvotes) {
       // the element
       const cur = this.state.pollvotes[el]
@@ -1402,17 +1405,20 @@ export class FailsBoard extends FailsBasis {
       } else {
         helper(cur)
       }
+      numballots++
     }
-    console.log('tpolldata', tpolldata)
-    return tpolldata
+    return { data: tpolldata, numballots }
   }
 
   render() {
     let polldata = {}
     const pollanswers = []
+    let numballots = 0
 
     if (this.state.polltask === 1 || this.state.polltask === 2) {
-      const tpolldata = this.calcPollresults()
+      const tpollres = this.calcPollresults()
+      const tpolldata = tpollres.data
+      numballots = tpollres.numballots
 
       polldata = {
         labels: [],
@@ -1607,16 +1613,38 @@ export class FailsBoard extends FailsBasis {
           )}
           {(this.state.polltask === 1 || this.state.polltask === 2) && (
             <React.Fragment>
-              <h3>
-                {' '}
-                {this.state.curpoll
-                  ? this.state.curpoll.name +
-                    (this.state.curpoll.multi ? ' (multi)' : ' (single)')
-                  : 'Current poll'}
-              </h3>
+              <div className='p-d-flex p-ai-center'>
+                <div className='p-mr-2'>
+                  <h3>
+                    {' '}
+                    {this.state.curpoll
+                      ? this.state.curpoll.name +
+                        (this.state.curpoll.multi ? ' (multi)' : ' (single)')
+                      : 'Current poll'}
+                  </h3>
+                </div>
+                {this.state.polltask === 1 && (
+                  <div className='p-mr-2'>
+                    <Button
+                      icon={this.state.pollshowres ? fiEyeOn : fiEyeOff}
+                      tooltip='Show/hide poll results'
+                      onClick={(e) =>
+                        this.setState({ pollshowres: !this.state.pollshowres })
+                      }
+                      className='p-button-rounded p-button-text'
+                    />
+                  </div>
+                )}
+              </div>
               <Chart
                 type='bar'
                 data={polldata}
+                style={{
+                  visibility:
+                    this.state.pollshowres || this.state.polltask === 2
+                      ? 'visible'
+                      : 'hidden'
+                }}
                 options={{
                   indexAxis: 'x',
                   responsive: true,
@@ -1624,6 +1652,7 @@ export class FailsBoard extends FailsBasis {
                 }}
               />
               {pollanswers}
+              Number of ballots: {numballots} <br></br>
               {this.state.polltask === 1 && (
                 <Button
                   label='Finish poll'
