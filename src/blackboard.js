@@ -1916,7 +1916,7 @@ export class BlackboardNotepad extends Component {
   }
 
   async pointerdown(event) {
-    console.log('pointerdown', event)
+    // console.log('pointerdown', event)
     console.log(
       'pointerdown pointerId:',
       event.pointerId,
