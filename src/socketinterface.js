@@ -96,6 +96,9 @@ export class SocketInterface {
           sessionStorage.setItem('failstoken', event.data.token)
         this.decodedtoken = event.data.decodedToken
         break
+      case 'idinform':
+        if (event.data.id) this.id = event.data.id
+        break
 
       default:
         console.log('unhandled onMessage', event)
@@ -139,6 +142,16 @@ export class SocketInterface {
         pipe: bc
       },
       [bc]
+    )
+  }
+
+  setAVChannel(av) {
+    SocketInterface.worker.postMessage(
+      {
+        task: 'avchannel',
+        pipe: av
+      },
+      [av]
     )
   }
 

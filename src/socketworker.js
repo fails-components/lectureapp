@@ -17,6 +17,7 @@ class SocketWorker {
     this.reauthorizeTimeout = null
 
     this.handleBlackboard = this.handleBlackboard.bind(this)
+    this.handleAV = this.handleAV.bind(this)
 
     this.periodicStatusCheck = this.periodicStatusCheck.bind(this)
 
@@ -669,6 +670,11 @@ class SocketWorker {
     return this.decoded_token_int
   }
 
+  sendId() {
+    // eslint-disable-next-line no-restricted-globals
+    self.postMessage({ task: 'idinform', id: this.socket.id })
+  }
+
   initializeSocketHandlersNotepads() {
     this.socket.removeAllListeners('connect')
     this.socket.on('connect', (data) => {
@@ -677,6 +683,7 @@ class SocketWorker {
       }, 100)
       this.connectCrypto()
       this.scheduleReauthor()
+      this.sendId()
     })
   }
 
@@ -691,6 +698,7 @@ class SocketWorker {
       // this.updateSizes() // inform sizes
       this.connectCrypto()
       this.scheduleReauthor()
+      this.sendId()
     })
   }
 
@@ -705,6 +713,7 @@ class SocketWorker {
       // this.updateSizes() // inform sizes
       this.connectCrypto()
       this.scheduleReauthor()
+      this.sendId()
     })
   }
 
@@ -745,6 +754,12 @@ class SocketWorker {
     }
   }
 
+  handleAV(event) {
+    if (event.data.command && this.socket) {
+      this.socket.emit(event.data.command, event.data.data)
+    }
+  }
+
   onMessage(event) {
     // console.log('SocketWorker onMessage', event.data, this, this.socket)
     const task = event.data.task
@@ -769,6 +784,12 @@ class SocketWorker {
           this.blackboard = event.data.pipe
           this.blackboard.onmessage = this.handleBlackboard
         } else throw new Error('boardchannel without pipe')
+        break
+      case 'avchannel':
+        if (event.data.pipe) {
+          this.av = event.data.pipe
+          this.av.onmessage = this.handleAV
+        } else throw new Error('avchannel without pipe')
         break
       case 'connectNotepad':
         this.connectNotepad()

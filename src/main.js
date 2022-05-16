@@ -64,7 +64,9 @@ import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
 import { UAParser } from 'ua-parser-js'
 import { ScreenManager } from './screenmanager'
+import { VideoControl } from './audiovideoctrl'
 import { SocketInterface } from './socketinterface'
+import { AVInterface } from './avinterface'
 // import screenfull from 'screenfull'
 
 class ChannelEdit extends Component {
@@ -276,6 +278,17 @@ export class FailsBasis extends Component {
     this.socket.setBoardChannel(bbchannel.port1)
     this.bbchannel = bbchannel.port2
 
+    const avchannel = new MessageChannel()
+    this.socket.setAVChannel(avchannel.port1)
+    this.avchannel = avchannel.port2
+    AVInterface.setNetworkControl(this.avchannel)
+
+    this.avoffers = {
+      video: {},
+      audio: {},
+      screen: {}
+    }
+
     // TODO add purpose stuff
   }
 
@@ -324,6 +337,31 @@ export class FailsBasis extends Component {
   }
 
   initializeCommonSocket(commonsocket) {
+    commonsocket.on('avoffer', (data) => {
+      if (data.id && data.type && data.type in this.avoffers) {
+        this.avoffers[data.type][data.id] = Date.now()
+      }
+      if (this.processAVoffers) this.processAVoffers()
+    })
+
+    commonsocket.on('avofferList', (data) => {
+      const now = Date.now()
+      if (data.offers) {
+        const newoffers = {
+          video: {},
+          audio: {},
+          screen: {}
+        }
+        data.offers.forEach((el) => {
+          if (el.time && Number(el.time) > now - 60 * 1000) {
+            if (el.id && el.type && el.type in newoffers)
+              newoffers[el.type][el.id] = Number(el.time)
+          }
+        })
+        this.avoffers = newoffers
+        if (this.processAVoffers) this.processAVoffers()
+      }
+    })
     // commonsocket.removeAllListeners('availscreens')
     commonsocket.on('availscreens', (data) => {
       // we can also figure out a notescreen id
@@ -879,6 +917,7 @@ export class FailsBoard extends FailsBasis {
           notepadsocket.emit('sendboards', {})
         }, 500) */
       this.updateSizes() // inform sizes
+      this.setState({ id: this.socket.id })
     })
 
     notepadsocket.on('chatquestion', (data) => {
@@ -969,6 +1008,32 @@ export class FailsBoard extends FailsBasis {
 
       // this.setState({ polltask: 2,  pollsel: undefined} );
     })
+  }
+
+  processAVoffers() {
+    // avoffers have updated, now we may change the  displayed video
+    let newvideo = false
+    if (this.state.dispvideo) {
+      if (this.avoffers.video[this.state.dispvideo] < Date.now() - 30 * 100) {
+        // we need a new one this
+        newvideo = true
+      }
+    } else newvideo = true
+    if (newvideo) {
+      // select the most recent
+      let curtime = 0
+      let curid = null
+      const video = this.avoffers.video
+      for (const id in video) {
+        if (video[id] > Date.now() - 30 * 1000 && video[id] > curtime) {
+          curtime = video[id]
+          curid = id
+        }
+      }
+      if (curid) {
+        this.setState({ dispvideo: curid })
+      }
+    }
   }
 
   blockChat(userhash) {
@@ -1365,6 +1430,10 @@ export class FailsBoard extends FailsBasis {
             />
           </div>
         )}
+        <VideoControl
+          videoid={this.state.dispvideo}
+          id={this.state.id}
+        ></VideoControl>
 
         <Dialog
           header='Select picture'
@@ -1852,16 +1921,15 @@ export class FailsNotes extends FailsBasis {
     notessocket.on('startPoll', (data) => {
       console.log('startpoll incoming', data)
 
-        this.setState({
-          polltask: 1,
-          curpoll: data,
-          votesel: [],
-          pollvotes: {},
-          polldata: undefined,
-          pollballotid: undefined
-        })
-      }.bind(this)
-    )
+      this.setState({
+        polltask: 1,
+        curpoll: data,
+        votesel: [],
+        pollvotes: {},
+        polldata: undefined,
+        pollballotid: undefined
+      })
+    })
 
     notessocket.on('finishPoll', (data) => {
       console.log('finishpoll incoming', data)
