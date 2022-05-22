@@ -1014,7 +1014,10 @@ export class FailsBoard extends FailsBasis {
     // avoffers have updated, now we may change the  displayed video
     let newvideo = false
     if (this.state.dispvideo) {
-      if (this.avoffers.video[this.state.dispvideo] < Date.now() - 30 * 100) {
+      if (
+        this.avoffers.video[this.state.dispvideo] < Date.now() - 30 * 1000 ||
+        this.state.dispvideo === this.state.id
+      ) {
         // we need a new one this
         newvideo = true
       }
@@ -1025,7 +1028,10 @@ export class FailsBoard extends FailsBasis {
       let curid = null
       const video = this.avoffers.video
       for (const id in video) {
-        if (video[id] > Date.now() - 30 * 1000 && video[id] > curtime) {
+        if (
+          video[id] > Date.now() - 30 * 1000 &&
+          (video[id] > curtime || curid === this.state.id)
+        ) {
           curtime = video[id]
           curid = id
         }

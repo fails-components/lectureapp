@@ -127,7 +127,8 @@ export class AVCameraStream extends AVStream {
       video: {
         deviceId: { exact: id },
         width: 1280,
-        height: 720
+        height: 720,
+        aspectRatio: { ideal: 16 / 9 }
       }
     })
     this.deviceId = id
@@ -136,7 +137,11 @@ export class AVCameraStream extends AVStream {
 
     const track = mstream.getTracks()[0]
     console.log('mtrackobject', track)
-    await track.applyConstraints({ frameRate: 25.0 })
+    console.log('track settings', track.getSettings())
+    await track.applyConstraints({
+      frameRate: 25.0
+    })
+    console.log('track settings after', track.getSettings())
 
     // eslint-disable-next-line no-undef
     const trackprocessor = new MediaStreamTrackProcessor({ track })

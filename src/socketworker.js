@@ -113,6 +113,10 @@ class SocketWorker {
       'master digest',
       new Uint16Array(this.keyobject.digest).join(' ')
     )
+    this.av.postMessage({
+      task: 'keychange',
+      keyobject: this.keyobject
+    })
   }
 
   async sendAndEncrypt(el) {
@@ -120,6 +124,7 @@ class SocketWorker {
       let tosend = { ...this.keyobject.sendKOforRec }
       if (
         el.purpose === 'notes' ||
+        el.purpose === 'notepad' ||
         el.purpose === 'lecture' ||
         el.purpose === 'screen'
       )
@@ -435,6 +440,7 @@ class SocketWorker {
     this.socket.removeAllListeners('identDelete')
     this.socket.on('identDelete', (data) => {
       if (data.id) {
+        console.log('identDelete2', this.idents[data.id])
         delete this.idents[data.id].lastaccess
       }
     })
@@ -495,7 +501,6 @@ class SocketWorker {
 
     this.socket.removeAllListeners('receiveKey')
     this.socket.on('receiveKey', async (data) => {
-      // console.log('receiveKey', this.keymaster)
       if (!data.message) return
       try {
         const message = BSONdeserialize(data.message)
@@ -559,11 +564,28 @@ class SocketWorker {
         if (this.socket.id !== message.dest)
           throw new Error('destination forged')
 
-        this.keyobject = message
-        this.keyobject.digest = await crypto.subtle.digest(
-          'SHA-256',
-          await crypto.subtle.exportKey('raw', verikey)
-        )
+        this.keyobject = {
+          keynum: message.keynum,
+          exptime: message.exptime,
+          keyRec: await crypto.subtle.importKey(
+            'raw',
+            message.keyRec,
+            'AES-GCM',
+            true,
+            ['encrypt', 'decrypt']
+          ),
+          keyE2E: await crypto.subtle.importKey(
+            'raw',
+            message.keyE2E,
+            'AES-GCM',
+            true,
+            ['encrypt', 'decrypt']
+          ),
+          digest: await crypto.subtle.digest(
+            'SHA-256',
+            await crypto.subtle.exportKey('raw', verikey)
+          )
+        }
         this.informUpdatedKeys()
       } catch (error) {
         console.log('receiveKey error', error)

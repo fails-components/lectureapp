@@ -323,6 +323,7 @@ class AVEncrypt extends AVTransformStream {
   constructor(args) {
     super(args)
     this.key = null
+    this.keyindex = null
   }
 
   async transform(chunk) {
@@ -335,10 +336,16 @@ class AVEncrypt extends AVTransformStream {
     const plaindata = new ArrayBuffer(chunk.frame.byteLength)
     chunk.frame.copyTo(plaindata)
 
-    if (this.newkey) {
-      this.key = await this.newkey
-      this.newkey = null
+    const keystore = AVKeyStore.getKeyStore()
+
+    const curkeyid = await keystore.getCurKeyId()
+    if (curkeyid !== this.keyindex && chunk.frame.type === 'key') {
+      // we only change the key on keyframes!
+      this.key = await keystore.getKey(curkeyid)
+      this.keyindex = curkeyid
     }
+
+    const rec = false // fix e2e to true for now
 
     // eslint-disable-next-line no-restricted-globals
     const encdata = self.crypto.subtle.encrypt(
@@ -346,7 +353,7 @@ class AVEncrypt extends AVTransformStream {
         name: 'AES-GCM',
         iv
       },
-      this.key,
+      rec ? this.key.rec : this.key.e2e,
       plaindata
     )
 
@@ -360,7 +367,8 @@ class AVEncrypt extends AVTransformStream {
         key: chunk.frame.type === 'key'
       },
       iv,
-      keyindex: 1, // identify current key
+      keyindex: this.keyindex, // identify current key
+      rec, // recording or not
       data: await encdata
     }
 
@@ -388,14 +396,17 @@ class AVDecrypt extends AVTransformStream {
   constructor(args) {
     super(args)
     this.key = null
+    this.keyindex = null
   }
 
   async transform(chunk) {
     // ok chunk is encrypted data
     try {
-      if (this.newkey) {
-        this.key = await this.newkey
-        this.newkey = null
+      const keystore = AVKeyStore.getKeyStore()
+
+      if (chunk.keyindex !== this.keyindex) {
+        this.key = await keystore.getKey(chunk.keyindex)
+        this.keyindex = chunk.keyindex
       }
       // eslint-disable-next-line no-restricted-globals
       const decdata = self.crypto.subtle.decrypt(
@@ -403,7 +414,7 @@ class AVDecrypt extends AVTransformStream {
           name: 'AES-GCM',
           iv: chunk.iv
         },
-        this.key,
+        chunk.rec ? this.key.rec : this.key.e2e,
         chunk.data
       )
 
@@ -471,10 +482,11 @@ class AVFramer extends AVTransformStream {
     const framedata = chunk.framedata
     const data = chunk.data
     const metadata = chunk.metadata
-    let hdrlen = 2 + 4 + 8 + 2 + 1
+    let hdrlen = 2 + 4 + 8 + 2 + 1 + 1
 
     let hdrflags1 = 0
 
+    // hdrflags 1 begin
     if (framedata.key) hdrflags1 |= 1
     if (metadata.svc && metadata.svc.temporalLayerId) {
       hdrflags1 |= 1 << 1
@@ -488,6 +500,8 @@ class AVFramer extends AVTransformStream {
       hdrflags1 |= 1 << 2
       hdrlen += chunk.iv.length + 1
     }
+    if (chunk.rec) hdrflags1 |= 1 << 3
+    // hdrflags 1 end
     const payloadlen = data.byteLength
     const headerbuffer = new ArrayBuffer(hdrlen)
     const hdrdv = new DataView(headerbuffer)
@@ -501,6 +515,8 @@ class AVFramer extends AVTransformStream {
     hdrdv.setBigInt64(hdrpos, BigInt(framedata.timestamp))
     hdrpos += 8
     hdrdv.setUint8(hdrpos, hdrflags1)
+    hdrpos += 1
+    hdrdv.setUint8(hdrpos, chunk.keyindex & 0xff)
     hdrpos += 1
     if (metadata.svc && metadata.svc.temporalLayerId) {
       hdrdv.setUint32(hdrpos, metadata.svc.temporalLayerId)
@@ -813,6 +829,10 @@ class AVDeFramer extends BasicDeframer {
     const hdrflags1 = hdrdv.getUint8(hdrpos)
     hdrpos += 1
     framedata.key = !!(hdrflags1 & 1)
+    chunk.rec = !!(hdrflags1 & (1 << 3))
+
+    chunk.keyindex = hdrdv.getUint8(hdrpos)
+    hdrpos += 1
 
     if (hdrflags1 & (1 << 1)) {
       metadata.svc = {
@@ -861,9 +881,6 @@ class AVVideoInputProcessor {
     this.outputctrldeframer = new BsonDeFramer()
     this.videodeframer = new AVDeFramer({ type: 'video' })
     this.inputctrlframer = new BsonFramer()
-    this.key = AVEncrypt.generateKey()
-    this.videodecrypt.setKey(this.key)
-    this.videoencrypt.setKey(this.key)
     this.streamSrc = null
     this.streamDest = null
 
@@ -966,6 +983,7 @@ class AVVideoInputProcessor {
     // src id, is the source we want
     this.srcid = id
     const avtransport = AVTransport.getInterface()
+    console.log('setSrcId', id)
 
     if (this.srcAbort) {
       this.srcAbort.abort()
@@ -1055,11 +1073,82 @@ class AVVideoInputProcessor {
   }
 }
 
+class AVKeyStore {
+  static instance = null
+  constructor(args) {
+    this.keys = {}
+    this.keysprom = {}
+    this.keysres = {}
+    this.curkeyid = new Promise((resolve) => {
+      this.curkeyidres = resolve
+    })
+  }
+
+  static getKeyStore() {
+    if (!AVKeyStore.instance) AVKeyStore.instance = new AVKeyStore()
+    return AVKeyStore.instance
+  }
+
+  incomingKey(keyobj) {
+    const keyid = keyobj.keynum & 0xff
+    console.log('incoming key', keyobj)
+    this.keys[keyid] = {
+      e2e: keyobj.keyE2E,
+      rec: keyobj.keyRec,
+      exptime: keyobj.exptime
+    }
+    if (this.keysprom[keyid]) {
+      delete this.keysprom[keyid]
+      this.keysres[keyid](this.keys[keyid])
+      delete this.keysres[keyid]
+    }
+    if (this.curkeyidres) {
+      this.curkeyidres(keyid)
+      delete this.curkeyidres
+    }
+    this.curkeyid = Promise.resolve(keyid)
+
+    const now = Date.now()
+    // we also purge expired keys
+    for (const kid in this.keys) {
+      if (this.keys[kid].exptime > now) delete this.keys[kid]
+    }
+  }
+
+  getCurKeyId() {
+    return this.curkeyid
+  }
+
+  async getKey(keynum) {
+    let keyinfo = this.keys[keynum]
+    if (!keyinfo) {
+      let keyprom = this.keysprom[keynum]
+      if (!keyprom)
+        keyprom = this.keysprom[keynum] = new Promise((resolve) => {
+          this.keysres[keynum] = resolve
+        })
+      keyprom = await keyprom
+      keyinfo = this.keys[keynum]
+    }
+    return keyinfo
+  }
+}
+
 class AVWorker {
   static ncPipe = null
   constructor(args) {
     this.onMessage = this.onMessage.bind(this)
     this.objects = {}
+
+    this.handleNetworkControl = this.handleNetworkControl.bind(this)
+  }
+
+  handleNetworkControl(message) {
+    // console.log('network control message', message.data)
+    if (message.data.task === 'keychange') {
+      const keyobj = message.data.keyobject
+      AVKeyStore.getKeyStore().incomingKey(keyobj)
+    }
   }
 
   onMessage(event) {
@@ -1155,6 +1244,7 @@ class AVWorker {
       case 'networkControl':
         if (event.data.pipe) {
           AVWorker.ncPipe = event.data.pipe
+          AVWorker.ncPipe.onmessage = this.handleNetworkControl
         }
         break
       default:
