@@ -19,9 +19,56 @@
 
 import { Button } from 'primereact/button'
 import { OverlayPanel } from 'primereact/overlaypanel'
-import { Component } from 'react'
+import React, { Component } from 'react'
 import { AVVideoRender, AVInterface } from './avinterface'
 import { Dropdown } from 'primereact/dropdown'
+
+export class FloatingVideo extends Component {
+  constructor(args) {
+    super(args)
+    this.lastdrpx = 0
+    this.lastdrpy = 0
+    this.state = { videoposx: 0, videoposy: 0 }
+  }
+
+  reportDrawPos(x, y) {
+    // y should be already corrected by scrollheight!
+
+    if (x > 0.4 && x < 0.6) return // do nothing we are far away from the corner
+    if (y > 0.3 && y < 0.4) return // the same as for x
+
+    // figure out if we are near
+
+    if (y < 0.3 && this.state.videoposy === 0) {
+      if (x < 0.3 && this.state.videoposx === 1)
+        this.setState({ videoposx: 0, videoposy: 1 })
+      else if (x > 0.7 && this.state.videoposx === 0)
+        this.setState({ videoposx: 0, videoposy: 1 })
+    }
+
+    if (y > 0.4 && this.state.videoposy === 1) {
+      // videoposy 0 is the default
+      this.setState({ videoposx: 0, videoposy: 0 })
+    }
+  }
+
+  render() {
+    const style = {}
+    if (this.state.videoposx) style.left = '0vw'
+    else style.right = '0vw'
+
+    if (this.state.videoposy) style.bottom = '0vh'
+    else style.top = '0vh'
+
+    style.zIndex = 199
+    style.position = 'absolute'
+    return (
+      <div className='p-shadow-5 m-0 buttonbarparent' style={style}>
+        {this.props.children}
+      </div>
+    )
+  }
+}
 
 export class VideoControl extends Component {
   constructor(args) {
@@ -105,15 +152,7 @@ export class VideoControl extends Component {
     console.log('videosrc', videosrc)
     console.log('videoid', this.state.videoid)
     return (
-      <div
-        className='p-shadow-5 m-0 buttonbarparent'
-        style={{
-          position: 'absolute',
-          top: '0vh',
-          right: '0vw',
-          zIndex: 210
-        }}
-      >
+      <React.Fragment>
         {this.state.camera && (
           <AVVideoRender camera={this.state.camera} width={16}></AVVideoRender>
         )}
@@ -136,7 +175,7 @@ export class VideoControl extends Component {
             placeholder='Select a video source'
           />
         </OverlayPanel>
-      </div>
+      </React.Fragment>
     )
   }
 }

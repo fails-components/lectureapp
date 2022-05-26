@@ -64,7 +64,7 @@ import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
 import { UAParser } from 'ua-parser-js'
 import { ScreenManager } from './screenmanager'
-import { VideoControl } from './audiovideoctrl'
+import { VideoControl, FloatingVideo } from './audiovideoctrl'
 import { SocketInterface } from './socketinterface'
 import { AVInterface } from './avinterface'
 // import screenfull from 'screenfull'
@@ -823,12 +823,15 @@ export class FailsBoard extends FailsBasis {
     this.state.welcomeMessageSend = 0
 
     this.availscreensmenu = React.createRef()
+    this.floatvideo = React.createRef()
 
     this.blockchathash = []
 
     // this.notepaduuid=uuidv4(); // may be get it later from server together with token?, yes that is how it is handled
 
     this.netSendSocket = this.netSendSocket.bind(this)
+
+    this.reportDrawPos = this.reportDrawPos.bind(this)
 
     this.onHideArrangeDialog = this.onHideArrangeDialog.bind(this)
     this.onHidePictDialog = this.onHidePictDialog.bind(this)
@@ -1056,6 +1059,12 @@ export class FailsBoard extends FailsBasis {
   arrangebuttonCallback() {
     // End button was pressed
     this.setState({ arrangebuttondialog: true })
+  }
+
+  reportDrawPos(x, y) {
+    if (this.floatvideo.current) {
+      this.floatvideo.current.reportDrawPos(x, y)
+    }
   }
 
   async onOpenNewScreen() {
@@ -1391,6 +1400,7 @@ export class FailsBoard extends FailsBasis {
           isnotepad={true}
           bbchannel={this.bbchannel}
           pictbuttoncallback={this.pictbuttonCallback}
+          reportDrawPosCB={this.reportDrawPos}
           mainstate={{
             blackbackground,
             bgpdf: this.state.bgpdf,
@@ -1444,10 +1454,12 @@ export class FailsBoard extends FailsBasis {
             />
           </div>
         )}
-        <VideoControl
-          videoid={this.state.dispvideo}
-          id={this.state.id}
-        ></VideoControl>
+        <FloatingVideo ref={this.floatvideo}>
+          <VideoControl
+            videoid={this.state.dispvideo}
+            id={this.state.id}
+          ></VideoControl>
+        </FloatingVideo>
 
         <Dialog
           header='Select picture'

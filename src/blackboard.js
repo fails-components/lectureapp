@@ -1049,13 +1049,21 @@ export class Blackboard extends Component {
     if (this.magicobject) {
       this.magicobject.addPoint(x, y)
       this.isdirty = true
-      if (this.toolbox() && now - this.lastrpd > 200) {
+      if (now - this.lastrpd > 200) {
         // this is quite expensive, do not do this during a redraw, but this is never a redraw
         this.lastrpd = now
-        this.toolbox().reportDrawPos(
-          x,
-          y - this.state.curscrollpos - this.state.scrolloffset
-        )
+        if (this.toolbox())
+          this.toolbox().reportDrawPos(
+            x,
+            y - this.state.curscrollpos - this.state.scrolloffset
+          )
+
+        if (this.props.reportDrawPosCB)
+          this.props.reportDrawPosCB(
+            x,
+            (y - this.state.curscrollpos - this.state.scrolloffset) /
+              this.scrollheight()
+          )
       }
     }
   }
@@ -1162,13 +1170,20 @@ export class Blackboard extends Component {
 
       if (this.state.fogpos) this.setState({ fogpos: false })
       this.isdirty = true
-      if (this.toolbox() && now - this.lastrpd > 200) {
+      if (now - this.lastrpd > 200) {
         // this is quite expensive, do not do this during a redraw, but this is never a redraw
         this.lastrpd = now
-        this.toolbox().reportDrawPos(
-          x,
-          y - this.state.curscrollpos - this.state.scrolloffset
-        )
+        if (this.toolbox())
+          this.toolbox().reportDrawPos(
+            x,
+            y - this.state.curscrollpos - this.state.scrolloffset
+          )
+        if (this.props.reportDrawPosCB)
+          this.props.reportDrawPosCB(
+            x,
+            (y - this.state.curscrollpos - this.state.scrolloffset) /
+              this.scrollheight()
+          )
       }
 
       // this.updateRenderArea(x, y)
@@ -2923,6 +2938,7 @@ export class BlackboardNotepad extends Component {
           backclass={this.props.backclass}
           bbchannel={this.props.bbchannel}
           outgodispatcher={this.outgodispatcher}
+          reportDrawPosCB={this.props.reportDrawPosCB}
           bbwidth={this.props.bbwidth}
           addpict={addpict}
           bbheight={this.props.bbheight}

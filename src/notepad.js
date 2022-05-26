@@ -252,6 +252,7 @@ export class NoteScreenBase extends Component {
             notepadscreen={this}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
+            reportDrawPosCB={this.props.reportDrawPosCB}
             pageoffset={
               (this.props.pageoffset * this.state.bbheight) / this.state.bbwidth
             }
@@ -266,6 +267,7 @@ export class NoteScreenBase extends Component {
             notepadscreen={this}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
+            reportDrawPosCB={this.props.reportDrawPosCB}
             devicePixelRatio={this.state.devicePixelRatio}
           ></BlackboardNotepad>
         )}
