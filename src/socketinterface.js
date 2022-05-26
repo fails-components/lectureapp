@@ -14,6 +14,7 @@ export class SocketInterface {
 
     this.mediadevicesupported = false
     this.servererrorhandler = null
+    this.informIdentshandler = null
 
     this.createScreenReq = []
     this.createNotepadReq = []
@@ -99,7 +100,10 @@ export class SocketInterface {
       case 'idinform':
         if (event.data.id) this.id = event.data.id
         break
-
+      case 'informIdentities':
+        if (event.data.idents && this.informIdentshandler)
+          this.informIdentshandler(event.data)
+        break
       default:
         console.log('unhandled onMessage', event)
         break
@@ -125,6 +129,10 @@ export class SocketInterface {
 
   setServerErrorHandler(handler) {
     this.servererrorhandler = handler
+  }
+
+  setInformIdentsHandler(handler) {
+    this.informIdentshandler = handler
   }
 
   setReloadingHandler(handler) {

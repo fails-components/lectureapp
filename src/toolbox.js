@@ -18,8 +18,10 @@
 */
 import React, { Component, Fragment } from 'react'
 import failsLogo from './logo/logo2.svg'
+import { Badge } from 'primereact/badge'
 import { Button } from 'primereact/button'
 import { OverlayPanel } from 'primereact/overlaypanel'
+import { ListBox } from 'primereact/listbox'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faEraser,
@@ -583,6 +585,15 @@ export class ToolBox extends Component {
     }
   }
 
+  identTemplate(element) {
+    return (
+      <span>
+        <i className='pi pi-user mr-4'></i> {element.displayname} (
+        {element.purpose})
+      </span>
+    )
+  }
+
   render() {
     // move to state ?
 
@@ -827,6 +838,26 @@ export class ToolBox extends Component {
       />
     )
 
+    const idents = this.props.identobj.idents
+    const digest = this.props.identobj.masterdigest
+
+    const identbutton = (
+      <Button
+        icon={
+          <i className='pi pi-users mr-4 p-overlay-badge'>
+            <Badge value={idents.length}></Badge>
+          </i>
+        }
+        tooltip='Participants'
+        tooltipOptions={ttopts}
+        key={16}
+        onClick={(e) => {
+          if (this.identinfo) this.identinfo.toggle(e)
+        }}
+        className={setclass}
+      ></Button>
+    )
+
     const infobutton = (
       <Button
         icon={fiFailsLogo}
@@ -1011,6 +1042,7 @@ export class ToolBox extends Component {
         settingswheel3.push(touchposblbutton)
       }
     }
+    if (idents.length > 0) settingswheel.push(identbutton)
     settingswheel.push(infobutton)
 
     let setwheelpcpos = false
@@ -1181,6 +1213,39 @@ export class ToolBox extends Component {
               Chromium, Edge, etc. consider using another browser.
             </React.Fragment>
           )}{' '}
+        </OverlayPanel>
+        <OverlayPanel
+          className='tbChild'
+          ref={(el) => {
+            this.identinfo = el
+          }}
+          style={{ maxWidth: '20vw', maxHeight: '50vh' }}
+          showCloseIcon
+        >
+          <h4> Participants:</h4>
+          <ListBox
+            optionLabel='displayname'
+            optionValue='id'
+            options={idents}
+            style={{ maxHeight: '20vh' }}
+            itemTemplate={this.identTemplate}
+          />
+          {digest && (
+            <React.Fragment>
+              <h4> Masterkey:</h4>
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontVariantNumeric: 'slashed-zero'
+                }}
+              >
+                {digest}
+              </span>
+              <br></br>
+              <br></br>
+              Compare these numbers to verify E2E encryption.
+            </React.Fragment>
+          )}
         </OverlayPanel>
         {this.state.activated && (
           <Fragment>

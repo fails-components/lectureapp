@@ -262,10 +262,12 @@ export class FailsBasis extends Component {
     this.servererrorhandler = this.servererrorhandler.bind(this)
     this.setReloading = this.setReloading.bind(this)
     this.setExpiredToken = this.setExpiredToken.bind(this)
+    this.setIdentities = this.setIdentities.bind(this)
 
     this.state = {}
     this.state.screensToSel = []
     this.state.reloading = true
+    this.state.identobj = { idents: [], masterdigest: 'no masterdigest' }
 
     this.screenm = new ScreenManager()
 
@@ -273,6 +275,7 @@ export class FailsBasis extends Component {
     this.socket.setServerErrorHandler(this.servererrorhandler)
     this.socket.setReloadingHandler(this.setReloading)
     this.socket.setExpiredTokenHandler(this.setExpiredToken)
+    this.socket.setInformIdentsHandler(this.setIdentities)
 
     const bbchannel = new MessageChannel()
     this.socket.setBoardChannel(bbchannel.port1)
@@ -298,6 +301,10 @@ export class FailsBasis extends Component {
 
   setExpiredToken(tokenexpired) {
     this.setState({ tokenexpired })
+  }
+
+  setIdentities(identobj) {
+    this.setState({ identobj })
   }
 
   decodedToken() {
@@ -1413,6 +1420,7 @@ export class FailsBoard extends FailsBasis {
           updateSizes={this.updateSizes}
           toggleFullscreen={this.toggleFullscreen}
           showscreennumber={this.state.showscreennumber}
+          identobj={this.state.identobj}
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div

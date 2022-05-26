@@ -111,11 +111,39 @@ class SocketWorker {
       'new keypair',
       this.keyobject.keynum,
       'master digest',
-      new Uint16Array(this.keyobject.digest).join(' ')
+      Array.from(new Uint16Array(this.keyobject.digest))
+        .map((el) => String(el).padStart(6, '0'))
+        .join(' ')
     )
     this.av.postMessage({
       task: 'keychange',
       keyobject: this.keyobject
+    })
+    this.informIdentities()
+  }
+
+  informIdentities() {
+    const nowborder = Date.now() - 60 * 1000
+    const idents = Object.entries(this.idents)
+      .map(([key, obj]) => ({ id: key, ...obj }))
+      .filter((el) => nowborder - Number(el.lastaccess) < 0)
+      .map((el) => ({
+        displayname: el.displayname,
+        userhash: el.userhash,
+        purpose: el.purpose,
+        lastaccess: Number(el.lastaccess)
+      }))
+    let masterdigest = null
+    if (this.keyobject.digest)
+      masterdigest = Array.from(new Uint16Array(this.keyobject.digest))
+        .map((el) => String(el).padStart(6, '0'))
+        .join(' ')
+
+    // eslint-disable-next-line no-restricted-globals
+    self.postMessage({
+      task: 'informIdentities',
+      idents,
+      masterdigest
     })
   }
 
@@ -424,6 +452,7 @@ class SocketWorker {
             await this.generateSendKeyObjs()
             await this.sendAndEncrypt({ ...el, id: data.id })
           }
+          this.informIdentities()
         } catch (error) {
           console.log('error identUpdate', error)
         }
@@ -435,6 +464,7 @@ class SocketWorker {
       console.log('identValidity', data)
       if (data.id && data.lastaccess) {
         this.idents[data.id].lastaccess = Number(data.lastaccess)
+        this.informIdentities()
       }
     })
 
@@ -443,6 +473,7 @@ class SocketWorker {
       if (data.id) {
         console.log('identDelete2', this.idents[data.id])
         delete this.idents[data.id].lastaccess
+        this.informIdentities()
       }
     })
 
@@ -473,6 +504,7 @@ class SocketWorker {
         } else {
           delete this.idents[id]
         }
+        this.informIdentities()
       }
     })
 
