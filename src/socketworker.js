@@ -407,6 +407,7 @@ class SocketWorker {
       purpose: iden.purpose,
       lastaccess: Number(iden.lastaccess),
       displayname: iden.displayname,
+      userhash: iden.userhash,
       myself: id === this.socket.id
     })
 
