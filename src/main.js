@@ -1901,7 +1901,6 @@ export class FailsNotes extends FailsBasis {
       this.setState({ lectdetail: data })
     })
 
-    notessocket.removeAllListeners('connect')
     notessocket.on('connect', (data) => {
       // todo imform size
 
@@ -1910,7 +1909,6 @@ export class FailsNotes extends FailsBasis {
       this.scheduleReauthor()
     })
 
-    notessocket.removeAllListeners('disconnect')
     notessocket.on('disconnect', (data) => {
       console.log('notessocket disconnect')
       // clear polling
