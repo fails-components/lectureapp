@@ -156,7 +156,15 @@ class AVVideoEncoder extends AVVideoCodec {
 
   async codecProcess(chunk) {
     let keyFrame = false
-    if (chunk.timestamp > this.lastkeyframetime + 3000_000) {
+    /* console.log(
+      'codec process',
+      chunk.timestamp,
+      this.lastkeyframetime + 3000_000
+    ) */
+    if (
+      chunk.timestamp > this.lastkeyframetime + 3000_000 ||
+      Math.abs(chunk.timestamp - this.lastkeyframetime) > 4000_0000
+    ) {
       keyFrame = true
       this.lastkeyframetime = chunk.timestamp
     }
@@ -227,8 +235,10 @@ class AVVideoDecoder extends AVVideoCodec {
   }
 
   codecOnWrite(chunk) {
+    if (!chunk.metadata) console.log('debug metadata', chunk)
     if (
       !this.configured &&
+      chunk.metadata &&
       chunk.metadata.decoderConfig &&
       chunk.metadata.decoderConfig.codec
     ) {
@@ -409,6 +419,7 @@ class AVDecrypt extends AVTransformStream {
       const keystore = AVKeyStore.getKeyStore()
 
       if (chunk.keyindex !== this.keyindex) {
+        // console.log('AVDecrypt getKey', chunk.keyindex, this.keyindex)
         this.key = await keystore.getKey(chunk.keyindex)
         this.keyindex = chunk.keyindex
       }
@@ -1077,7 +1088,15 @@ class AVVideoInputProcessor {
     if (!this.destid) return
     console.log('reconnect dest stream')
     const avtransport = AVTransport.getInterface()
-    this.streamDest = await avtransport.getIncomingStream()
+    while (!this.streamDest) {
+      try {
+        this.streamDest = await avtransport.getIncomingStream()
+        // it pipeline already build reconnected
+      } catch (error) {
+        console.log('getIncomingStream failed rDS, retry', error)
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+      }
+    }
 
     this.videoframer.resetOutput() // gets a new empty stream
     // then queue the bson
@@ -1129,6 +1148,7 @@ class AVKeyStore {
     this.keys = {}
     this.keysprom = {}
     this.keysres = {}
+    this.keysrej = {}
     this.curkeyid = new Promise((resolve) => {
       this.curkeyidres = resolve
     })
