@@ -255,13 +255,7 @@ class AVTransformStream {
     this.pullReadable = this.pullReadable.bind(this)
     this.newPendingWrit = this.newPendingWrit.bind(this)
 
-    this.readable = new ReadableStream(
-      {
-        start: this.startReadable,
-        pull: this.pullReadable
-      },
-      { highWaterMark: 2 }
-    )
+    this.resetOutput()
 
     this.writable = new WritableStream({
       start(controller) {},
@@ -269,6 +263,16 @@ class AVTransformStream {
       close(controller) {},
       abort(reason) {}
     })
+  }
+
+  resetOutput() {
+    this.readable = new ReadableStream(
+      {
+        start: this.startReadable,
+        pull: this.pullReadable
+      },
+      { highWaterMark: 2 }
+    )
   }
 
   async write(chunk) {
@@ -459,10 +463,19 @@ class AVFramer extends AVTransformStream {
   constructor(args) {
     super(args)
     this.type = args.type
+    this.messages = {}
+  }
+
+  resendConfigs() {
+    for (const task in this.messages) {
+      this.sendBson(this.messages[task])
+    }
   }
 
   sendDecoderConfig(config) {
-    this.sendBson({ task: 'decoderconfig', data: config })
+    const task = { task: 'decoderconfig', data: config }
+    this.messages[task.task] = task
+    this.sendBson(task)
   }
 
   sendBson(tosend) {
@@ -979,43 +992,50 @@ class AVVideoInputProcessor {
     }
   }
 
-  async setSrcId(id) {
-    // src id, is the source we want
-    this.srcid = id
-    const avtransport = AVTransport.getInterface()
-    console.log('setSrcId', id)
-
-    if (this.srcAbort) {
-      this.srcAbort.abort()
-      // wait for pipes to abort, before reconnecting
-      await Promise.all([
-        this.streamSrcPipe1.catch(() => {}),
-        this.streamSrcPipe2.catch(() => {})
-      ])
-      // this.streamSrc.writable.close()
-      this.streamSrc.readable.cancel()
+  onSrcStreamAborted() {
+    console.log('on source stream aborted')
+    if (this.streamSrc) {
+      this.streamSrc.readable
+        .cancel()
+        .catch((error) => console.log('streamSrc cancel failed ', error))
+      delete this.streamSrc
     }
-    this.streamSrc = await avtransport.getIncomingStream()
-    // it pipeline already build reconnectd
+    this.reconnectSrcStream()
+  }
+
+  async reconnectSrcStream() {
+    if (!this.srcid) return
+    console.log('reconnect src stream')
+    const avtransport = AVTransport.getInterface()
+    this.streamSrc = null
+    while (!this.streamSrc) {
+      try {
+        this.streamSrc = await avtransport.getIncomingStream()
+        // it pipeline already build reconnected
+      } catch (error) {
+        console.log('getIncomingStream failed rSS, retry', error)
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+      }
+    }
 
     this.srcAbort = new AbortController()
-    this.streamSrcPipe1 = this.streamSrc.readable.pipeTo(
-      this.videodeframer.writable,
-      {
+    this.streamSrcPipe1 = this.streamSrc.readable
+      .pipeTo(this.videodeframer.writable, {
         preventAbort: true,
         preventCancel: true,
         signal: this.srcAbort.signal
-      }
-    )
+      })
+      .catch(() => {
+        this.onSrcStreamAborted()
+      })
 
-    this.streamSrcPipe2 = this.inputctrlframer.readable.pipeTo(
-      this.streamSrc.writable,
-      {
+    this.streamSrcPipe2 = this.inputctrlframer.readable
+      .pipeTo(this.streamSrc.writable, {
         preventAbort: true,
         preventCancel: true,
         signal: this.srcAbort.signal
-      }
-    ) // for sending control messages
+      })
+      .catch(() => {}) // for sending control messages
     const writmes = this.inputctrlframer.writable.getWriter()
     writmes.write({
       command: 'configure',
@@ -1028,48 +1048,78 @@ class AVVideoInputProcessor {
     // to do set something
   }
 
-  async setDestId(id) {
-    // dest is our id
-    this.destid = id
-    const avtransport = AVTransport.getInterface()
+  async setSrcId(id) {
+    // src id, is the source we want
+    this.srcid = id
+    console.log('setSrcId', id)
 
-    if (this.destAbort) {
-      this.destAbort.abort()
+    if (this.srcAbort) {
+      this.srcAbort.abort()
+      delete this.srcAbort
       // wait for pipes to abort, before reconnecting
-      await Promise.all([
-        this.streamDestPipe1.catch(() => {}),
-        this.streamDestPipe2.catch(() => {})
-      ])
-      this.streamDest.readable.cancel()
-      // this.streamDest.writable.close()
-    }
+      await Promise.all([this.streamSrcPipe1, this.streamSrcPipe2])
+      // this.streamSrc.writable.close()
+    } else await this.reconnectSrcStream() // otherwise it is triggered by the previous stream
+  }
 
+  onDestStreamAborted() {
+    console.log('on dest stream aborted')
+    if (this.streamDest) {
+      this.streamDest.readable
+        .cancel()
+        .catch((error) => console.log('streamSrc cancel failed ', error))
+      delete this.streamDest
+    }
+    this.reconnectDestStream()
+  }
+
+  async reconnectDestStream() {
+    if (!this.destid) return
+    console.log('reconnect dest stream')
+    const avtransport = AVTransport.getInterface()
     this.streamDest = await avtransport.getIncomingStream()
 
-    this.destAbort = new AbortController()
-    this.streamDestPipe1 = this.videoframer.readable.pipeTo(
-      this.streamDest.writable,
-      {
-        preventAbort: true,
-        preventCancel: true,
-        signal: this.destAbort.signal
-      }
-    )
-
-    this.streamDestPipe2 = this.streamDest.readable.pipeTo(
-      this.outputctrldeframer.writable,
-      {
-        preventAbort: true,
-        preventCancel: true,
-        signal: this.destAbort.signal
-      }
-    ) // this generates control messages
+    this.videoframer.resetOutput() // gets a new empty stream
+    // then queue the bson
     this.videoframer.sendBson({
       command: 'configure',
       dir: 'incoming', // routers perspective
       id: this.destid,
       type: 'video'
     })
+    this.videoframer.resendConfigs() // resend necessary configs
+
+    this.destAbort = new AbortController()
+    this.streamDestPipe1 = this.videoframer.readable
+      .pipeTo(this.streamDest.writable, {
+        preventAbort: true,
+        preventCancel: true,
+        signal: this.destAbort.signal
+      })
+      .catch(() => {
+        this.onDestStreamAborted()
+      })
+
+    this.streamDestPipe2 = this.streamDest.readable
+      .pipeTo(this.outputctrldeframer.writable, {
+        preventAbort: true,
+        preventCancel: true,
+        signal: this.destAbort.signal
+      })
+      .catch(() => {}) // this generates control messages
+  }
+
+  async setDestId(id) {
+    // dest is our id
+    this.destid = id
+
+    if (this.destAbort) {
+      this.destAbort.abort()
+      delete this.destAbort
+      // wait for pipes to abort, before reconnecting
+      await Promise.all([this.streamDestPipe1, this.streamDestPipe2])
+      // this.streamDest.writable.close()
+    } else await this.reconnectDestStream() // otherwise it is triggered by the previous stream
   }
 }
 
@@ -1101,6 +1151,13 @@ class AVKeyStore {
       delete this.keysprom[keyid]
       this.keysres[keyid](this.keys[keyid])
       delete this.keysres[keyid]
+      delete this.keysrej[keyid]
+    }
+    // now we reject pending promises for other keyids
+    for (const wkeyid in this.keysrej) {
+      this.keysrej[wkeyid](new Error('other key arrived instead')) // should prevent blocking decrypter
+      delete this.keysres[wkeyid]
+      delete this.keysrej[wkeyid]
     }
     if (this.curkeyidres) {
       this.curkeyidres(keyid)
@@ -1124,8 +1181,9 @@ class AVKeyStore {
     if (!keyinfo) {
       let keyprom = this.keysprom[keynum]
       if (!keyprom)
-        keyprom = this.keysprom[keynum] = new Promise((resolve) => {
+        keyprom = this.keysprom[keynum] = new Promise((resolve, reject) => {
           this.keysres[keynum] = resolve
+          this.keysrej[keynum] = reject
         })
       keyprom = await keyprom
       keyinfo = this.keys[keynum]

@@ -41,7 +41,7 @@ export class AVTransport {
     try {
       const url = 'https://' + this.hostname + ':' + this.port + '/avfails'
       const spki =
-        'C4:25:B6:22:2A:6D:2D:3A:63:2C:14:D9:05:BB:CC:86:23:6F:00:5C:34:59:C0:FD:AA:6D:53:1B:9E:EF:18:A0'
+        '73:C5:65:58:1F:87:6F:FB:6A:35:84:B4:D9:6A:F6:AA:9D:67:83:13:12:11:22:CC:9F:4C:9F:AD:0B:83:44:BA'
 
       const spkiab = new Uint8Array(
         spki.split(':').map((el) => parseInt(el, 16))
@@ -54,29 +54,60 @@ export class AVTransport {
         }
       ]
       console.log('startconnection', serverCertificateHashes)
-      // eslint-disable-next-line no-undef
-      this.transport = new WebTransport(url, { serverCertificateHashes })
-      this.transport.closed
-        .then(() => {
-          console.log('The HTTP/3 connection to ', url, 'closed gracefully.')
-        })
-        .catch((error) => {
-          console.error(
-            'The HTTP/3 connection to',
-            url,
-            'closed due to ',
-            error,
-            '.'
-          )
-        })
+      while (true) {
+        let webtransport = false
+        try {
+          // eslint-disable-next-line no-undef
+          this.transport = new WebTransport(url, { serverCertificateHashes })
+          this.transport.closed
+            .then(() => {
+              console.log(
+                'The HTTP/3 connection to ',
+                url,
+                'closed gracefully.'
+              )
+            })
+            .catch((error) => {
+              console.error(
+                'The HTTP/3 connection to',
+                url,
+                'closed due to ',
+                error,
+                '.'
+              )
+            })
+          await this.transport.ready
+          webtransport = true
+          this.connectedres()
+          console.log('webtransport is ready', this.transport)
+        } catch (error) {
+          console.log('webtransport connection or closed failed', error)
+          // add here the fallback to websocket later
+          this.connectedrej(error)
+        }
 
-      await this.transport.ready
-      this.connectedres()
-      console.log('webtransport is ready', this.transport)
+        if (webtransport) {
+          try {
+            await this.transport.closed
+          } catch (error) {
+            console.log('Webtransport was closed with', error)
+          }
+        } else {
+          // if we failed wait sometime, before we renew
+          await new Promise((resolve) => setTimeout(resolve, 2000))
+        }
+        console.log('webtransport renew connection')
+        // get a new connection, and inform that streams need to be renewed
+
+        this.connected = new Promise((resolve, reject) => {
+          this.connectedres = resolve
+          this.connectedrej = reject
+        })
+      }
+
       // this.echoTestsConnection()
     } catch (error) {
-      console.log('establishing webtransport connection failed', error)
-      this.connectedrej(error)
+      console.log('other webtransport error', error)
     }
   }
 
