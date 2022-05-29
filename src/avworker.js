@@ -186,8 +186,8 @@ class AVVideoEncoder extends AVVideoCodec {
         framerate: 25,
         displayWidth: chunk.displayWidth,
         displayHeight: chunk.displayHeight,
-        width: chunk.codedWidth,
-        height: chunk.codedHeight,
+        width: chunk.displayWidth,
+        height: chunk.displayHeight,
         // hardwareAcceleration: 'prefer-hardware',
         bitrate: 300_000,
         scalabilityMode: 'L1T3',
@@ -330,6 +330,39 @@ class AVTransformStream {
       this.pendingwrit.resolve()
       this.pendingwrit = null
     }
+  }
+}
+
+class AVOneFrameToManyScaler extends AVTransformStream {
+  constructor(args) {
+    super(args)
+    this.outputlevel = args.outputlevel // a level of one corresponds to 160, 640 is actually level 4, 1280 level 8 and 1920 level 12
+  }
+
+  async transform(frame) {
+    // ok, we calculate aspect ratio first
+    const origininvaspect = frame.displayHeight / frame.displayWidth
+    const targetinvaspect = 9 / 16
+    let visibleRect
+    if (origininvaspect !== targetinvaspect) {
+      // ok we need to crop
+      visibleRect = {
+        x: 0,
+        width: frame.displayWidth,
+        y: 0.5 * (frame.displayHeight - frame.displayWidth * targetinvaspect),
+        height: frame.displayWidth * targetinvaspect
+      }
+    }
+    // ok now we do the math and scale the frame
+    const targetwidth = Math.min(160 * this.outputlevel, frame.displayWidth)
+    // eslint-disable-next-line no-undef
+    const resframe = new VideoFrame(frame, {
+      visibleRect,
+      displayWidth: targetwidth,
+      displayHeight: targetwidth * targetinvaspect
+    })
+    frame.close()
+    return resframe
   }
 }
 
@@ -892,6 +925,7 @@ class AVVideoInputProcessor {
     this.webworkid = args.webworkid
     this.inputstream = args.inputstream
 
+    this.multscaler = new AVOneFrameToManyScaler({ outputlevel: 2 })
     this.videoencoder = new AVVideoEncoder()
     this.videoencrypt = new AVEncrypt()
     this.videoframer = new AVFramer({ type: 'video' })
@@ -908,7 +942,7 @@ class AVVideoInputProcessor {
   switchVideoCamera(args) {
     this.inputstream.cancel()
     this.inputstream = args.inputstream
-    this.inputstream.pipeTo(this.videoencoder.writable, {
+    this.inputstream.pipeTo(this.multscaler.writable, {
       preventClose: true,
       preventAbort: true
     })
@@ -918,11 +952,13 @@ class AVVideoInputProcessor {
     if (!this.inputstream) throw new Error('inputstream not set')
     try {
       let curstream = this.inputstream
-      // encoder
-      curstream.pipeTo(this.videoencoder.writable, {
+      curstream.pipeTo(this.multscaler.writable, {
         preventClose: true,
         preventAbort: true
       })
+      curstream = this.multscaler.readable
+      // encoder
+      curstream.pipeTo(this.videoencoder.writable)
       curstream = this.videoencoder.readable
       curstream.pipeTo(this.videoencrypt.writable)
       curstream = this.videoencrypt.readable
