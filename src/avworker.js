@@ -130,8 +130,15 @@ class AVVideoCodec {
 }
 
 class AVVideoEncoder extends AVVideoCodec {
+  // static levelwidth= [160, 320, 640, 848, 848, 1280, 1280, 1920]
+  static levelbitrate = [
+    150_000, 250_000, 500_000, 1000_000, 1750_000, 2000_000, 3600_000, 4800_000
+  ]
+
   constructor(args) {
     super(args)
+
+    this.outputlevel = args.outputlevel
 
     this.cur = {}
 
@@ -189,7 +196,7 @@ class AVVideoEncoder extends AVVideoCodec {
         width: chunk.displayWidth,
         height: chunk.displayHeight,
         // hardwareAcceleration: 'prefer-hardware',
-        bitrate: 300_000,
+        bitrate: AVVideoEncoder.levelbitrate[this.outputlevel],
         scalabilityMode: 'L1T3',
         latencyMode: 'realtime'
       })
@@ -334,9 +341,10 @@ class AVTransformStream {
 }
 
 class AVOneFrameToManyScaler extends AVTransformStream {
+  static levelwidth = [160, 320, 640, 848, 848, 1280, 1280, 1920]
   constructor(args) {
     super(args)
-    this.outputlevel = args.outputlevel // a level of one corresponds to 160, 640 is actually level 4, 1280 level 8 and 1920 level 12
+    this.outputlevel = args.outputlevel
   }
 
   async transform(frame) {
@@ -354,7 +362,10 @@ class AVOneFrameToManyScaler extends AVTransformStream {
       }
     }
     // ok now we do the math and scale the frame
-    const targetwidth = Math.min(160 * this.outputlevel, frame.displayWidth)
+    const targetwidth = Math.min(
+      AVOneFrameToManyScaler.levelwidth[this.outputlevel],
+      frame.displayWidth
+    )
     // eslint-disable-next-line no-undef
     const resframe = new VideoFrame(frame, {
       visibleRect,
@@ -924,9 +935,10 @@ class AVVideoInputProcessor {
   constructor(args) {
     this.webworkid = args.webworkid
     this.inputstream = args.inputstream
+    const outputlevel = 1
 
-    this.multscaler = new AVOneFrameToManyScaler({ outputlevel: 2 })
-    this.videoencoder = new AVVideoEncoder()
+    this.multscaler = new AVOneFrameToManyScaler({ outputlevel })
+    this.videoencoder = new AVVideoEncoder({ outputlevel })
     this.videoencrypt = new AVEncrypt()
     this.videoframer = new AVFramer({ type: 'video' })
     this.outputctrldeframer = new BsonDeFramer()
