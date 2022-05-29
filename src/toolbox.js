@@ -240,6 +240,9 @@ export class ToolBox extends Component {
         this.colorwheelcolors[0],
         this.pensizesizes[penselect]
       )
+
+    if (this.state.touchOn === undefined && this.blackboard())
+      this.blackboard().pushTouchConfigToToolbox()
   }
 
   componentDidUpdate() {
@@ -254,6 +257,8 @@ export class ToolBox extends Component {
         if (!this.scrollmodeactiv) this.reportDrawPos()
       }
     }
+    if (this.state.touchOn === undefined && this.blackboard())
+      this.blackboard().pushTouchConfigToToolbox()
   }
 
   addRemoveSecondToolGuardian(newguard, oldbuttonid) {
@@ -596,9 +601,6 @@ export class ToolBox extends Component {
 
   render() {
     // move to state ?
-
-    if (this.state.touchOn === undefined && this.blackboard())
-      this.blackboard().pushTouchConfigToToolbox()
 
     const ttopts = {
       className: 'teal-tooltip',
