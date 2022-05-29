@@ -87,9 +87,6 @@ export class VideoControl extends Component {
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
-    if (prevProps.videoid !== this.props.videoid && this.state.camera) {
-      this.state.camera.setSrcId(this.props.videoid)
-    }
     if (prevProps.id !== this.props.id && this.state.camera) {
       this.state.camera.setDestId(this.props.id)
     }
@@ -124,7 +121,6 @@ export class VideoControl extends Component {
 
       cam.setDestId(this.props.id)
 
-      cam.buildIncomingPipeline() // move to somewhere else
       if (this.props.videoid) cam.setSrcId(this.props.videoid)
       this.setState({ camera: cam, videoid: cam.getDeviceId() })
       this.setState({ avdevices: await avinterf.getAVDevices() })
@@ -153,9 +149,7 @@ export class VideoControl extends Component {
     console.log('videoid', this.state.videoid)
     return (
       <React.Fragment>
-        {this.state.camera && (
-          <AVVideoRender camera={this.state.camera} width={16}></AVVideoRender>
-        )}
+        <AVVideoRender videoid={this.props.videoid} width={16}></AVVideoRender>
         <div className='buttonbar'>
           <Button
             icon='pi pi-video'

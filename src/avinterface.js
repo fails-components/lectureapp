@@ -41,12 +41,22 @@ export class AVVideoRender extends Component {
     window.addEventListener('resize', this.resizeeventlistener)
     this.updateOffscreen()
     this.resizeeventlistener()
-    if (this.props.camera) this.props.camera.setPreviewRender(this)
-    this.updateOffscreen()
+    this.previewStart()
   }
 
   componentWillUnmount() {
     window.removeEventListener('resize', this.resizeeventlistener)
+  }
+
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    if (prevProps.videoid !== this.props.videoid && this.state.preview) {
+      this.state.preview.setSrcId(this.props.videoid)
+    }
+    if (!prevState || prevState.preview !== this.state.preview) {
+      this.state.preview.setPreviewRender(this)
+    }
+
+    this.updateOffscreen()
   }
 
   resizeeventlistener(e) {
@@ -69,11 +79,21 @@ export class AVVideoRender extends Component {
     }
   }
 
-  componentDidUpdate(prevProps, prevState, snapshot) {
-    if (!prevProps || prevProps.camera !== this.props.camera) {
-      this.props.camera.setPreviewRender(this)
+  async previewStart() {
+    try {
+      const avinterf = AVInterface.getInterface()
+      const previewobj = avinterf.openPreview()
+
+      let preview = previewobj
+      preview = await preview
+      preview.buildIncomingPipeline()
+      if (this.props.videoid) previewobj.setSrcId(this.props.videoid)
+      preview.setPreviewRender(this)
+      this.updateOffscreen()
+      this.setState({ preview })
+    } catch (error) {
+      console.log('previewStart failed', error)
     }
-    this.updateOffscreen()
   }
 
   updateOffscreen() {
@@ -169,6 +189,36 @@ export class AVCameraStream extends AVStream {
     this.track = track
   }
 
+  setDestId(id) {
+    // TODO move AVTransport into worker
+    AVInterface.worker.postMessage({
+      task: 'setDestId',
+      webworkid: this.webworkid,
+      id
+    })
+  }
+
+  buildOutgoingPipeline() {
+    AVInterface.worker.postMessage(
+      {
+        task: 'buildOutgoingPipeline',
+        webworkid: this.webworkid
+      },
+      []
+    )
+  }
+}
+
+export class AVRenderStream extends AVStream {
+  constructor(args) {
+    super(args)
+
+    AVInterface.worker.postMessage({
+      task: 'openVideoDisplay',
+      webworkid: this.webworkid
+    })
+  }
+
   setPreviewRender(render) {
     render.srcwebworkid = this.webworkid
     AVInterface.worker.postMessage({
@@ -187,29 +237,10 @@ export class AVCameraStream extends AVStream {
     })
   }
 
-  setDestId(id) {
-    // TODO move AVTransport into worker
-    AVInterface.worker.postMessage({
-      task: 'setDestId',
-      webworkid: this.webworkid,
-      id
-    })
-  }
-
   buildIncomingPipeline() {
     AVInterface.worker.postMessage(
       {
         task: 'buildIncomingPipeline',
-        webworkid: this.webworkid
-      },
-      []
-    )
-  }
-
-  buildOutgoingPipeline() {
-    AVInterface.worker.postMessage(
-      {
-        task: 'buildOutgoingPipeline',
         webworkid: this.webworkid
       },
       []
@@ -348,6 +379,22 @@ export class AVInterface {
       this.registerForFinal(avobj, webworkid)
 
       await avobj.switchCamera(device.deviceId)
+
+      return avobj
+    } catch (error) {
+      console.log('error opening video device', error)
+    }
+  }
+
+  async openPreview(args) {
+    // if (!this.mediadevicesupported) return
+    try {
+      const webworkid = this.getNewId()
+
+      const avobj = new AVRenderStream({
+        webworkid
+      })
+      this.registerForFinal(avobj, webworkid)
 
       return avobj
     } catch (error) {

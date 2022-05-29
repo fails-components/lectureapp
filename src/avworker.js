@@ -887,60 +887,18 @@ class AVDeFramer extends BasicDeframer {
 }
 
 class AVVideoInputProcessor {
+  // input means input from camera
   constructor(args) {
     this.webworkid = args.webworkid
     this.inputstream = args.inputstream
 
-    this.writeframe = this.writeframe.bind(this)
-
-    this.previewwritable = new WritableStream({
-      write: this.writeframe
-    })
-
     this.videoencoder = new AVVideoEncoder()
     this.videoencrypt = new AVEncrypt()
-    this.videodecoder = new AVVideoDecoder()
-    this.videodecrypt = new AVDecrypt()
     this.videoframer = new AVFramer({ type: 'video' })
     this.outputctrldeframer = new BsonDeFramer()
-    this.videodeframer = new AVDeFramer({ type: 'video' })
-    this.inputctrlframer = new BsonFramer()
-    this.streamSrc = null
     this.streamDest = null
 
     this.adOutgoing = null
-  }
-
-  writeframe(frame, controller) {
-    if (this.previewrender && this.previewrender.ctx) {
-      const offscreen = this.previewrender.offscreen
-      const ctx = this.previewrender.ctx
-      if (
-        offscreen.width / offscreen.height !==
-        frame.displayWidth / frame.displayWidth
-      ) {
-        offscreen.height =
-          (offscreen.width * frame.displayHeight) / frame.displayWidth
-      }
-      /* console.log(
-        'frame',
-        offscreen.width,
-        offscreen.height,
-        frame.codedWidth,
-        frame.codedHeight,
-        frame.displayWidth,
-        frame.displayHeight,
-        frame
-      ) */
-      // offscreen.height = config.codedHeight;
-      // offscreen.width = config.codedWidth;
-      ctx.drawImage(frame, 0, 0, offscreen.width, offscreen.height)
-    }
-    frame.close()
-  }
-
-  setPreviewRender(render) {
-    this.previewrender = render
   }
 
   setStreamDest(stream) {
@@ -985,8 +943,126 @@ class AVVideoInputProcessor {
     }
   }
 
+  onDestStreamAborted() {
+    console.log('on dest stream aborted')
+    if (this.streamDest) {
+      this.streamDest.readable
+        .cancel()
+        .catch((error) => console.log('streamSrc cancel failed ', error))
+      delete this.streamDest
+    }
+    this.reconnectDestStream()
+  }
+
+  async reconnectDestStream() {
+    if (!this.destid) return
+    console.log('reconnect dest stream')
+    const avtransport = AVTransport.getInterface()
+    while (!this.streamDest) {
+      try {
+        this.streamDest = await avtransport.getIncomingStream()
+        // it pipeline already build reconnected
+      } catch (error) {
+        console.log('getIncomingStream failed rDS, retry', error)
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+      }
+    }
+
+    this.videoframer.resetOutput() // gets a new empty stream
+    // then queue the bson
+    this.videoframer.sendBson({
+      command: 'configure',
+      dir: 'incoming', // routers perspective
+      id: this.destid,
+      type: 'video'
+    })
+    this.videoframer.resendConfigs() // resend necessary configs
+
+    this.destAbort = new AbortController()
+    this.streamDestPipe1 = this.videoframer.readable
+      .pipeTo(this.streamDest.writable, {
+        preventAbort: true,
+        preventCancel: true,
+        signal: this.destAbort.signal
+      })
+      .catch(() => {
+        this.onDestStreamAborted()
+      })
+
+    this.streamDestPipe2 = this.streamDest.readable
+      .pipeTo(this.outputctrldeframer.writable, {
+        preventAbort: true,
+        preventCancel: true,
+        signal: this.destAbort.signal
+      })
+      .catch(() => {}) // this generates control messages
+  }
+
+  async setDestId(id) {
+    // dest is our id
+    this.destid = id
+
+    if (this.destAbort) {
+      this.destAbort.abort()
+      delete this.destAbort
+      // wait for pipes to abort, before reconnecting
+      await Promise.all([this.streamDestPipe1, this.streamDestPipe2])
+      // this.streamDest.writable.close()
+    } else await this.reconnectDestStream() // otherwise it is triggered by the previous stream
+  }
+}
+
+class AVVideoOutputProcessor {
+  // Output means output to screen
+  constructor(args) {
+    this.webworkid = args.webworkid
+
+    this.writeframe = this.writeframe.bind(this)
+
+    this.previewwritable = new WritableStream({
+      write: this.writeframe
+    })
+
+    this.videodecoder = new AVVideoDecoder()
+    this.videodecrypt = new AVDecrypt()
+    this.videodeframer = new AVDeFramer({ type: 'video' })
+    this.inputctrlframer = new BsonFramer()
+    this.streamSrc = null
+  }
+
+  writeframe(frame, controller) {
+    if (this.previewrender && this.previewrender.ctx) {
+      const offscreen = this.previewrender.offscreen
+      const ctx = this.previewrender.ctx
+      if (
+        offscreen.width / offscreen.height !==
+        frame.displayWidth / frame.displayWidth
+      ) {
+        offscreen.height =
+          (offscreen.width * frame.displayHeight) / frame.displayWidth
+      }
+      /* console.log(
+        'frame',
+        offscreen.width,
+        offscreen.height,
+        frame.codedWidth,
+        frame.codedHeight,
+        frame.displayWidth,
+        frame.displayHeight,
+        frame
+      ) */
+      // offscreen.height = config.codedHeight;
+      // offscreen.width = config.codedWidth;
+      ctx.drawImage(frame, 0, 0, offscreen.width, offscreen.height)
+    }
+    frame.close()
+  }
+
+  setPreviewRender(render) {
+    this.previewrender = render
+  }
+
   buildIncomingPipeline() {
-    if (!this.inputstream) throw new Error('inputstream not set')
     try {
       // network boundary
       let curstream = this.videodeframer.readable
@@ -1071,74 +1147,6 @@ class AVVideoInputProcessor {
       await Promise.all([this.streamSrcPipe1, this.streamSrcPipe2])
       // this.streamSrc.writable.close()
     } else await this.reconnectSrcStream() // otherwise it is triggered by the previous stream
-  }
-
-  onDestStreamAborted() {
-    console.log('on dest stream aborted')
-    if (this.streamDest) {
-      this.streamDest.readable
-        .cancel()
-        .catch((error) => console.log('streamSrc cancel failed ', error))
-      delete this.streamDest
-    }
-    this.reconnectDestStream()
-  }
-
-  async reconnectDestStream() {
-    if (!this.destid) return
-    console.log('reconnect dest stream')
-    const avtransport = AVTransport.getInterface()
-    while (!this.streamDest) {
-      try {
-        this.streamDest = await avtransport.getIncomingStream()
-        // it pipeline already build reconnected
-      } catch (error) {
-        console.log('getIncomingStream failed rDS, retry', error)
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-      }
-    }
-
-    this.videoframer.resetOutput() // gets a new empty stream
-    // then queue the bson
-    this.videoframer.sendBson({
-      command: 'configure',
-      dir: 'incoming', // routers perspective
-      id: this.destid,
-      type: 'video'
-    })
-    this.videoframer.resendConfigs() // resend necessary configs
-
-    this.destAbort = new AbortController()
-    this.streamDestPipe1 = this.videoframer.readable
-      .pipeTo(this.streamDest.writable, {
-        preventAbort: true,
-        preventCancel: true,
-        signal: this.destAbort.signal
-      })
-      .catch(() => {
-        this.onDestStreamAborted()
-      })
-
-    this.streamDestPipe2 = this.streamDest.readable
-      .pipeTo(this.outputctrldeframer.writable, {
-        preventAbort: true,
-        preventCancel: true,
-        signal: this.destAbort.signal
-      })
-      .catch(() => {}) // this generates control messages
-  }
-
-  async setDestId(id) {
-    // dest is our id
-    this.destid = id
-
-    if (this.destAbort) {
-      this.destAbort.abort()
-      delete this.destAbort
-      // wait for pipes to abort, before reconnecting
-      await Promise.all([this.streamDestPipe1, this.streamDestPipe2])
-      // this.streamDest.writable.close()
-    } else await this.reconnectDestStream() // otherwise it is triggered by the previous stream
   }
 }
 
@@ -1241,6 +1249,14 @@ class AVWorker {
           const newobj = new AVVideoInputProcessor({
             webworkid: event.data.webworkid,
             inputstream: event.data.readable
+          })
+          this.objects[event.data.webworkid] = newobj
+        }
+        break
+      case 'openVideoDisplay':
+        {
+          const newobj = new AVVideoOutputProcessor({
+            webworkid: event.data.webworkid
           })
           this.objects[event.data.webworkid] = newobj
         }
