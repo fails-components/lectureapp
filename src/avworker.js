@@ -61,7 +61,7 @@ class AVVideoCodec {
         close: this.closeWritable,
         abort(reason) {}
       },
-      { highWaterMark: 1 }
+      { highWaterMark: 2 }
     )
     this.readable = new ReadableStream(
       {
@@ -94,8 +94,9 @@ class AVVideoCodec {
       (this.readableController && this.readableController.desiredSize <= 0) ||
       this.codecFull() ||
       !this.readableController
-    )
+    ) {
       return
+    }
 
     if (this.pendingwrit) {
       this.pendingwrit.resolve()
@@ -106,6 +107,8 @@ class AVVideoCodec {
   async write(chunk) {
     if (this.codecOnWrite) this.codecOnWrite(chunk)
 
+    const codecprom = this.codecProcess(chunk)
+
     if (
       (this.readableController && this.readableController.desiredSize <= 0) ||
       this.codecFull() ||
@@ -114,7 +117,7 @@ class AVVideoCodec {
       const readprom = new Promise(this.newPendingWrit)
       await readprom
     }
-    await this.codecProcess(chunk)
+    await codecprom
   }
 
   newPendingWrit(resolve, reject) {
@@ -268,47 +271,98 @@ class AVTransformStream {
   constructor(args) {
     this.write = this.write.bind(this)
 
+    if (args && args.outputs) {
+      this.outputs = args.outputs
+      this.outputmain = args.outputmain
+      this.multipleout = true
+    } else {
+      this.outputs = [1]
+      this.outputmain = 1
+      this.multipleout = false
+    }
+
     this.startReadable = this.startReadable.bind(this)
     this.pullReadable = this.pullReadable.bind(this)
     this.newPendingWrit = this.newPendingWrit.bind(this)
 
     this.resetOutput()
 
-    this.writable = new WritableStream({
-      start(controller) {},
-      write: this.write,
-      close(controller) {},
-      abort(reason) {}
-    })
-  }
-
-  resetOutput() {
-    this.readable = new ReadableStream(
+    this.writable = new WritableStream(
       {
-        start: this.startReadable,
-        pull: this.pullReadable
+        start(controller) {},
+        write: this.write,
+        close(controller) {},
+        abort(reason) {}
       },
       { highWaterMark: 2 }
     )
+  }
+
+  resetOutput() {
+    if (this.multipleout) {
+      this.readable = {}
+      this.readableController = {}
+      for (const out in this.outputs) {
+        this.readable[out] = new ReadableStream(
+          {
+            start: (controller) => this.startReadable(controller, out),
+            pull: (controller) => this.pullReadable(controller, out)
+          },
+          { highWaterMark: 2 }
+        )
+      }
+    } else {
+      this.readable = new ReadableStream(
+        {
+          start: this.startReadable,
+          pull: this.pullReadable
+        },
+        { highWaterMark: 2 }
+      )
+    }
   }
 
   async write(chunk) {
     // console.log('AVTransform write chunk', this.constructor.name, chunk)
     const finalchunk = await this.transform(chunk)
 
-    if (
-      (this.readableController && this.readableController.desiredSize <= 0) ||
-      !this.readableController
-    ) {
+    let controller
+    if (this.multipleout) controller = this.readableController[this.outputmain]
+    else controller = this.readableController
+
+    if ((controller && controller.desiredSize <= 0) || !controller) {
+      // console.log('block output ')
       const readprom = new Promise(this.newPendingWrit)
       await readprom
     }
-    if (Array.isArray(finalchunk)) {
-      finalchunk.forEach((el) => {
-        this.readableController.enqueue(el)
-      })
+    if (!this.multipleout) {
+      if (Array.isArray(finalchunk)) {
+        finalchunk.forEach((el) => {
+          this.readableController.enqueue(el)
+        })
+      } else {
+        this.readableController.enqueue(finalchunk)
+      }
     } else {
-      this.readableController.enqueue(finalchunk)
+      for (const out in this.outputs) {
+        const curchunk = finalchunk[out]
+        if (
+          this.readableController[out].desiredSite <= 0 &&
+          out !== this.outputmain
+        ) {
+          // console.log('skip output ', out)
+          continue
+        }
+        if (curchunk) {
+          if (Array.isArray(curchunk)) {
+            curchunk.forEach((el) => {
+              this.readableController[out].enqueue(el)
+            })
+          } else {
+            this.readableController[out].enqueue(curchunk)
+          }
+        }
+      }
     }
   }
 
@@ -326,14 +380,15 @@ class AVTransformStream {
     } else resolve()
   }
 
-  startReadable(controller) {
-    this.readableController = controller
+  startReadable(controller, out) {
+    if (!out) this.readableController = controller
+    else this.readableController[out] = controller
   }
 
-  pullReadable(controller) {
-    if (this.readableController.desiredSize <= 0) return
+  pullReadable(controller, out) {
+    if (controller.desiredSize <= 0) return
 
-    if (this.pendingwrit) {
+    if (this.pendingwrit && (!out || out === this.outputmain)) {
       this.pendingwrit.resolve()
       this.pendingwrit = null
     }
@@ -343,8 +398,20 @@ class AVTransformStream {
 class AVOneFrameToManyScaler extends AVTransformStream {
   static levelwidth = [160, 320, 640, 848, 848, 1280, 1280, 1920]
   constructor(args) {
-    super(args)
+    super({
+      ...args,
+      outputs: args.outputlevel,
+      outputmain: args.outputlevelmain
+    })
     this.outputlevel = args.outputlevel
+    this.outputlevelmain = args.outputlevelmain
+    this.outputlevelmax = this.outputlevel.length - 1
+  }
+
+  setMaxOutputLevel(outputlevelmax) {
+    if (outputlevelmax >= 0 || outputlevelmax <= this.outputlevel.length - 1) {
+      this.outputlevelmax = outputlevelmax
+    }
   }
 
   async transform(frame) {
@@ -361,17 +428,22 @@ class AVOneFrameToManyScaler extends AVTransformStream {
         height: frame.displayWidth * targetinvaspect
       }
     }
-    // ok now we do the math and scale the frame
-    const targetwidth = Math.min(
-      AVOneFrameToManyScaler.levelwidth[this.outputlevel],
-      frame.displayWidth
-    )
-    // eslint-disable-next-line no-undef
-    const resframe = new VideoFrame(frame, {
-      visibleRect,
-      displayWidth: targetwidth,
-      displayHeight: targetwidth * targetinvaspect
-    })
+    const resframe = {}
+    for (const out in this.outputlevel) {
+      if (out > this.outputlevelmax) continue // outlevel seems to be suspended
+      // ok now we do the math and scale the frame
+      const targetwidth = Math.min(
+        AVOneFrameToManyScaler.levelwidth[out],
+        frame.displayWidth
+      )
+
+      // eslint-disable-next-line no-undef
+      resframe[out] = new VideoFrame(frame, {
+        visibleRect,
+        displayWidth: targetwidth,
+        displayHeight: targetwidth * targetinvaspect
+      })
+    }
     frame.close()
     return resframe
   }
@@ -739,7 +811,7 @@ class BsonDeFramer extends BasicDeframer {
         }
 
         if (this.output.hdrlen === 0) {
-          console.log('bson detected')
+          // console.log('bson detected')
           // we have a bson
           this.output.hdrlen = 6
           this.output.bsonlen = this.output.payloadlen - 6
@@ -775,6 +847,12 @@ class AVDeFramer extends BasicDeframer {
     this.chunkqueue = []
     this.readpos = 0
     this.output = null
+
+    this.inspectframe = null
+  }
+
+  setFrameInspector(inspector) {
+    this.inspectframe = inspector
   }
 
   async transform(chunk) {
@@ -859,6 +937,7 @@ class AVDeFramer extends BasicDeframer {
           const result = this.processHeader(this.output.header)
           result.data = this.output.payload
           this.output = null // we are ready
+          if (this.inspectframe) this.inspectframe(result)
           toreturn.push(result)
         }
       } else break // not enough data
@@ -935,16 +1014,38 @@ class AVVideoInputProcessor {
   constructor(args) {
     this.webworkid = args.webworkid
     this.inputstream = args.inputstream
-    const outputlevel = 1
 
-    this.multscaler = new AVOneFrameToManyScaler({ outputlevel })
-    this.videoencoder = new AVVideoEncoder({ outputlevel })
-    this.videoencrypt = new AVEncrypt()
-    this.videoframer = new AVFramer({ type: 'video' })
-    this.outputctrldeframer = new BsonDeFramer()
-    this.streamDest = null
+    this.qualities = [1, 4]
+    this.qualmax = 0
+
+    this.videoencoder = {}
+    this.videoencrypt = {}
+    this.videoframer = {}
+    this.outputctrldeframer = {}
+
+    this.destAbort = {}
+    this.streamDestPipe1 = {}
+    this.streamDestPipe2 = {}
+    this.streamDest = {}
+
+    this.multscaler = new AVOneFrameToManyScaler({
+      outputlevel: this.qualities,
+      outputlevelmain: this.qualities[0] // the blocking one
+    })
+
+    this.multscaler.setMaxOutputLevel(this.qualmax /* best quality is 1 */)
+
+    for (const qual in this.qualities) {
+      const outputlevel = qual
+      this.videoencoder[qual] = new AVVideoEncoder({ outputlevel })
+      this.videoencrypt[qual] = new AVEncrypt()
+      this.videoframer[qual] = new AVFramer({ type: 'video' })
+      this.outputctrldeframer[qual] = new BsonDeFramer()
+    }
 
     this.adOutgoing = null
+
+    this.qcs = {}
   }
 
   setStreamDest(stream) {
@@ -960,6 +1061,137 @@ class AVVideoInputProcessor {
     })
   }
 
+  decreaseQuality() {
+    // check if it is possible
+    const oldqualmax = this.qualmax
+    if (this.qualmax > 0) {
+      this.qualmax--
+      this.multscaler.setMaxOutputLevel(this.qualmax)
+      this.videoframer[oldqualmax].sendBson({
+        task: 'suspendQuality'
+      })
+    }
+  }
+
+  increaseQuality() {
+    // check if it is possible
+    if (this.qualmax < this.qualities.length - 1) {
+      this.qualmax++
+      this.multscaler.setMaxOutputLevel(this.qualmax)
+    }
+  }
+
+  // should go to seperate object for audio and video
+  handleQualityControl(qualinfo) {
+    console.log(
+      'out quality ',
+      qualinfo.quality,
+      ' info bytes per sec:',
+      qualinfo.bytesPerSecond,
+      ' frames: ',
+      qualinfo.framesPerSecond,
+      ' jitter:',
+      qualinfo.frameJitter,
+      ' framedelta:',
+      qualinfo.timePerFrame
+    )
+    this.qcs[qualinfo.quality] = qualinfo
+
+    // check for problems
+    const now = Date.now()
+    let problem = false
+    let upgrade = true
+    for (const quality in this.qcs) {
+      const curqual = this.qcs[quality]
+      if (curqual.framesPerSecond < 10) problem = true
+      if (curqual.jitter / qualinfo.timePerFrame > 0.8) problem = true
+
+      if (curqual.framesPerSecond < 14) upgrade = false
+      if (curqual.jitter / qualinfo.timePerFrame > 0.04) upgrade = false
+    }
+    if (problem) {
+      delete this.lastqualityUpgrade
+      if (!this.lastqualityProblem) this.lastqualityProblem = now
+      else if (now - this.lastqualityProblem > 3000) {
+        // we act after 3 seconds
+        delete this.lastqualityProblem
+        this.decreaseQuality()
+      }
+    } else {
+      delete this.lastqualityProblem
+      if (upgrade) {
+        if (!this.lastqualityUpgrade) this.lastqualityUpgrade = now
+        else if (now - this.lastqualityUpgrade > 8000) {
+          // we act after 20 seconds
+          delete this.lastqualityUpgrade
+          this.increaseQuality()
+        }
+      } else {
+        delete this.lastqualityUpgrade
+      }
+    }
+  }
+
+  async qualityControlLoop(quality) {
+    this.qclrunning = true
+    const reader = this.outputctrldeframer[quality].readable.getReader()
+    try {
+      let lasttime = 0
+      let senddata
+      let frames
+      let lastframetimeSender = 0n
+      let lastframetimeReceiver
+      let jitter = 0
+      let framedelta = 0
+      while (this.qclrunning) {
+        const { done, value } = await reader.read()
+        if (done) {
+          this.qclrunning = false
+          break
+        }
+        if (value) {
+          const qcl = value
+          if (qcl.timestamp) qcl.timestamp = BigInt(qcl.timestamp.toString())
+          if (qcl.task === 'start') {
+            const deltatime = qcl.time - lasttime
+            if (!lasttime || deltatime > 1000) {
+              const qualinfo = {
+                quality,
+                bytesPerSecond: (senddata / deltatime) * 1000,
+                framesPerSecond: (frames / deltatime) * 1000,
+                frameJitter: Math.sqrt(jitter) / frames,
+                timePerFrame: framedelta / frames
+              }
+              this.handleQualityControl(qualinfo)
+              lasttime = qcl.time
+              senddata = 0
+              frames = 0
+              jitter = 0
+              framedelta = 0
+            }
+            frames++
+            const senderdelta = Number(
+              (qcl.timestamp - lastframetimeSender) / 1000n
+            )
+
+            const receiverdelta = qcl.time - lastframetimeReceiver
+            jitter +=
+              (senderdelta - receiverdelta) * (senderdelta - receiverdelta)
+            framedelta += senderdelta
+            lastframetimeSender = qcl.timestamp
+            lastframetimeReceiver = qcl.time
+          } else if (qcl.task === 'end') {
+            senddata += qcl.size
+          }
+          // console.log('qcl message', qcl)
+        }
+      }
+    } catch (error) {
+      console.log('Problem in quality control loop', error)
+    }
+    reader.releaseLock()
+  }
+
   buildOutgoingPipeline() {
     if (!this.inputstream) throw new Error('inputstream not set')
     try {
@@ -968,14 +1200,18 @@ class AVVideoInputProcessor {
         preventClose: true,
         preventAbort: true
       })
-      curstream = this.multscaler.readable
-      // encoder
-      curstream.pipeTo(this.videoencoder.writable)
-      curstream = this.videoencoder.readable
-      curstream.pipeTo(this.videoencrypt.writable)
-      curstream = this.videoencrypt.readable
-      curstream.pipeTo(this.videoframer.writable)
-      curstream = this.videoframer.readable
+      for (const qual in this.qualities) {
+        curstream = this.multscaler.readable[qual]
+        // encoder
+        curstream.pipeTo(this.videoencoder[qual].writable)
+        curstream = this.videoencoder[qual].readable
+        curstream.pipeTo(this.videoencrypt[qual].writable)
+        curstream = this.videoencrypt[qual].readable
+        curstream.pipeTo(this.videoframer[qual].writable)
+        curstream = this.videoframer[qual].readable
+        // quality control
+        this.qualityControlLoop(qual)
+      }
 
       const avoffersend = () => {
         AVWorker.ncPipe.postMessage({
@@ -985,30 +1221,33 @@ class AVVideoInputProcessor {
       }
       avoffersend()
 
+      if (this.adOutgoing) clearInterval(this.adOutgoing)
       this.adOutgoing = setInterval(avoffersend, 25 * 1000)
     } catch (error) {
       console.log('build outgoing pipeline error', error)
     }
   }
 
-  onDestStreamAborted() {
-    console.log('on dest stream aborted')
-    if (this.streamDest) {
-      this.streamDest.readable
+  onDestStreamAborted(quality) {
+    console.log('on dest stream aborted ', quality)
+    if (this.streamDest[quality]) {
+      this.streamDest[quality].readable
         .cancel()
-        .catch((error) => console.log('streamSrc cancel failed ', error))
-      delete this.streamDest
+        .catch((error) =>
+          console.log('streamSrc cancel failed ', quality, error)
+        )
+      delete this.streamDest[quality]
     }
-    this.reconnectDestStream()
+    this.reconnectDestStream(quality)
   }
 
-  async reconnectDestStream() {
+  async reconnectDestStream(quality) {
     if (!this.destid) return
-    console.log('reconnect dest stream')
+    console.log('reconnect dest stream ', quality)
     const avtransport = AVTransport.getInterface()
-    while (!this.streamDest) {
+    while (!this.streamDest[quality]) {
       try {
-        this.streamDest = await avtransport.getIncomingStream()
+        this.streamDest[quality] = await avtransport.getIncomingStream()
         // it pipeline already build reconnected
       } catch (error) {
         console.log('getIncomingStream failed rDS, retry', error)
@@ -1016,32 +1255,33 @@ class AVVideoInputProcessor {
       }
     }
 
-    this.videoframer.resetOutput() // gets a new empty stream
+    this.videoframer[quality].resetOutput() // gets a new empty stream
     // then queue the bson
-    this.videoframer.sendBson({
+    this.videoframer[quality].sendBson({
       command: 'configure',
       dir: 'incoming', // routers perspective
       id: this.destid,
+      quality,
       type: 'video'
     })
-    this.videoframer.resendConfigs() // resend necessary configs
+    this.videoframer[quality].resendConfigs() // resend necessary configs
 
-    this.destAbort = new AbortController()
-    this.streamDestPipe1 = this.videoframer.readable
-      .pipeTo(this.streamDest.writable, {
+    this.destAbort[quality] = new AbortController()
+    this.streamDestPipe1[quality] = this.videoframer[quality].readable
+      .pipeTo(this.streamDest[quality].writable, {
         preventAbort: true,
         preventCancel: true,
         signal: this.destAbort.signal
       })
       .catch(() => {
-        this.onDestStreamAborted()
+        this.onDestStreamAborted(quality)
       })
 
-    this.streamDestPipe2 = this.streamDest.readable
-      .pipeTo(this.outputctrldeframer.writable, {
+    this.streamDestPipe2[quality] = this.streamDest[quality].readable
+      .pipeTo(this.outputctrldeframer[quality].writable, {
         preventAbort: true,
         preventCancel: true,
-        signal: this.destAbort.signal
+        signal: this.destAbort[quality].signal
       })
       .catch(() => {}) // this generates control messages
   }
@@ -1050,13 +1290,18 @@ class AVVideoInputProcessor {
     // dest is our id
     this.destid = id
 
-    if (this.destAbort) {
-      this.destAbort.abort()
-      delete this.destAbort
-      // wait for pipes to abort, before reconnecting
-      await Promise.all([this.streamDestPipe1, this.streamDestPipe2])
-      // this.streamDest.writable.close()
-    } else await this.reconnectDestStream() // otherwise it is triggered by the previous stream
+    for (const qual in this.qualities) {
+      if (this.destAbort[qual]) {
+        this.destAbort[qual].abort()
+        delete this.destAbort[qual]
+        // wait for pipes to abort, before reconnecting
+        await Promise.all([
+          this.streamDestPipe1[qual],
+          this.streamDestPipe2[qual]
+        ])
+        // this.streamDest.writable.close()
+      } else await this.reconnectDestStream(qual) // otherwise it is triggered by the previous stream
+    }
   }
 }
 
@@ -1066,6 +1311,7 @@ class AVVideoOutputProcessor {
     this.webworkid = args.webworkid
 
     this.writeframe = this.writeframe.bind(this)
+    this.qualityInspect = this.qualityInspect.bind(this)
 
     this.previewwritable = new WritableStream({
       write: this.writeframe
@@ -1074,8 +1320,121 @@ class AVVideoOutputProcessor {
     this.videodecoder = new AVVideoDecoder()
     this.videodecrypt = new AVDecrypt()
     this.videodeframer = new AVDeFramer({ type: 'video' })
+    this.videodeframer.setFrameInspector(this.qualityInspect)
     this.inputctrlframer = new BsonFramer()
     this.streamSrc = null
+
+    this.qualityStatsInt = {
+      lasttime: 0,
+      senddata: 0,
+      frames: 0,
+      lastframetimeSender: 0n,
+      lastframetimeReceiver: 0,
+      jitter: 0,
+      framedelta: 0
+    }
+  }
+
+  decreaseQuality() {
+    this.sendControlMessage({
+      task: 'decQual'
+    })
+  }
+
+  increaseQuality() {
+    this.sendControlMessage({
+      task: 'incQual'
+    })
+  }
+
+  sendControlMessage(mess) {
+    if (this.inputctrlframer && this.inputctrlframer.writable) {
+      const writmes = this.inputctrlframer.writable.getWriter()
+      writmes.write(mess)
+      writmes.releaseLock()
+    }
+  }
+
+  qualityInspect(frame) {
+    const qci = this.qualityStatsInt
+    const sendertime = frame.framedata.timestamp
+    const receivetime = Date.now()
+
+    const deltatime = receivetime - qci.lasttime
+    if (!qci.lasttime || deltatime > 1000) {
+      const qualinfo = {
+        /* quality, */
+        bytesPerSecond: (qci.senddata / deltatime) * 1000,
+        framesPerSecond: (qci.frames / deltatime) * 1000,
+        frameJitter: Math.sqrt(qci.jitter) / qci.frames,
+        timePerFrame: qci.framedelta / qci.frames
+      }
+      this.handleQualityControl(qualinfo)
+      qci.lasttime = receivetime
+      qci.senddata = 0
+      qci.frames = 0
+      qci.jitter = 0
+      qci.framedelta = 0
+    }
+    qci.frames++
+    const senderdelta = Number((sendertime - qci.lastframetimeSender) / 1000n)
+
+    const receiverdelta = receivetime - qci.lastframetimeReceiver
+    qci.jitter += (senderdelta - receiverdelta) * (senderdelta - receiverdelta)
+    qci.framedelta += senderdelta
+    qci.lastframetimeSender = sendertime
+    qci.lastframetimeReceiver = receivetime
+    qci.senddata += frame.data.byteLength
+  }
+
+  handleQualityControl(qualinfo) {
+    console.log(
+      'in quality ',
+      qualinfo.quality,
+      ' info bytes per sec:',
+      qualinfo.bytesPerSecond,
+      ' frames: ',
+      qualinfo.framesPerSecond,
+      ' jitter:',
+      qualinfo.frameJitter,
+      ' framedelta:',
+      qualinfo.timePerFrame
+    )
+
+    this.qcs = qualinfo
+
+    // check for problems
+    const now = Date.now()
+    let problem = false
+    let upgrade = true
+    const curqual = this.qcs
+    if (curqual.framesPerSecond < 10) problem = true
+    if (curqual.jitter / qualinfo.timePerFrame > 0.8) problem = true
+
+    if (curqual.framesPerSecond < 14) upgrade = false
+    if (curqual.jitter / qualinfo.timePerFrame > 0.04) upgrade = false
+
+    if (problem) {
+      delete this.lastqualityUpgrade
+      if (!this.lastqualityProblem) this.lastqualityProblem = now
+      else if (now - this.lastqualityProblem > 3000) {
+        // we act after 3 seconds
+        delete this.lastqualityProblem
+        this.decreaseQuality()
+      }
+    } else {
+      delete this.lastqualityProblem
+      if (upgrade) {
+        if (!this.lastqualityUpgrade) this.lastqualityUpgrade = now
+        else if (now - this.lastqualityUpgrade > 8000) {
+          // we act after 20 seconds
+          delete this.lastqualityUpgrade
+          this.increaseQuality()
+        }
+      } else {
+        delete this.lastqualityUpgrade
+      }
+    }
   }
 
   writeframe(frame, controller) {
@@ -1160,7 +1519,8 @@ class AVVideoOutputProcessor {
         preventCancel: true,
         signal: this.srcAbort.signal
       })
-      .catch(() => {
+      .catch((error) => {
+        console.log('srcStreamAbort: ', error)
         this.onSrcStreamAborted()
       })
 

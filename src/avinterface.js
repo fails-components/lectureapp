@@ -159,7 +159,7 @@ export class AVCameraStream extends AVStream {
     console.log('mtrackobject', track)
     console.log('track settings', track.getSettings())
     await track.applyConstraints({
-      frameRate: 25.0
+      frameRate: 30.0
     })
     console.log('track settings after', track.getSettings())
 
