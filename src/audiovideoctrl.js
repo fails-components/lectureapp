@@ -79,11 +79,11 @@ export class VideoControl extends Component {
 
   componentDidMount() {
     this.cameraStart()
-    window.addEventListener('devicechange', this.devicesChanged)
+    navigator.mediaDevices.ondevicechange = this.devicesChanged
   }
 
   componentWillUnmount() {
-    window.removeEventListener('devicechange', this.devicesChanged)
+    delete navigator.mediaDevices.ondevicechange
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
@@ -92,10 +92,12 @@ export class VideoControl extends Component {
     }
   }
 
-  async devicesChanged() {
+  async devicesChanged(event) {
     const avinterf = AVInterface.getInterface()
+    console.log('devicechanged')
     try {
       const devices = await avinterf.getAVDevices()
+      this.setState({ avdevices: devices })
       const ind = devices.findIndex((el) => this.state.videoid === el.deviceId)
       if (ind === -1) {
         const viddev = devices.filter((el) => el.kind === 'videoinput')
