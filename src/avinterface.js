@@ -132,12 +132,10 @@ export class AVStream {
   }
 }
 
-// TODO split into camera and preview
-export class AVCameraStream extends AVStream {
+export class AVDeviceInputStream extends AVStream {
   constructor(args) {
     super(args)
     this.track = args.track
-
     this.deviceId = args.deviceId
   }
 
@@ -150,6 +148,32 @@ export class AVCameraStream extends AVStream {
       task: 'close',
       webworkid: this.webworkid
     })
+  }
+
+  setDestId(id) {
+    // TODO move AVTransport into worker
+    AVInterface.worker.postMessage({
+      task: 'setDestId',
+      webworkid: this.webworkid,
+      id
+    })
+  }
+
+  buildOutgoingPipeline() {
+    AVInterface.worker.postMessage(
+      {
+        task: 'buildOutgoingPipeline',
+        webworkid: this.webworkid
+      },
+      []
+    )
+  }
+}
+
+export class AVCameraStream extends AVDeviceInputStream {
+  // eslint-disable-next-line no-useless-constructor
+  constructor(args) {
+    super(args)
   }
 
   async switchCamera(id, nosave) {
@@ -199,24 +223,63 @@ export class AVCameraStream extends AVStream {
 
     this.track = track
   }
+}
 
-  setDestId(id) {
-    // TODO move AVTransport into worker
-    AVInterface.worker.postMessage({
-      task: 'setDestId',
-      webworkid: this.webworkid,
-      id
-    })
+export class AVMicrophoneStream extends AVDeviceInputStream {
+  // eslint-disable-next-line no-useless-constructor
+  constructor(args) {
+    super(args)
   }
 
-  buildOutgoingPipeline() {
-    AVInterface.worker.postMessage(
-      {
-        task: 'buildOutgoingPipeline',
-        webworkid: this.webworkid
-      },
-      []
-    )
+  async switchMicrophone(id, nosave) {
+    if (this.track) this.track.stop()
+    const mstream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: { exact: id },
+        sampleRate: 48000,
+        echoCancellation: true,
+        autoGainControl: true,
+        noiseSuppression: true,
+        latency: 0.0, // as fast as possible
+        channelCount: 1 // mono is enough
+      }
+    })
+    this.deviceId = id
+    if (!nosave) localStorage.setItem('failsaudiodeviceid', id)
+    console.log('audio mstream object', mstream)
+
+    const track = mstream.getTracks()[0]
+    console.log('audio mtrackobject', track)
+    console.log('audio track settings', track.getSettings())
+    await track.applyConstraints({
+      sampleRate: 48000
+    })
+    console.log('audio track settings after', track.getSettings())
+
+    // eslint-disable-next-line no-undef
+    const trackprocessor = new MediaStreamTrackProcessor({ track })
+    if (!this.track) {
+      // now we will drop the track to the worker
+      AVInterface.worker.postMessage(
+        {
+          task: 'openAudioMicrophone',
+          webworkid: this.webworkid,
+          readable: trackprocessor.readable
+        },
+        [trackprocessor.readable]
+      )
+    } else {
+      AVInterface.worker.postMessage(
+        {
+          task: 'switchAudioMicrophone',
+          webworkid: this.webworkid,
+          readable: trackprocessor.readable
+        },
+        [trackprocessor.readable]
+      )
+    }
+
+    this.track = track
   }
 }
 
@@ -381,7 +444,7 @@ export class AVInterface {
       if (olddevice.length > 0) devices = olddevice
       const device = devices[0]
       // ok now we have one we can finally open the video stuff
-      console.log('devices', device)
+      console.log('video device', device)
       const webworkid = this.getNewId()
 
       const avobj = new AVCameraStream({
@@ -394,6 +457,33 @@ export class AVInterface {
       return avobj
     } catch (error) {
       console.log('error opening video device', error)
+    }
+  }
+
+  async openAudioMicrophone(args) {
+    if (!this.mediadevicesupported) return
+    try {
+      if (!this.devices) await this.getAVDevices()
+      const oldid = localStorage.getItem('failsaduiodeviceid')
+      let devices = this.devices.filter((el) => el.kind === 'audioinput')
+      if (devices.length < 1) throw new Error('no Audio devices available')
+      const olddevice = devices.filter((el) => el.deviceId === oldid)
+      if (olddevice.length > 0) devices = olddevice
+      const device = devices[0]
+      // ok now we have one we can finally open the video stuff
+      console.log('audio device', device)
+      const webworkid = this.getNewId()
+
+      const avobj = new AVMicrophoneStream({
+        webworkid
+      })
+      this.registerForFinal(avobj, webworkid)
+
+      await avobj.switchMicrophone(device.deviceId)
+
+      return avobj
+    } catch (error) {
+      console.log('error opening audio device', error)
     }
   }
 

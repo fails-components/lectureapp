@@ -46,7 +46,7 @@ class AVVideoOutStream {
   }
 }
 
-class AVVideoCodec {
+class AVCodec {
   constructor(args) {
     this.write = this.write.bind(this)
     this.startReadable = this.startReadable.bind(this)
@@ -73,9 +73,9 @@ class AVVideoCodec {
   }
 
   close() {
-    if (this.videocodec) {
-      this.videocodec.close()
-      delete this.videocodec
+    if (this.codec) {
+      this.codec.close()
+      delete this.codec
     }
   }
 
@@ -84,8 +84,8 @@ class AVVideoCodec {
   }
 
   async closeWritable(controller) {
-    await this.videocodec.flush()
-    this.videocodec.close()
+    await this.codec.flush()
+    this.codec.close()
   }
 
   pullReadable(controller) {
@@ -135,7 +135,25 @@ class AVVideoCodec {
   }
 }
 
-class AVVideoEncoder extends AVVideoCodec {
+class AVEncoder extends AVCodec {
+  constructor(args) {
+    super(args)
+    this.cur = {}
+    this.curcodec = null
+  }
+
+  codecFull() {
+    return this.codec.encodeQueueSize > 2
+  }
+
+  async output(frame, metadata) {
+    this.checkResPendingWrit()
+    if (this.readableController)
+      this.readableController.enqueue({ frame, metadata })
+  }
+}
+
+class AVVideoEncoder extends AVEncoder {
   // static levelwidth= [160, 320, 640, 848, 848, 1280, 1280, 1920]
   static levelbitrate = [
     150_000, 250_000, 500_000, 1000_000, 1750_000, 2000_000, 3600_000, 4800_000
@@ -146,25 +164,17 @@ class AVVideoEncoder extends AVVideoCodec {
 
     this.outputlevel = args.outputlevel
 
-    this.cur = {}
-
     this.lastkeyframetime = 0
-
-    this.curcodec = null
 
     this.output = this.output.bind(this)
 
     // eslint-disable-next-line no-undef
-    this.videocodec = new VideoEncoder({
+    this.codec = new VideoEncoder({
       output: this.output,
       error(error) {
-        console.log('encoder error', error.name, error.message)
+        console.log('video encoder error', error.name, error.message)
       }
     })
-  }
-
-  codecFull() {
-    return this.videocodec.encodeQueueSize > 2
   }
 
   async codecProcess(chunk) {
@@ -181,7 +191,7 @@ class AVVideoEncoder extends AVVideoCodec {
       keyFrame = true
       this.lastkeyframetime = chunk.timestamp
     }
-    this.videocodec.encode(chunk, { keyFrame })
+    this.codec.encode(chunk, { keyFrame })
     chunk.close()
   }
 
@@ -193,7 +203,7 @@ class AVVideoEncoder extends AVVideoCodec {
       chunk.codedWidth !== this.cur.width
     ) {
       this.curcodec = 'avc1.42402A'
-      this.videocodec.configure({
+      this.codec.configure({
         codec: this.curcodec /* 'avc1.420034' */, // aka h264, maybe add profile
         avc: { format: 'annexb' },
         framerate: 25,
@@ -206,7 +216,7 @@ class AVVideoEncoder extends AVVideoCodec {
         scalabilityMode: 'L1T3',
         latencyMode: 'realtime'
       })
-      console.log('codec state', this.videocodec.state)
+      console.log('codec state', this.codec.state)
       this.cur.displayHeight = chunk.displayHeight
       this.cur.displayWidth = chunk.displayWidth
       this.cur.height = chunk.codedHeight
@@ -214,15 +224,55 @@ class AVVideoEncoder extends AVVideoCodec {
       console.log('log chunk', chunk)
     }
   }
+}
 
-  async output(frame, metadata) {
-    this.checkResPendingWrit()
-    if (this.readableController)
-      this.readableController.enqueue({ frame, metadata })
+class AVAudioEncoder extends AVEncoder {
+  static levelbitrate = [150_000, 64_000, 128_000]
+
+  constructor(args) {
+    super(args)
+
+    this.outputlevel = args.outputlevel
+
+    this.output = this.output.bind(this)
+
+    // eslint-disable-next-line no-undef
+    this.codec = new AudioEncoder({
+      output: this.output,
+      error(error) {
+        console.log('audio encoder error', error.name, error.message)
+      }
+    })
+  }
+
+  async codecProcess(chunk) {
+    this.codec.encode(chunk)
+    chunk.close()
+  }
+
+  codecOnWrite(chunk) {
+    if (
+      chunk.sampleRate !== this.cur.sampleRate ||
+      chunk.numberOfChannels !== this.cur.numberOfChannels
+    ) {
+      this.curcodec = 'opus'
+      this.codec.configure({
+        codec: this.curcodec /* 'opus' */, // aka opus
+        format: 'opus',
+        sampleRate: chunk.sampleRate,
+        numberOfChannels: chunk.numberOfChannels,
+        bitrate: AVAudioEncoder.levelbitrate[this.outputlevel],
+        latencyMode: 'realtime'
+      })
+      console.log('audio codec state', this.codec.state)
+      this.cur.sampleRate = chunk.sampleRate
+      this.cur.numberOfChannels = chunk.numberOfChannels
+      console.log('audio log chunk', chunk)
+    }
   }
 }
 
-class AVVideoDecoder extends AVVideoCodec {
+class AVVideoDecoder extends AVCodec {
   constructor(args) {
     super(args)
     this.configured = false
@@ -230,7 +280,7 @@ class AVVideoDecoder extends AVVideoCodec {
     this.output = this.output.bind(this)
     this.codecOnWrite = this.codecOnWrite.bind(this)
     // eslint-disable-next-line no-undef
-    this.videocodec = new VideoDecoder({
+    this.codec = new VideoDecoder({
       output: this.output,
       error(error) {
         console.log('decoder error', error)
@@ -239,7 +289,7 @@ class AVVideoDecoder extends AVVideoCodec {
   }
 
   codecFull() {
-    return this.videocodec.decodeQueueSize > 2
+    return this.codec.decodeQueueSize > 2
   }
 
   output(frame) {
@@ -256,7 +306,7 @@ class AVVideoDecoder extends AVVideoCodec {
       chunk.metadata.decoderConfig.codec
     ) {
       console.log('codecOnWrite', chunk)
-      this.videocodec.configure({
+      this.codec.configure({
         codec: chunk.metadata.decoderConfig.codec,
         optimizeForLatency: true
       })
@@ -265,7 +315,7 @@ class AVVideoDecoder extends AVVideoCodec {
   }
 
   async codecProcess(chunk) {
-    this.videocodec.decode(chunk.frame)
+    this.codec.decode(chunk.frame)
   }
 }
 
@@ -398,8 +448,7 @@ class AVTransformStream {
   }
 }
 
-class AVOneFrameToManyScaler extends AVTransformStream {
-  static levelwidth = [160, 320, 640, 848, 848, 1280, 1280, 1920]
+class AVOneToMany extends AVTransformStream {
   constructor(args) {
     super({
       ...args,
@@ -416,6 +465,10 @@ class AVOneFrameToManyScaler extends AVTransformStream {
       this.outputlevelmax = outputlevelmax
     }
   }
+}
+
+class AVOneFrameToManyScaler extends AVOneToMany {
+  static levelwidth = [160, 320, 640, 848, 848, 1280, 1280, 1920]
 
   async transform(frame) {
     // ok, we calculate aspect ratio first
@@ -446,6 +499,22 @@ class AVOneFrameToManyScaler extends AVTransformStream {
         displayWidth: targetwidth,
         displayHeight: targetwidth * targetinvaspect
       })
+    }
+    frame.close()
+    return resframe
+  }
+}
+
+class AVOneToManyCopy extends AVOneToMany {
+  async transform(frame) {
+    const resframe = {}
+
+    for (const out in this.outputlevel) {
+      if (out > this.outputlevelmax) continue // outlevel seems to be suspended
+      // ok now we do the math and scale the frame
+
+      // eslint-disable-next-line no-undef
+      resframe[out] = frame.clone()
     }
     frame.close()
     return resframe
@@ -1012,18 +1081,15 @@ class AVDeFramer extends BasicDeframer {
   }
 }
 
-class AVVideoInputProcessor {
+class AVInputProcessor {
   // input means input from camera
   constructor(args) {
     this.webworkid = args.webworkid
     this.inputstream = args.inputstream
 
-    this.qualities = [1, 4]
-    this.qualmax = 0
-
-    this.videoencoder = {}
-    this.videoencrypt = {}
-    this.videoframer = {}
+    this.encoder = {}
+    this.encrypt = {}
+    this.framer = {}
     this.outputctrldeframer = {}
 
     this.destAbort = {}
@@ -1031,32 +1097,25 @@ class AVVideoInputProcessor {
     this.streamDestPipe2 = {}
     this.streamDest = {}
 
-    this.multscaler = new AVOneFrameToManyScaler({
-      outputlevel: this.qualities,
-      outputlevelmain: this.qualities[0] // the blocking one
-    })
-
-    this.multscaler.setMaxOutputLevel(this.qualmax /* best quality is 1 */)
-
-    for (const qual in this.qualities) {
-      const outputlevel = qual
-      this.videoencoder[qual] = new AVVideoEncoder({ outputlevel })
-      this.videoencrypt[qual] = new AVEncrypt()
-      this.videoframer[qual] = new AVFramer({ type: 'video' })
-      this.outputctrldeframer[qual] = new BsonDeFramer()
-    }
-
     this.adOutgoing = null
 
     this.qcs = {}
   }
 
+  initPipeline() {
+    for (const qual in this.qualities) {
+      this.encrypt[qual] = new AVEncrypt()
+      this.framer[qual] = new AVFramer({ type: this.datatype })
+      this.outputctrldeframer[qual] = new BsonDeFramer()
+    }
+  }
+
   close() {
     for (const qual in this.qualities) {
-      const codec = this.videoencoder[qual]
+      const codec = this.encoder[qual]
       if (codec) {
         codec.close()
-        delete this.videoencoder[qual]
+        delete this.encoder[qual]
       }
     }
   }
@@ -1084,7 +1143,7 @@ class AVVideoInputProcessor {
     if (this.qualmax > 0) {
       this.qualmax--
       this.multscaler.setMaxOutputLevel(this.qualmax)
-      this.videoframer[oldqualmax].sendBson({
+      this.framer[oldqualmax].sendBson({
         task: 'suspendQuality'
       })
     }
@@ -1101,6 +1160,8 @@ class AVVideoInputProcessor {
   // should go to seperate object for audio and video
   handleQualityControl(qualinfo) {
     console.log(
+      'type',
+      this.datatype,
       'out quality ',
       qualinfo.quality,
       ' info bytes per sec:',
@@ -1120,10 +1181,10 @@ class AVVideoInputProcessor {
     let upgrade = true
     for (const quality in this.qcs) {
       const curqual = this.qcs[quality]
-      if (curqual.framesPerSecond < 10) problem = true
+      if (curqual.framesPerSecond < this.minimalframerate) problem = true
       if (curqual.jitter / qualinfo.timePerFrame > 0.8) problem = true
 
-      if (curqual.framesPerSecond < 14) upgrade = false
+      if (curqual.framesPerSecond < this.lowerframerate) upgrade = false
       if (curqual.jitter / qualinfo.timePerFrame > 0.04) upgrade = false
     }
     if (problem) {
@@ -1204,7 +1265,12 @@ class AVVideoInputProcessor {
         }
       }
     } catch (error) {
-      console.log('Problem in quality control loop', error)
+      console.log(
+        'type',
+        this.datatype,
+        ' Problem in quality control loop',
+        error
+      )
     }
     reader.releaseLock()
   }
@@ -1220,12 +1286,12 @@ class AVVideoInputProcessor {
       for (const qual in this.qualities) {
         curstream = this.multscaler.readable[qual]
         // encoder
-        curstream.pipeTo(this.videoencoder[qual].writable)
-        curstream = this.videoencoder[qual].readable
-        curstream.pipeTo(this.videoencrypt[qual].writable)
-        curstream = this.videoencrypt[qual].readable
-        curstream.pipeTo(this.videoframer[qual].writable)
-        curstream = this.videoframer[qual].readable
+        curstream.pipeTo(this.encoder[qual].writable)
+        curstream = this.encoder[qual].readable
+        curstream.pipeTo(this.encrypt[qual].writable)
+        curstream = this.encrypt[qual].readable
+        curstream.pipeTo(this.framer[qual].writable)
+        curstream = this.framer[qual].readable
         // quality control
         this.qualityControlLoop(qual)
       }
@@ -1233,7 +1299,7 @@ class AVVideoInputProcessor {
       const avoffersend = () => {
         AVWorker.ncPipe.postMessage({
           command: 'avoffer',
-          data: { type: 'video' }
+          data: { type: this.datatype }
         })
       }
       avoffersend()
@@ -1241,7 +1307,12 @@ class AVVideoInputProcessor {
       if (this.adOutgoing) clearInterval(this.adOutgoing)
       this.adOutgoing = setInterval(avoffersend, 25 * 1000)
     } catch (error) {
-      console.log('build outgoing pipeline error', error)
+      console.log(
+        'type',
+        this.datatype,
+        ' build outgoing pipeline error',
+        error
+      )
     }
   }
 
@@ -1267,24 +1338,29 @@ class AVVideoInputProcessor {
         this.streamDest[quality] = await avtransport.getIncomingStream()
         // it pipeline already build reconnected
       } catch (error) {
-        console.log('getIncomingStream failed rDS, retry', error)
+        console.log(
+          'type',
+          this.datatype,
+          ' getIncomingStream failed rDS, retry',
+          error
+        )
         await new Promise((resolve) => setTimeout(resolve, 2000))
       }
     }
 
-    this.videoframer[quality].resetOutput() // gets a new empty stream
+    this.framer[quality].resetOutput() // gets a new empty stream
     // then queue the bson
-    this.videoframer[quality].sendBson({
+    this.framer[quality].sendBson({
       command: 'configure',
       dir: 'incoming', // routers perspective
       id: this.destid,
       quality,
-      type: 'video'
+      type: this.datatype
     })
-    this.videoframer[quality].resendConfigs() // resend necessary configs
+    this.framer[quality].resendConfigs() // resend necessary configs
 
     this.destAbort[quality] = new AbortController()
-    this.streamDestPipe1[quality] = this.videoframer[quality].readable
+    this.streamDestPipe1[quality] = this.framer[quality].readable
       .pipeTo(this.streamDest[quality].writable, {
         preventAbort: true,
         preventCancel: true,
@@ -1318,6 +1394,65 @@ class AVVideoInputProcessor {
         ])
         // this.streamDest.writable.close()
       } else await this.reconnectDestStream(qual) // otherwise it is triggered by the previous stream
+    }
+  }
+}
+
+class AVVideoInputProcessor extends AVInputProcessor {
+  constructor(args) {
+    super(args)
+
+    this.qualities = [1, 4]
+    this.qualmax = 0
+    this.datatype = 'video'
+    this.lowerframerate = 14
+    this.minimalframerate = 10
+
+    this.initPipeline()
+  }
+
+  initPipeline() {
+    super.initPipeline()
+    this.multscaler = new AVOneFrameToManyScaler({
+      outputlevel: this.qualities,
+      outputlevelmain: this.qualities[0] // the blocking one
+    })
+
+    this.multscaler.setMaxOutputLevel(this.qualmax /* best quality is 1 */)
+
+    for (const qual in this.qualities) {
+      const outputlevel = qual
+      this.encoder[qual] = new AVVideoEncoder({ outputlevel })
+    }
+  }
+}
+
+class AVAudioInputProcessor extends AVInputProcessor {
+  constructor(args) {
+    super(args)
+
+    this.qualities = [0, 1]
+    this.qualmax = 0
+    this.datatype = 'audio'
+    // tweak these, opus default is 20 ms, means 50 fps
+    this.lowerframerate = 14
+    this.minimalframerate = 10
+
+    this.initPipeline()
+  }
+
+  initPipeline() {
+    super.initPipeline()
+    this.multscaler = new AVOneToManyCopy({
+      outputlevel: this.qualities,
+      outputlevelmain: this.qualities[0] // the blocking one
+    })
+
+    this.multscaler.setMaxOutputLevel(this.qualmax /* best quality is 1 */)
+
+    for (const qual in this.qualities) {
+      const outputlevel = qual
+      this.encoder[qual] = new AVAudioEncoder({ outputlevel })
     }
   }
 }
@@ -1690,6 +1825,15 @@ class AVWorker {
           this.objects[event.data.webworkid] = newobj
         }
         break
+      case 'openAudioMicrophone':
+        {
+          const newobj = new AVAudioInputProcessor({
+            webworkid: event.data.webworkid,
+            inputstream: event.data.readable
+          })
+          this.objects[event.data.webworkid] = newobj
+        }
+        break
       case 'openVideoDisplay':
         {
           const newobj = new AVVideoOutputProcessor({
@@ -1702,6 +1846,14 @@ class AVWorker {
         {
           const object = this.objects[event.data.webworkid]
           object.switchVideoCamera({
+            inputstream: event.data.readable
+          })
+        }
+        break
+      case 'switchAudioMicrophone':
+        {
+          const object = this.objects[event.data.webworkid]
+          object.switchAudioMicrophone({
             inputstream: event.data.readable
           })
         }
@@ -1741,14 +1893,20 @@ class AVWorker {
       case 'setSrcId':
         {
           const id = event.data.id
-          if (!id) throw new Error('no id passed')
+          if (!id) {
+            console.log('setSrcId', event.data)
+            throw new Error('srcid, no id passed')
+          }
           this.objects[event.data.webworkid].setSrcId(id)
         }
         break
       case 'setDestId':
         {
           const id = event.data.id
-          if (!id) throw new Error('no id passed')
+          if (!id) {
+            console.log('setDestId', event.data)
+            throw new Error('destid, no id passed')
+          }
           this.objects[event.data.webworkid].setDestId(id)
         }
         break

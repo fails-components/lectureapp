@@ -73,12 +73,13 @@ export class FloatingVideo extends Component {
 export class VideoControl extends Component {
   constructor(args) {
     super(args)
-    this.state = { camera: undefined }
+    this.state = { camera: undefined, microphone: undefined }
     this.devicesChanged = this.devicesChanged.bind(this)
   }
 
   componentDidMount() {
     this.cameraStart()
+    this.microphoneStart()
     navigator.mediaDevices.ondevicechange = this.devicesChanged
   }
 
@@ -88,11 +89,18 @@ export class VideoControl extends Component {
       this.state.camera.close()
       this.setState({ camera: undefined })
     }
+    if (this.state.microphone) {
+      this.state.microphone.close()
+      this.setState({ microphone: undefined })
+    }
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
     if (prevProps.id !== this.props.id && this.state.camera) {
-      this.state.camera.setDestId(this.props.id)
+      if (this.props.id) this.state.camera.setDestId(this.props.id)
+    }
+    if (prevProps.id !== this.props.id && this.state.microphone) {
+      if (this.props.id) this.state.microphone.setDestId(this.props.id)
     }
   }
 
@@ -102,11 +110,24 @@ export class VideoControl extends Component {
     try {
       const devices = await avinterf.getAVDevices()
       this.setState({ avdevices: devices })
-      const ind = devices.findIndex((el) => this.state.videoid === el.deviceId)
-      if (ind === -1) {
+      // video
+      const vidind = devices.findIndex(
+        (el) => this.state.videoid === el.deviceId
+      )
+      if (vidind === -1) {
         const viddev = devices.filter((el) => el.kind === 'videoinput')
         if (viddev.length > 0) {
           this.setVideoSrc(viddev[0].deviceId, true)
+        }
+      }
+      // audio
+      const audind = devices.findIndex(
+        (el) => this.state.audioid === el.deviceId
+      )
+      if (audind === -1) {
+        const auddev = devices.filter((el) => el.kind === 'audioinput')
+        if (auddev.length > 0) {
+          this.setAudioSrc(auddev[0].deviceId, true)
         }
       }
     } catch (error) {
@@ -125,9 +146,9 @@ export class VideoControl extends Component {
       cam = await cam
       cam.buildOutgoingPipeline()
 
-      cam.setDestId(this.props.id)
+      if (this.props.id) cam.setDestId(this.props.id)
 
-      if (this.props.videoid) cam.setSrcId(this.props.videoid)
+      // if (this.props.videoid) cam.setSrcId(this.props.videoid)
       this.setState({ camera: cam, videoid: cam.getDeviceId() })
       this.setState({ avdevices: await avinterf.getAVDevices() })
     } catch (error) {
@@ -135,15 +156,47 @@ export class VideoControl extends Component {
     }
   }
 
+  async microphoneStart() {
+    try {
+      const avinterf = AVInterface.getInterface()
+      console.log('before openAudioMicrophone')
+      avinterf.queryMediaSupported()
+      const microphoneobj = avinterf.openAudioMicrophone()
+
+      let mic = microphoneobj
+      mic = await mic
+      mic.buildOutgoingPipeline()
+
+      if (this.props.id) mic.setDestId(this.props.id)
+
+      // if (this.props.videoid) mic.setSrcId(this.props.videoid)
+      this.setState({ microphone: mic, audioid: mic.getDeviceId() })
+      this.setState({ avdevices: await avinterf.getAVDevices() })
+    } catch (error) {
+      console.log('microphoneStart failed', error)
+    }
+  }
+
   setVideoSrc(id, nosave) {
     console.log('setVideoSrc', id)
-    if (this.op) this.op.hide()
+    if (this.videoop) this.videoop.hide()
     try {
       this.state.camera.switchCamera(id, nosave)
     } catch (error) {
       console.log('switchCamera failed', error)
     }
     this.setState({ videoid: id })
+  }
+
+  setAudioSrc(id, nosave) {
+    console.log('setAudioSrc', id)
+    if (this.audioop) this.audioop.hide()
+    try {
+      this.state.microphone.switchMicrophone(id, nosave)
+    } catch (error) {
+      console.log('switchMicrophone failed', error)
+    }
+    this.setState({ audioid: id })
   }
 
   render() {
@@ -153,18 +206,29 @@ export class VideoControl extends Component {
       .map((el) => ({ label: el.label, deviceId: el.deviceId }))
     console.log('videosrc', videosrc)
     console.log('videoid', this.state.videoid)
+    const audiosrc = devices
+      .filter((el) => el.kind === 'audioinput')
+      .map((el) => ({ label: el.label, deviceId: el.deviceId }))
+    console.log('audiosrc', audiosrc)
+    console.log('audioid', this.state.audioid)
     return (
       <React.Fragment>
         <AVVideoRender videoid={this.props.videoid} width={16}></AVVideoRender>
         <div className='buttonbar'>
           <Button
             icon='pi pi-video'
-            id='bt-notepad'
+            id='bt-video'
             className='p-button-primary p-button-rounded p-m-2'
-            onClick={(e) => this.op.toggle(e)}
+            onClick={(e) => this.videoop.toggle(e)}
+          ></Button>
+          <Button
+            icon='pi pi-phone'
+            id='bt-audio'
+            className='p-button-primary p-button-rounded p-m-2'
+            onClick={(e) => this.audioop.toggle(e)}
           ></Button>
         </div>
-        <OverlayPanel ref={(el) => (this.op = el)}>
+        <OverlayPanel ref={(el) => (this.videoop = el)}>
           Select videosource: <br />
           <Dropdown
             optionLabel='label'
@@ -173,6 +237,17 @@ export class VideoControl extends Component {
             options={videosrc}
             onChange={(e) => this.setVideoSrc(e.value)}
             placeholder='Select a video source'
+          />
+        </OverlayPanel>
+        <OverlayPanel ref={(el) => (this.audioop = el)}>
+          Select audiosource: <br />
+          <Dropdown
+            optionLabel='label'
+            optionValue='deviceId'
+            value={this.state.audioid}
+            options={audiosrc}
+            onChange={(e) => this.setAudioSrc(e.value)}
+            placeholder='Select an audio source'
           />
         </OverlayPanel>
       </React.Fragment>
