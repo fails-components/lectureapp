@@ -84,6 +84,10 @@ export class VideoControl extends Component {
 
   componentWillUnmount() {
     delete navigator.mediaDevices.ondevicechange
+    if (this.state.camera) {
+      this.state.camera.close()
+      this.setState({ camera: undefined })
+    }
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {

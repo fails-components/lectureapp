@@ -73,7 +73,10 @@ class AVVideoCodec {
   }
 
   close() {
-    this.videocodec.close()
+    if (this.videocodec) {
+      this.videocodec.close()
+      delete this.videocodec
+    }
   }
 
   startReadable(controller) {
@@ -1048,6 +1051,20 @@ class AVVideoInputProcessor {
     this.qcs = {}
   }
 
+  close() {
+    for (const qual in this.qualities) {
+      const codec = this.videoencoder[qual]
+      if (codec) {
+        codec.close()
+        delete this.videoencoder[qual]
+      }
+    }
+  }
+
+  finalize() {
+    this.close()
+  }
+
   setStreamDest(stream) {
     this.streamDest = stream
   }
@@ -1333,6 +1350,18 @@ class AVVideoOutputProcessor {
       jitter: 0,
       framedelta: 0
     }
+  }
+
+  close() {
+    const codec = this.videodecoder
+    if (codec) {
+      codec.close()
+      this.videodecoder = null
+    }
+  }
+
+  finalize() {
+    this.close()
   }
 
   decreaseQuality() {
@@ -1675,6 +1704,12 @@ class AVWorker {
           object.switchVideoCamera({
             inputstream: event.data.readable
           })
+        }
+        break
+      case 'close':
+        {
+          const object = this.objects[event.data.webworkid]
+          if (object && object.close) object.close()
         }
         break
       case 'cleanUpObject':

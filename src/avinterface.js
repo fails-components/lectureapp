@@ -46,6 +46,10 @@ export class AVVideoRender extends Component {
 
   componentWillUnmount() {
     window.removeEventListener('resize', this.resizeeventlistener)
+    AVInterface.worker.postMessage({
+      task: 'close',
+      webworkid: this.webworkid
+    })
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
@@ -139,6 +143,13 @@ export class AVCameraStream extends AVStream {
 
   getDeviceId() {
     return this.deviceId
+  }
+
+  close() {
+    AVInterface.worker.postMessage({
+      task: 'close',
+      webworkid: this.webworkid
+    })
   }
 
   async switchCamera(id, nosave) {
