@@ -108,6 +108,7 @@ class AVCodec {
   }
 
   async write(chunk) {
+    if (!chunk) return
     if (this.codecOnWrite) this.codecOnWrite(chunk)
 
     const codecprom = this.codecProcess(chunk)
@@ -272,20 +273,13 @@ class AVAudioEncoder extends AVEncoder {
   }
 }
 
-class AVVideoDecoder extends AVCodec {
+class AVDecoder extends AVCodec {
   constructor(args) {
     super(args)
     this.configured = false
 
     this.output = this.output.bind(this)
     this.codecOnWrite = this.codecOnWrite.bind(this)
-    // eslint-disable-next-line no-undef
-    this.codec = new VideoDecoder({
-      output: this.output,
-      error(error) {
-        console.log('decoder error', error)
-      }
-    })
   }
 
   codecFull() {
@@ -298,6 +292,7 @@ class AVVideoDecoder extends AVCodec {
   }
 
   codecOnWrite(chunk) {
+    if (!chunk) console.log('no chunk to codecOnWrite Videodecoder')
     if (!chunk.metadata) console.log('debug metadata', chunk)
     if (
       !this.configured &&
@@ -306,16 +301,56 @@ class AVVideoDecoder extends AVCodec {
       chunk.metadata.decoderConfig.codec
     ) {
       console.log('codecOnWrite', chunk)
-      this.codec.configure({
-        codec: chunk.metadata.decoderConfig.codec,
-        optimizeForLatency: true
-      })
+      this.codecConfigure(chunk)
       this.configured = true
     }
   }
 
   async codecProcess(chunk) {
     this.codec.decode(chunk.frame)
+  }
+}
+
+class AVVideoDecoder extends AVDecoder {
+  constructor(args) {
+    super(args)
+    this.type = 'video'
+    // eslint-disable-next-line no-undef
+    this.codec = new VideoDecoder({
+      output: this.output,
+      error(error) {
+        console.log('video decoder error', error)
+      }
+    })
+  }
+
+  codecConfigure(chunk) {
+    this.codec.configure({
+      codec: chunk.metadata.decoderConfig.codec,
+      optimizeForLatency: true
+    })
+  }
+}
+
+class AVAudioDecoder extends AVDecoder {
+  constructor(args) {
+    super(args)
+    this.type = 'audio'
+    // eslint-disable-next-line no-undef
+    this.codec = new AudioDecoder({
+      output: this.output,
+      error(error) {
+        console.log('audio decoder error', error)
+      }
+    })
+  }
+
+  codecConfigure(chunk) {
+    this.codec.configure({
+      codec: chunk.metadata.decoderConfig.codec,
+      sampleRate: chunk.metadata.decoderConfig.sampleRate, // may be move to metadata, but later
+      numberOfChannels: chunk.metadata.decoderConfig.numberOfChannels
+    })
   }
 }
 
@@ -351,6 +386,10 @@ class AVTransformStream {
     )
   }
 
+  setSkipframeCallback(callback) {
+    this.informSkipframe = callback
+  }
+
   resetOutput() {
     if (this.multipleout) {
       this.readable = {}
@@ -379,6 +418,8 @@ class AVTransformStream {
     // console.log('AVTransform write chunk', this.constructor.name, chunk)
     const finalchunk = await this.transform(chunk)
 
+    if (!finalchunk) return
+
     let controller
     if (this.multipleout) controller = this.readableController[this.outputmain]
     else controller = this.readableController
@@ -404,6 +445,7 @@ class AVTransformStream {
           out !== this.outputmain
         ) {
           // console.log('skip output ', out)
+          if (this.informSkipframe) this.informSkipframe(out)
           continue
         }
         if (curchunk) {
@@ -599,6 +641,7 @@ class AVDecrypt extends AVTransformStream {
     super(args)
     this.key = null
     this.keyindex = null
+    this.chunkMaker = args.chunkMaker
   }
 
   async transform(chunk) {
@@ -626,7 +669,7 @@ class AVDecrypt extends AVTransformStream {
           ...chunk.metadata
         },
         // eslint-disable-next-line no-undef
-        frame: new EncodedVideoChunk({
+        frame: this.chunkMaker({
           type: chunk.framedata.key ? 'key' : 'delta',
           timestamp: chunk.framedata.timestamp.toString(),
           duration: chunk.framedata.duration,
@@ -636,6 +679,7 @@ class AVDecrypt extends AVTransformStream {
       return decryptedchunk
     } catch (error) {
       console.log('AVDecrypt error', error)
+      return undefined
     }
   }
 
@@ -645,6 +689,10 @@ class AVDecrypt extends AVTransformStream {
 }
 
 class BsonFramer extends AVTransformStream {
+  reset() {
+    this.resetOutput()
+  }
+
   async transform(chunk) {
     const bson = BSONserialize(chunk)
     const hdrlen = 6
@@ -663,6 +711,10 @@ class AVFramer extends AVTransformStream {
     super(args)
     this.type = args.type
     this.messages = {}
+  }
+
+  reset() {
+    this.resetOutput()
   }
 
   resendConfigs() {
@@ -751,6 +803,13 @@ class AVFramer extends AVTransformStream {
 }
 
 class BasicDeframer extends AVTransformStream {
+  reset() {
+    this.chunkqueue = []
+    this.readpos = 0
+    this.output = null
+    this.error = undefined
+  }
+
   readData(which) {
     let wlen = 0
     let wobj = null
@@ -770,8 +829,12 @@ class BasicDeframer extends AVTransformStream {
       default:
         throw new Error('Unsupported')
     }
-    if (wlen === 0 || this.chunkqueue.length === 0) return // already done or no more chunks
-    if (wlen < 0) throw new Error('corrupt stream')
+    if (wlen === 0 || this.chunkqueue.length === 0) return true // already done or no more chunks
+    if (wlen < 0) {
+      console.log('deframer errored wlen 1', wlen)
+      this.error = 'wlen'
+      return false
+    }
 
     // if we have no header read in yet
     if (!wobj) {
@@ -789,6 +852,12 @@ class BasicDeframer extends AVTransformStream {
         }
       } else {
         // console.log('wlen', wlen, which)
+        if (wlen > 10000000 || wlen < 0) {
+          // Limit 10 MB
+          console.log('deframer errored wlen 2', wlen)
+          this.error = 'wlen'
+          return false
+        }
         wobj = new Uint8Array(new ArrayBuffer(wlen))
       }
     }
@@ -825,6 +894,7 @@ class BasicDeframer extends AVTransformStream {
       default:
         throw new Error('Unsupported')
     }
+    return true
   }
 }
 
@@ -832,12 +902,14 @@ class BsonDeFramer extends BasicDeframer {
   constructor(args) {
     super(args)
 
-    this.chunkqueue = []
-    this.readpos = 0
-    this.output = null
+    this.reset()
   }
 
   async transform(chunk) {
+    if (this.error) {
+      console.log('skipdeframer BsonDeframer errored stream')
+      return
+    }
     if (!ArrayBuffer.isView(chunk)) {
       this.chunkqueue.push(new Uint8Array(chunk))
     } else this.chunkqueue.push(chunk)
@@ -891,9 +963,10 @@ class BsonDeFramer extends BasicDeframer {
         }
       }
       // now we process the pending reads
-      this.readData('header')
-      if (this.output.bsonlen) this.readData('bson')
-      else throw new Error('only bson data expected')
+      if (!this.readData('header')) return toreturn
+      if (this.output.bsonlen) {
+        if (!this.readData('bson')) return toreturn
+      } else throw new Error('only bson data expected')
 
       if (
         this.output.hdrlen === 0 &&
@@ -916,9 +989,7 @@ class AVDeFramer extends BasicDeframer {
     super(args)
     this.type = args.type
 
-    this.chunkqueue = []
-    this.readpos = 0
-    this.output = null
+    this.reset()
 
     this.inspectframe = null
   }
@@ -928,6 +999,10 @@ class AVDeFramer extends BasicDeframer {
   }
 
   async transform(chunk) {
+    if (this.error) {
+      console.log('skipdeframer errored stream')
+      return
+    }
     if (!ArrayBuffer.isView(chunk)) {
       this.chunkqueue.push(new Uint8Array(chunk))
     } else this.chunkqueue.push(chunk)
@@ -992,9 +1067,12 @@ class AVDeFramer extends BasicDeframer {
         }
       }
       // now we process the pending reads
-      this.readData('header')
-      if (this.output.bsonlen) this.readData('bson')
-      else this.readData('payload')
+      if (!this.readData('header')) return toreturn
+      if (this.output.bsonlen) {
+        if (!this.readData('bson')) return toreturn
+      } else {
+        if (!this.readData('payload')) return toreturn
+      }
 
       if (
         this.output.hdrlen === 0 &&
@@ -1081,9 +1159,171 @@ class AVDeFramer extends BasicDeframer {
   }
 }
 
-class AVInputProcessor {
+class AVProcessor {
+  async pipeToLoop(
+    args // srcstream, deststream, reset as callback
+  ) {
+    let deststream
+    let srcstream
+    let deststreamWritable
+    let srcstreamReadable
+    let reader
+    let writer
+    let running = true
+    let readerfailed
+    let writerfailed
+    while (running) {
+      try {
+        let res = {}
+
+        const curdeststream = await args.deststream()
+        const cursrcstream = await args.srcstream()
+        const curdeststreamWritable = curdeststream
+          ? curdeststream.writable
+          : undefined
+        const cursrcstreamReadable = cursrcstream
+          ? cursrcstream.readable
+          : undefined
+
+        if (
+          reader &&
+          writer &&
+          cursrcstreamReadable === srcstreamReadable &&
+          curdeststreamWritable === deststreamWritable &&
+          !readerfailed &&
+          !writerfailed
+        ) {
+          try {
+            res = await reader.read()
+          } catch (error) {
+            console.log(args.tag, 'reader failed', error)
+            readerfailed = true
+          }
+        }
+
+        if (curdeststreamWritable !== deststreamWritable) {
+          console.log(
+            args.tag,
+            'dest stream exchanged',
+            curdeststream,
+            srcstream,
+            args.resetOutput
+          )
+          if (writer) {
+            if (!writerfailed) writer.close() // close the webtransport stream
+            writer.releaseLock()
+            if (deststream) deststreamWritable.close()
+          }
+          res.value = undefined
+          res.done = undefined
+
+          deststream = curdeststream
+          deststreamWritable = curdeststreamWritable
+          writer = deststreamWritable.getWriter()
+          writerfailed = undefined
+          if (args.resetOutput) {
+            console.log(args.tag, 'dest stream exchanged resetOutput before')
+            await args.resetOutput()
+            console.log(args.tag, 'dest stream exchanged resetOutput after')
+          }
+        }
+
+        if (cursrcstreamReadable !== srcstreamReadable) {
+          console.log(
+            args.tag,
+            'src stream exchanged',
+            cursrcstream,
+            srcstream,
+            args.resetInput
+          )
+          if (reader) {
+            if (!readerfailed) reader.cancel()
+            reader.releaseLock()
+            if (srcstream) srcstreamReadable.cancel()
+          }
+          srcstream = cursrcstream
+          srcstreamReadable = cursrcstreamReadable
+          reader = srcstreamReadable.getReader()
+          readerfailed = undefined
+          if (args.resetInput) {
+            await args.resetInput(reader)
+          }
+        }
+
+        if (res.value) {
+          try {
+            await writer.write(res.value)
+          } catch (error) {
+            console.log(args.tag, 'writer failed', error)
+            writerfailed = true
+          }
+        }
+
+        if (res.done) {
+          writer.close()
+          running = false
+        }
+
+        if (writerfailed && writer) {
+          writer.releaseLock()
+          writer = undefined
+        }
+
+        if (readerfailed && reader) {
+          reader.releaseLock()
+          reader = undefined
+        }
+
+        if (readerfailed) {
+          console.log(
+            'read failed 1',
+            args.reconnectInput,
+            srcstream,
+            deststream
+          )
+          const cursrcstream = await args.srcstream()
+          if (args.reconnectInput && cursrcstream === srcstream) {
+            console.log('pipeToLoop called reconnectInput before')
+            try {
+              await args.reconnectInput()
+            } catch (error) {
+              console.log('pipeToLoop reconnectInput failed', error)
+            }
+            console.log('pipeToLoop called reconnectInput after')
+          } else await new Promise((resolve) => setTimeout(resolve, 1000))
+        }
+
+        if (writerfailed) {
+          console.log(
+            'write failed 1',
+            args.reconnectOutput,
+            srcstream,
+            deststream
+          )
+          const curdeststream = await args.deststream()
+          if (args.reconnectOutput && curdeststream === deststream) {
+            console.log('pipeToLoop called reconnectOutputbefore')
+            try {
+              await args.reconnectOutput()
+            } catch (error) {
+              console.log('pipeToLoop reconnectOutput failed', error)
+            }
+            console.log('pipeToLoop called reconnectOutput after')
+          } else await new Promise((resolve) => setTimeout(resolve, 1000))
+        }
+      } catch (error) {
+        console.log(args.tag, ' error in pipe to loop', error)
+
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+    }
+  }
+}
+
+class AVInputProcessor extends AVProcessor {
   // input means input from camera
   constructor(args) {
+    super(args)
     this.webworkid = args.webworkid
     this.inputstream = args.inputstream
 
@@ -1092,12 +1332,14 @@ class AVInputProcessor {
     this.framer = {}
     this.outputctrldeframer = {}
 
-    this.destAbort = {}
-    this.streamDestPipe1 = {}
-    this.streamDestPipe2 = {}
     this.streamDest = {}
+    this.streamDestRes = {}
 
     this.adOutgoing = null
+
+    this.skipedFrames = {}
+
+    this.lastoffersend = 0
 
     this.qcs = {}
   }
@@ -1128,15 +1370,6 @@ class AVInputProcessor {
     this.streamDest = stream
   }
 
-  switchVideoCamera(args) {
-    this.inputstream.cancel()
-    this.inputstream = args.inputstream
-    this.inputstream.pipeTo(this.multscaler.writable, {
-      preventClose: true,
-      preventAbort: true
-    })
-  }
-
   decreaseQuality() {
     // check if it is possible
     const oldqualmax = this.qualmax
@@ -1157,6 +1390,11 @@ class AVInputProcessor {
     }
   }
 
+  skipframe(quality) {
+    if (!this.skipedFrames[quality]) this.skipedFrames[quality] = 0
+    this.skipedFrames[quality]++
+  }
+
   // should go to seperate object for audio and video
   handleQualityControl(qualinfo) {
     console.log(
@@ -1168,6 +1406,8 @@ class AVInputProcessor {
       qualinfo.bytesPerSecond,
       ' frames: ',
       qualinfo.framesPerSecond,
+      ' skiped Frames: ',
+      qualinfo.skipedFrames,
       ' jitter:',
       qualinfo.frameJitter,
       ' framedelta:',
@@ -1183,9 +1423,11 @@ class AVInputProcessor {
       const curqual = this.qcs[quality]
       if (curqual.framesPerSecond < this.minimalframerate) problem = true
       if (curqual.jitter / qualinfo.timePerFrame > 0.8) problem = true
+      if (curqual.skipedFrames > this.maxSkippedFrames) problem = true
 
       if (curqual.framesPerSecond < this.lowerframerate) upgrade = false
       if (curqual.jitter / qualinfo.timePerFrame > 0.04) upgrade = false
+      if (curqual.skipedFrames > 0) upgrade = false
     }
     if (problem) {
       delete this.lastqualityUpgrade
@@ -1238,7 +1480,8 @@ class AVInputProcessor {
                 bytesPerSecond: (senddata / deltatime) * 1000,
                 framesPerSecond: (frames / deltatime) * 1000,
                 frameJitter: Math.sqrt(jitter) / frames,
-                timePerFrame: framedelta / frames
+                timePerFrame: framedelta / frames,
+                skipedFrames: (this.skipedFrames[quality] / deltatime) * 1000
               }
               this.handleQualityControl(qualinfo)
               lasttime = qcl.time
@@ -1246,6 +1489,7 @@ class AVInputProcessor {
               frames = 0
               jitter = 0
               framedelta = 0
+              this.skipedFrames[quality] = 0
             }
             frames++
             const senderdelta = Number(
@@ -1284,6 +1528,10 @@ class AVInputProcessor {
         preventAbort: true
       })
       for (const qual in this.qualities) {
+        this.streamDest[qual] = new Promise((resolve) => {
+          this.streamDestRes[qual] = resolve
+        })
+
         curstream = this.multscaler.readable[qual]
         // encoder
         curstream.pipeTo(this.encoder[qual].writable)
@@ -1292,20 +1540,58 @@ class AVInputProcessor {
         curstream = this.encrypt[qual].readable
         curstream.pipeTo(this.framer[qual].writable)
         curstream = this.framer[qual].readable
+        const pipesMaker = (quality) => {
+          this.pipeToLoop({
+            deststream: () => this.streamDest[quality],
+            srcstream: () => this.framer[quality],
+            resetOutput: () => {
+              this.framer[quality].resetOutput() // gets a new empty stream
+              // then queue the bson
+              this.framer[quality].sendBson({
+                command: 'configure',
+                dir: 'incoming', // routers perspective
+                id: this.destid,
+                quality,
+                type: this.datatype
+              })
+              this.framer[quality].resendConfigs()
+            },
+            reconnectOutput: async () => await this.reconnect(),
+            tag: quality + ' out ' + this.datatype
+          }) // first pipeToLoop
+          this.pipeToLoop({
+            srcstream: () => this.streamDest[quality],
+            deststream: () => this.outputctrldeframer[quality],
+            resetInput: () => {
+              this.outputctrldeframer[quality].reset()
+            },
+            reconnectInput: async () => await this.reconnect(),
+            tag: quality + ' out control ' + this.datatype
+          })
+        }
+        pipesMaker(qual)
         // quality control
         this.qualityControlLoop(qual)
       }
 
-      const avoffersend = () => {
-        AVWorker.ncPipe.postMessage({
-          command: 'avoffer',
-          data: { type: this.datatype }
-        })
+      const avoffersend = async () => {
+        let ostatus = {}
+        if (this.offerStatus) ostatus = await this.offerStatus() // a callback, that may add more infos about incoming data
+        // in this way we can remove an offer
+        if (ostatus) {
+          AVWorker.ncPipe.postMessage({
+            command: 'avoffer',
+            data: { type: this.datatype, ...ostatus }
+          })
+          this.lastoffersend = Date.now()
+        }
       }
       avoffersend()
 
       if (this.adOutgoing) clearInterval(this.adOutgoing)
-      this.adOutgoing = setInterval(avoffersend, 25 * 1000)
+      let offerinterval = 1000 * 2
+      if (this.datatype === 'audio') offerinterval = 100
+      this.adOutgoing = setInterval(avoffersend, offerinterval) // ms, especially important for audio
     } catch (error) {
       console.log(
         'type',
@@ -1316,85 +1602,48 @@ class AVInputProcessor {
     }
   }
 
-  onDestStreamAborted(quality) {
-    console.log('on dest stream aborted ', quality)
-    if (this.streamDest[quality]) {
-      this.streamDest[quality].readable
-        .cancel()
-        .catch((error) =>
-          console.log('streamSrc cancel failed ', quality, error)
-        )
-      delete this.streamDest[quality]
-    }
-    this.reconnectDestStream(quality)
-  }
-
-  async reconnectDestStream(quality) {
-    if (!this.destid) return
-    console.log('reconnect dest stream ', quality)
+  async reconnect() {
+    if (this.doreconnect) return // not more than one reconnect
+    this.doreconnect = true
     const avtransport = AVTransport.getInterface()
-    while (!this.streamDest[quality]) {
-      try {
-        this.streamDest[quality] = await avtransport.getIncomingStream()
-        // it pipeline already build reconnected
-      } catch (error) {
-        console.log(
-          'type',
-          this.datatype,
-          ' getIncomingStream failed rDS, retry',
-          error
-        )
-        await new Promise((resolve) => setTimeout(resolve, 2000))
+    console.log('reconnect input processor')
+    for (const qual in this.qualities) {
+      if (!this.streamDestRes[qual]) {
+        this.streamDest[qual] = new Promise((resolve) => {
+          this.streamDestRes[qual] = resolve
+        })
       }
     }
+    for (const qual in this.qualities) {
+      let newstream
+      while (!newstream) {
+        try {
+          newstream = await avtransport.getIncomingStream()
+          // it pipeline already build reconnected
+        } catch (error) {
+          console.log(
+            'type',
+            this.datatype,
+            ' getIncomingStream failed rDS, retry',
+            error
+          )
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+      }
+      console.log('reconnect new stream', newstream)
+      this.streamDest[qual] = newstream
 
-    this.framer[quality].resetOutput() // gets a new empty stream
-    // then queue the bson
-    this.framer[quality].sendBson({
-      command: 'configure',
-      dir: 'incoming', // routers perspective
-      id: this.destid,
-      quality,
-      type: this.datatype
-    })
-    this.framer[quality].resendConfigs() // resend necessary configs
-
-    this.destAbort[quality] = new AbortController()
-    this.streamDestPipe1[quality] = this.framer[quality].readable
-      .pipeTo(this.streamDest[quality].writable, {
-        preventAbort: true,
-        preventCancel: true,
-        signal: this.destAbort.signal
-      })
-      .catch(() => {
-        this.onDestStreamAborted(quality)
-      })
-
-    this.streamDestPipe2[quality] = this.streamDest[quality].readable
-      .pipeTo(this.outputctrldeframer[quality].writable, {
-        preventAbort: true,
-        preventCancel: true,
-        signal: this.destAbort[quality].signal
-      })
-      .catch(() => {}) // this generates control messages
+      this.streamDestRes[qual](newstream)
+      delete this.streamDestRes[qual]
+    }
+    delete this.doreconnect
   }
 
   async setDestId(id) {
     // dest is our id
     this.destid = id
 
-    for (const qual in this.qualities) {
-      if (this.destAbort[qual]) {
-        this.destAbort[qual].abort()
-        delete this.destAbort[qual]
-        // wait for pipes to abort, before reconnecting
-        await Promise.all([
-          this.streamDestPipe1[qual],
-          this.streamDestPipe2[qual]
-        ])
-        // this.streamDest.writable.close()
-      } else await this.reconnectDestStream(qual) // otherwise it is triggered by the previous stream
-    }
+    await this.reconnect()
   }
 }
 
@@ -1407,8 +1656,18 @@ class AVVideoInputProcessor extends AVInputProcessor {
     this.datatype = 'video'
     this.lowerframerate = 14
     this.minimalframerate = 10
+    this.maxSkippedFrames = 5 // video should tolerate this
 
     this.initPipeline()
+  }
+
+  switchVideoCamera(args) {
+    this.inputstream.cancel()
+    this.inputstream = args.inputstream
+    this.inputstream.pipeTo(this.multscaler.writable, {
+      preventClose: true,
+      preventAbort: true
+    })
   }
 
   initPipeline() {
@@ -1419,6 +1678,7 @@ class AVVideoInputProcessor extends AVInputProcessor {
     })
 
     this.multscaler.setMaxOutputLevel(this.qualmax /* best quality is 1 */)
+    this.multscaler.setSkipframeCallback(this.skipframe)
 
     for (const qual in this.qualities) {
       const outputlevel = qual
@@ -1437,8 +1697,20 @@ class AVAudioInputProcessor extends AVInputProcessor {
     // tweak these, opus default is 20 ms, means 50 fps
     this.lowerframerate = 14
     this.minimalframerate = 10
+    this.maxSkippedFrames = 0 // one frame is already too much for audio
+
+    this.dbPromsRes = []
 
     this.initPipeline()
+  }
+
+  switchAudioMicrophone(args) {
+    this.inputstream.cancel()
+    this.inputstream = args.inputstream
+    this.inputstream.pipeTo(this.multscaler.writable, {
+      preventClose: true,
+      preventAbort: true
+    })
   }
 
   initPipeline() {
@@ -1447,6 +1719,7 @@ class AVAudioInputProcessor extends AVInputProcessor {
       outputlevel: this.qualities,
       outputlevelmain: this.qualities[0] // the blocking one
     })
+    this.multscaler.setSkipframeCallback(this.skipframe)
 
     this.multscaler.setMaxOutputLevel(this.qualmax /* best quality is 1 */)
 
@@ -1455,26 +1728,38 @@ class AVAudioInputProcessor extends AVInputProcessor {
       this.encoder[qual] = new AVAudioEncoder({ outputlevel })
     }
   }
+
+  async offerStatus() {
+    const prom = new Promise((resolve) => {
+      this.dbPromsRes.push(resolve)
+    })
+    avworker.sendMessage({ task: 'getDb', webworkid: this.webworkid })
+
+    const db = await prom
+
+    if (Date.now() - this.lastoffersend > 5000 || db > -70) return { db }
+    else return undefined
+  }
+
+  reportDb(db) {
+    const res = this.dbPromsRes.shift()
+    // console.log('reportDB')
+    if (res) res(db)
+  }
 }
 
-class AVVideoOutputProcessor {
-  // Output means output to screen
+class AVOutputProcessor extends AVProcessor {
   constructor(args) {
+    super(args)
     this.webworkid = args.webworkid
 
-    this.writeframe = this.writeframe.bind(this)
     this.qualityInspect = this.qualityInspect.bind(this)
 
-    this.previewwritable = new WritableStream({
-      write: this.writeframe
-    })
-
-    this.videodecoder = new AVVideoDecoder()
-    this.videodecrypt = new AVDecrypt()
-    this.videodeframer = new AVDeFramer({ type: 'video' })
-    this.videodeframer.setFrameInspector(this.qualityInspect)
+    this.deframer = new AVDeFramer({ type: 'video' })
+    this.deframer.setFrameInspector(this.qualityInspect)
     this.inputctrlframer = new BsonFramer()
     this.streamSrc = null
+    this.streamSrcRes = null
 
     this.qualityStatsInt = {
       lasttime: 0,
@@ -1488,10 +1773,10 @@ class AVVideoOutputProcessor {
   }
 
   close() {
-    const codec = this.videodecoder
+    const codec = this.decoder
     if (codec) {
       codec.close()
-      this.videodecoder = null
+      this.decoder = null
     }
   }
 
@@ -1553,6 +1838,8 @@ class AVVideoOutputProcessor {
 
   handleQualityControl(qualinfo) {
     console.log(
+      'type',
+      this.datatype,
       'in quality ',
       qualinfo.quality,
       ' info bytes per sec:',
@@ -1601,10 +1888,151 @@ class AVVideoOutputProcessor {
     }
   }
 
+  buildIncomingPipeline() {
+    try {
+      this.streamSrc = new Promise((resolve) => {
+        this.streamSrcRes = resolve
+      })
+
+      let curstream = this.deframer.readable
+      curstream.pipeTo(this.decrypt.writable)
+      curstream = this.decrypt.readable
+      curstream.pipeTo(this.decoder.writable)
+      curstream = this.decoder.readable
+
+      if (this.outputwritable) {
+        curstream.pipeTo(this.outputwritable)
+      }
+
+      const pipesMaker = () => {
+        this.pipeToLoop({
+          deststream: () => this.deframer,
+          srcstream: () => this.streamSrc,
+          resetInput: () => {
+            this.deframer.reset()
+          },
+          reconnectInput: async () => await this.reconnect(),
+          tag: 'output in ' + this.datatype
+        }) // first pipeToLoop
+        this.pipeToLoop({
+          deststream: () => this.streamSrc,
+          srcstream: () => this.inputctrlframer,
+          resetOutput: () => {
+            this.inputctrlframer.reset()
+            const writmes = this.inputctrlframer.writable.getWriter()
+            writmes.write({
+              command: 'configure',
+              dir: 'outgoing', // routers perspective
+              id: this.srcid,
+              type: this.datatype
+            })
+            writmes.releaseLock()
+          },
+          reconnectOutput: async () => await this.reconnect(),
+          tag: 'output in control ' + this.datatype
+        })
+      }
+      pipesMaker()
+    } catch (error) {
+      console.log('build incoming pipeline error', error)
+    }
+  }
+
+  async reconnect() {
+    if (this.doreconnect) return // not more than one reconnect
+    this.doreconnect = true
+    const avtransport = AVTransport.getInterface()
+    console.log('type ', this.datatype, ' reconnect outputprocessor')
+
+    if (!this.streamSrcRes) {
+      this.streamSrc = new Promise((resolve) => {
+        this.streamSrcRes = resolve
+      })
+    }
+
+    let newstream
+    while (!newstream) {
+      try {
+        newstream = await avtransport.getIncomingStream()
+        // it pipeline already build reconnected
+      } catch (error) {
+        console.log(
+          'type',
+          this.datatype,
+          ' getIncomingStream failed rDS, retry',
+          error
+        )
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+    }
+    console.log('reconnect new stream', newstream)
+    this.streamSrc = newstream
+
+    this.streamSrcRes(newstream)
+    this.streamSrcRes = null
+
+    delete this.doreconnect
+  }
+
+  async setSrcId(id) {
+    // dest is our id
+    this.srcid = id
+    console.log('srcId', id, this.datatype)
+    if (this.streamSrc instanceof Promise) {
+      if (this.srcid) {
+        // we should consider if we have to abort also the non fakestreams
+        await this.reconnect()
+      }
+    } else {
+      this.sendControlMessage({
+        task: 'chgId',
+        id: this.srcid
+      })
+    }
+  }
+}
+
+class AVAudioOutputProcessor extends AVOutputProcessor {
+  // Output means output to screen
+  constructor(args) {
+    super(args)
+    this.datatype = 'audio'
+
+    this.outputwritable = args.writable
+
+    this.decrypt = new AVDecrypt({
+      // eslint-disable-next-line no-undef
+      chunkMaker: (arg) => new EncodedAudioChunk(arg)
+    })
+
+    this.decoder = new AVAudioDecoder()
+  }
+}
+
+class AVVideoOutputProcessor extends AVOutputProcessor {
+  // Output means output to screen
+  constructor(args) {
+    super(args)
+    this.datatype = 'video'
+
+    this.writeframe = this.writeframe.bind(this)
+
+    this.outputwritable = new WritableStream({
+      write: this.writeframe
+    })
+
+    this.decrypt = new AVDecrypt({
+      // eslint-disable-next-line no-undef
+      chunkMaker: (arg) => new EncodedVideoChunk(arg)
+    })
+
+    this.decoder = new AVVideoDecoder()
+  }
+
   writeframe(frame, controller) {
-    if (this.previewrender && this.previewrender.ctx) {
-      const offscreen = this.previewrender.offscreen
-      const ctx = this.previewrender.ctx
+    if (this.outputrender && this.outputrender.ctx) {
+      const offscreen = this.outputrender.offscreen
+      const ctx = this.outputrender.ctx
       if (
         offscreen.width / offscreen.height !==
         frame.displayWidth / frame.displayWidth
@@ -1629,96 +2057,8 @@ class AVVideoOutputProcessor {
     frame.close()
   }
 
-  setPreviewRender(render) {
-    this.previewrender = render
-  }
-
-  buildIncomingPipeline() {
-    try {
-      // network boundary
-      let curstream = this.videodeframer.readable
-      curstream.pipeTo(this.videodecrypt.writable)
-      curstream = this.videodecrypt.readable
-      curstream.pipeTo(this.videodecoder.writable)
-      curstream = this.videodecoder.readable
-
-      if (this.previewwritable) {
-        curstream.pipeTo(this.previewwritable)
-      }
-    } catch (error) {
-      console.log('build incoming pipeline error', error)
-    }
-  }
-
-  onSrcStreamAborted() {
-    console.log('on source stream aborted')
-    if (this.streamSrc) {
-      this.streamSrc.readable
-        .cancel()
-        .catch((error) => console.log('streamSrc cancel failed ', error))
-      delete this.streamSrc
-    }
-    this.reconnectSrcStream()
-  }
-
-  async reconnectSrcStream() {
-    if (!this.srcid) return
-    console.log('reconnect src stream')
-    const avtransport = AVTransport.getInterface()
-    this.streamSrc = null
-    while (!this.streamSrc) {
-      try {
-        this.streamSrc = await avtransport.getIncomingStream()
-        // it pipeline already build reconnected
-      } catch (error) {
-        console.log('getIncomingStream failed rSS, retry', error)
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-      }
-    }
-
-    this.srcAbort = new AbortController()
-    this.streamSrcPipe1 = this.streamSrc.readable
-      .pipeTo(this.videodeframer.writable, {
-        preventAbort: true,
-        preventCancel: true,
-        signal: this.srcAbort.signal
-      })
-      .catch((error) => {
-        console.log('srcStreamAbort: ', error)
-        this.onSrcStreamAborted()
-      })
-
-    this.streamSrcPipe2 = this.inputctrlframer.readable
-      .pipeTo(this.streamSrc.writable, {
-        preventAbort: true,
-        preventCancel: true,
-        signal: this.srcAbort.signal
-      })
-      .catch(() => {}) // for sending control messages
-    const writmes = this.inputctrlframer.writable.getWriter()
-    writmes.write({
-      command: 'configure',
-      dir: 'outgoing', // routers perspective
-      id: this.srcid,
-      type: 'video'
-    })
-    writmes.releaseLock()
-
-    // to do set something
-  }
-
-  async setSrcId(id) {
-    // src id, is the source we want
-    this.srcid = id
-    console.log('setSrcId', id)
-
-    if (this.srcAbort) {
-      this.srcAbort.abort()
-      delete this.srcAbort
-      // wait for pipes to abort, before reconnecting
-      await Promise.all([this.streamSrcPipe1, this.streamSrcPipe2])
-      // this.streamSrc.writable.close()
-    } else await this.reconnectSrcStream() // otherwise it is triggered by the previous stream
+  setOutputRender(render) {
+    this.outputrender = render
   }
 }
 
@@ -1755,7 +2095,9 @@ class AVKeyStore {
     }
     // now we reject pending promises for other keyids
     for (const wkeyid in this.keysrej) {
-      this.keysrej[wkeyid](new Error('other key arrived instead')) // should prevent blocking decrypter
+      this.keysrej[wkeyid](
+        new Error('other key arrived instead ' + wkeyid + 'vs' + keyid)
+      ) // should prevent blocking decrypter
       delete this.keysres[wkeyid]
       delete this.keysrej[wkeyid]
     }
@@ -1809,12 +2151,19 @@ class AVWorker {
     }
   }
 
+  sendMessage(message) {
+    // eslint-disable-next-line no-restricted-globals
+    self.postMessage(message)
+  }
+
   onMessage(event) {
-    console.log('AVWorker onMessage', event)
     const task = event.data.task
     if (!event.data.webworkid && task !== 'networkControl')
       throw new Error('no webworkid specified')
-    console.log('got event with task', task)
+    if (task !== 'getDb') {
+      console.log('AVWorker onMessage', event)
+      console.log('got event with task', task)
+    }
     switch (task) {
       case 'openVideoCamera':
         {
@@ -1838,6 +2187,15 @@ class AVWorker {
         {
           const newobj = new AVVideoOutputProcessor({
             webworkid: event.data.webworkid
+          })
+          this.objects[event.data.webworkid] = newobj
+        }
+        break
+      case 'openAudioSpeaker':
+        {
+          const newobj = new AVAudioOutputProcessor({
+            webworkid: event.data.webworkid,
+            writable: event.data.writable
           })
           this.objects[event.data.webworkid] = newobj
         }
@@ -1882,21 +2240,17 @@ class AVWorker {
           this.objects[event.data.webworkid] = newobj
         }
         break
-      case 'setPreviewRender':
+      case 'setOutputRender':
         {
           const objrender = this.objects[event.data.webworkidrender]
           if (!objrender) throw new Error('no webworkidrender object')
 
-          this.objects[event.data.webworkid].setPreviewRender(objrender)
+          this.objects[event.data.webworkid].setOutputRender(objrender)
         }
         break
       case 'setSrcId':
         {
           const id = event.data.id
-          if (!id) {
-            console.log('setSrcId', event.data)
-            throw new Error('srcid, no id passed')
-          }
           this.objects[event.data.webworkid].setSrcId(id)
         }
         break
@@ -1935,6 +2289,11 @@ class AVWorker {
         this.objects[event.data.webworkid].updateOffScreenRender(
           event.data.offscreen
         )
+        break
+      case 'getDb':
+        if (this.objects[event.data.webworkid]) {
+          this.objects[event.data.webworkid].reportDb(event.data.db)
+        }
         break
       case 'networkControl':
         if (event.data.pipe) {

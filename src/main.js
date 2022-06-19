@@ -64,7 +64,7 @@ import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
 import { UAParser } from 'ua-parser-js'
 import { ScreenManager } from './screenmanager'
-import { VideoControl, FloatingVideo } from './audiovideoctrl'
+import { VideoControl, FloatingVideo, SpeakerSet } from './audiovideoctrl'
 import { SocketInterface } from './socketinterface'
 import { AVInterface } from './avinterface'
 // import screenfull from 'screenfull'
@@ -346,7 +346,7 @@ export class FailsBasis extends Component {
   initializeCommonSocket(commonsocket) {
     commonsocket.on('avoffer', (data) => {
       if (data.id && data.type && data.type in this.avoffers) {
-        this.avoffers[data.type][data.id] = Date.now()
+        this.avoffers[data.type][data.id] = { time: Date.now(), db: data.db }
       }
       if (this.processAVoffers) this.processAVoffers()
     })
@@ -362,7 +362,7 @@ export class FailsBasis extends Component {
         data.offers.forEach((el) => {
           if (el.time && Number(el.time) > now - 60 * 1000) {
             if (el.id && el.type && el.type in newoffers)
-              newoffers[el.type][el.id] = Number(el.time)
+              newoffers[el.type][el.id] = { time: Number(el.time), db: el.db }
           }
         })
         this.avoffers = newoffers
@@ -824,6 +824,7 @@ export class FailsBoard extends FailsBasis {
 
     this.availscreensmenu = React.createRef()
     this.floatvideo = React.createRef()
+    this.speakerset = new SpeakerSet()
 
     this.blockchathash = []
 
@@ -897,6 +898,7 @@ export class FailsBoard extends FailsBasis {
     console.log('Component unmount Failsboard')
     this.socket.disconnect()
     this.commonUnmount()
+    this.speakerset.close()
   }
 
   initializeNotepadSocket(notepadsocket) {
@@ -1021,34 +1023,71 @@ export class FailsBoard extends FailsBasis {
   }
 
   processAVoffers() {
-    // avoffers have updated, now we may change the  displayed video
-    let newvideo = false
-    if (this.state.dispvideo) {
-      if (
-        this.avoffers.video[this.state.dispvideo] < Date.now() - 30 * 1000 ||
-        this.state.dispvideo === this.state.id
-      ) {
-        // we need a new one this
-        newvideo = true
+    // avoffers have updated, now we may change everything
+
+    const audio = this.avoffers.audio
+    const video = this.avoffers.video
+    const selaudio = new Set()
+
+    let selaid
+    let seldb = -70
+
+    const la = this.speakerset.getListAudio() || new Set()
+
+    for (const aid in audio) {
+      const el = audio[aid]
+      if (el.time > Date.now() - 1 * 1000 && aid !== this.state.id) {
+        if (el.db > -70 || (el.db > -80 && la.has(this.aid))) selaudio.add(aid)
       }
-    } else newvideo = true
-    if (newvideo) {
-      // select the most recent
-      let curtime = 0
-      let curid = null
-      const video = this.avoffers.video
-      for (const id in video) {
+      if (el.db > seldb && aid in video && el.time > Date.now() - 10 * 1000) {
+        seldb = el.db
+        selaid = aid
+      }
+    }
+    const dp = this.state.dispvideo
+    if (dp && audio[dp] && seldb - audio[dp].db < 10) selaid = dp
+
+    if (!selaid) {
+      // no audio
+      let newvideo = false
+      if (dp) {
         if (
-          video[id] > Date.now() - 30 * 1000 &&
-          (video[id] > curtime || curid === this.state.id)
+          this.avoffers.video[dp].time < Date.now() - 30 * 1000 ||
+          dp === this.state.id
         ) {
-          curtime = video[id]
-          curid = id
+          // we need a new one this
+          newvideo = true
+        }
+      } else newvideo = true
+      if (newvideo) {
+        // select the most recent
+        let curtime = 0
+        let curid = null
+        const video = this.avoffers.video
+        for (const id in video) {
+          if (
+            video[id].time > Date.now() - 30 * 1000 &&
+            (video[id].time > curtime || curid === this.state.id)
+          ) {
+            curtime = video[id].time
+            curid = id
+          }
+        }
+        if (curid) {
+          selaid = curid
         }
       }
-      if (curid) {
-        this.setState({ dispvideo: curid })
-      }
+    }
+    if (selaid && selaid !== dp) this.setState({ dispvideo: selaid })
+    // now figure out if the audio has changed
+    if (
+      !this.state.listaudio ||
+      selaudio.size !== la.size ||
+      [...selaudio].some((i) => !la.has(i))
+    ) {
+      this.speakerset.setAudioIds(selaudio).catch((error) => {
+        console.log('problem speakerset', error)
+      })
     }
   }
 
@@ -1457,7 +1496,9 @@ export class FailsBoard extends FailsBasis {
         <FloatingVideo ref={this.floatvideo}>
           <VideoControl
             videoid={this.state.dispvideo}
+            audioids={this.state.listaudios}
             id={this.state.id}
+            speakerset={this.speakerset}
           ></VideoControl>
         </FloatingVideo>
 

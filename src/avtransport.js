@@ -41,7 +41,7 @@ export class AVTransport {
     try {
       const url = 'https://' + this.hostname + ':' + this.port + '/avfails'
       const spki =
-        '73:C5:65:58:1F:87:6F:FB:6A:35:84:B4:D9:6A:F6:AA:9D:67:83:13:12:11:22:CC:9F:4C:9F:AD:0B:83:44:BA'
+        '12:E1:8B:A3:C0:62:33:55:B1:FD:51:43:E7:86:0F:AF:B6:6F:85:E4:B9:43:0F:4B:BF:AF:B7:FF:FA:DD:14:CE'
 
       const spkiab = new Uint8Array(
         spki.split(':').map((el) => parseInt(el, 16))
@@ -113,13 +113,23 @@ export class AVTransport {
 
   // new offering
   async getOutgoingStream() {
-    await this.connected
-    return await this.transport.createBidirectionalStream()
+    try {
+      await this.connected
+      return await this.transport.createBidirectionalStream()
+    } catch (error) {
+      console.log('problen in getOutgoingStream', error)
+      return undefined
+    }
   }
 
   async getIncomingStream() {
-    await this.connected
-    return await this.transport.createBidirectionalStream()
+    try {
+      await this.connected
+      return await this.transport.createBidirectionalStream()
+    } catch (error) {
+      console.log('problen in getIncomingStream', error)
+      throw new Error('getIncomingStream failed')
+    }
   }
 
   // runs standardized tests for testing the server, only for development and debugging

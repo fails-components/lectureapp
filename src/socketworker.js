@@ -472,7 +472,7 @@ class SocketWorker {
     this.socket.on('identDelete', (data) => {
       if (data.id) {
         console.log('identDelete2', this.idents[data.id])
-        delete this.idents[data.id].lastaccess
+        if (this.idents[data.id]) delete this.idents[data.id].lastaccess
         this.informIdentities()
       }
     })

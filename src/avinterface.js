@@ -41,7 +41,7 @@ export class AVVideoRender extends Component {
     window.addEventListener('resize', this.resizeeventlistener)
     this.updateOffscreen()
     this.resizeeventlistener()
-    this.previewStart()
+    this.outputStart()
   }
 
   componentWillUnmount() {
@@ -53,11 +53,11 @@ export class AVVideoRender extends Component {
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
-    if (prevProps.videoid !== this.props.videoid && this.state.preview) {
-      this.state.preview.setSrcId(this.props.videoid)
+    if (prevProps.videoid !== this.props.videoid && this.state.output) {
+      this.state.output.setSrcId(this.props.videoid)
     }
-    if (!prevState || prevState.preview !== this.state.preview) {
-      this.state.preview.setPreviewRender(this)
+    if (!prevState || prevState.output !== this.state.output) {
+      this.state.output.setOutputRender(this)
     }
 
     this.updateOffscreen()
@@ -83,20 +83,20 @@ export class AVVideoRender extends Component {
     }
   }
 
-  async previewStart() {
+  async outputStart() {
     try {
       const avinterf = AVInterface.getInterface()
-      const previewobj = avinterf.openPreview()
+      const outputobj = avinterf.openVideoOutput()
 
-      let preview = previewobj
-      preview = await preview
-      preview.buildIncomingPipeline()
-      if (this.props.videoid) previewobj.setSrcId(this.props.videoid)
-      preview.setPreviewRender(this)
+      let output = outputobj
+      output = await output
+      output.buildIncomingPipeline()
+      if (this.props.videoid) outputobj.setSrcId(this.props.videoid)
+      output.setOutputRender(this)
       this.updateOffscreen()
-      this.setState({ preview })
+      this.setState({ output })
     } catch (error) {
-      console.log('previewStart failed', error)
+      console.log('outputStart failed', error)
     }
   }
 
@@ -122,7 +122,12 @@ export class AVVideoRender extends Component {
   }
 
   render() {
-    return <canvas ref={this.videoref} style={{ display: 'block' }}></canvas>
+    return (
+      <canvas
+        ref={this.videoref}
+        style={{ display: 'block', background: 'black' }}
+      ></canvas>
+    )
   }
 }
 
@@ -229,6 +234,43 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
   // eslint-disable-next-line no-useless-constructor
   constructor(args) {
     super(args)
+    this.dbUpdate = this.dbUpdate.bind(this)
+    this.dbupdate = setInterval(this.dbUpdate, 100)
+    this.dbCbs = new Set()
+  }
+
+  close() {
+    clearInterval(this.dbupdate)
+    if (this.analyser) this.analyser.disconnect()
+    super.close()
+  }
+
+  registerDB(cb) {
+    this.dbCbs.add(cb)
+  }
+
+  unregisterDB(cb) {
+    this.dbCbs.remove(cb)
+  }
+
+  dbUpdate() {
+    const db = this.getDB()
+    const now = Date.now()
+    this.lastdbtime = now
+    this.dbCbs.forEach((el) => el(db))
+  }
+
+  getDB() {
+    if (this.analyser) {
+      this.analyser.getFloatFrequencyData(this.dbdata)
+      let dbout = -1000000
+      for (let i = 0; i < this.dbdata.length; i++) {
+        if (this.dbdata[i] > dbout) {
+          dbout = this.dbdata[i]
+        }
+      }
+      return dbout
+    } else return -10000
   }
 
   async switchMicrophone(id, nosave) {
@@ -278,27 +320,33 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
         [trackprocessor.readable]
       )
     }
+    const ac = AVInterface.getInterface().getAudioContext()
+    const tracksource = ac.createMediaStreamSource(mstream)
+    if (this.tracksource) {
+      this.tracksource.disconnect()
+      delete this.tracksource
+    }
+    if (!this.analyser) {
+      this.analyser = ac.createAnalyser()
+      this.analyser.fftSize = 32
+      this.analyser.smoothingTimeConstant = 0.7
+      const bufferLength = this.analyser.frequencyBinCount
+      this.dbdata = new Float32Array(bufferLength)
+    }
+
+    tracksource.connect(this.analyser)
+
+    this.tracksource = tracksource
 
     this.track = track
   }
 }
 
-export class AVRenderStream extends AVStream {
-  constructor(args) {
-    super(args)
-
+export class AVInputStream extends AVStream {
+  close() {
     AVInterface.worker.postMessage({
-      task: 'openVideoDisplay',
+      task: 'close',
       webworkid: this.webworkid
-    })
-  }
-
-  setPreviewRender(render) {
-    render.srcwebworkid = this.webworkid
-    AVInterface.worker.postMessage({
-      task: 'setPreviewRender',
-      webworkid: this.webworkid,
-      webworkidrender: render.webworkid
     })
   }
 
@@ -319,6 +367,61 @@ export class AVRenderStream extends AVStream {
       },
       []
     )
+  }
+}
+
+export class AVSpeakerStream extends AVInputStream {
+  constructor(args) {
+    super(args)
+    this.initalizeAudio()
+  }
+
+  close() {
+    this.audiosrc.disconnect()
+    super.close()
+  }
+
+  initalizeAudio() {
+    const avinterf = AVInterface.getInterface()
+    const ac = avinterf.getAudioContext()
+
+    // eslint-disable-next-line no-undef
+    this.track = new MediaStreamTrackGenerator({ kind: 'audio' })
+
+    const mstream = new MediaStream([this.track])
+
+    this.audiosrc = ac.createMediaStreamSource(mstream)
+
+    this.audiosrc.connect(ac.destination)
+
+    AVInterface.worker.postMessage(
+      {
+        task: 'openAudioSpeaker',
+        webworkid: this.webworkid,
+        writable: this.track.writable
+      },
+      [this.track.writable]
+    )
+  }
+}
+
+export class AVRenderStream extends AVInputStream {
+  constructor(args) {
+    super(args)
+
+    AVInterface.worker.postMessage({
+      task: 'openVideoDisplay',
+      webworkid: this.webworkid
+    })
+  }
+
+  setOutputRender(render) {
+    render.srcwebworkid = this.webworkid
+    AVInterface.worker.postMessage({
+      task: 'setOutputRender',
+      webworkid: this.webworkid,
+      webworkidrender: render.webworkid
+    })
   }
 }
 
@@ -367,6 +470,15 @@ export class AVInterface {
     )
   }
 
+  getAudioContext() {
+    if (!this.audiocontext)
+      this.audiocontext = new AudioContext({
+        sampleRate: 48000,
+        latencyHint: 'interactive'
+      })
+    return this.audiocontext
+  }
+
   queryMediaSupported() {
     // here we check if media capabilites are here
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
@@ -391,6 +503,27 @@ export class AVInterface {
   onMessage(event) {
     const task = event.data.task
     switch (task) {
+      case 'getDb':
+        {
+          const id = event.data.webworkid
+          if (!id) {
+            console.log('getDb', event.data)
+            throw new Error('getDb, no id passed')
+          }
+          const obj = this.objects[event.data.webworkid].deref()
+          let ret
+          if (obj) {
+            ret = obj.getDB()
+          } else {
+            ret = -100
+          }
+          AVInterface.worker.postMessage({
+            task: 'getDb',
+            webworkid: id,
+            db: ret
+          })
+        }
+        break
       default:
         console.log('unhandled onMessage', event)
         break
@@ -407,12 +540,16 @@ export class AVInterface {
     return newid
   }
 
-  finalizeCallback(webworkid) {
+  async finalizeCallback(webworkid) {
     AVInterface.worker.postMessage({
       task: 'cleanUpObject',
       webworkid
     })
     delete this.objects[webworkid]
+    if (this.audiocontext) {
+      this.audiocontext.close()
+      await delete this.audiocontext
+    }
   }
 
   registerForFinal(obj, webworkid) {
@@ -487,7 +624,7 @@ export class AVInterface {
     }
   }
 
-  async openPreview(args) {
+  async openVideoOutput(args) {
     // if (!this.mediadevicesupported) return
     try {
       const webworkid = this.getNewId()
@@ -500,6 +637,22 @@ export class AVInterface {
       return avobj
     } catch (error) {
       console.log('error opening video device', error)
+    }
+  }
+
+  async openAudioOutput(args) {
+    // if (!this.mediadevicesupported) return
+    try {
+      const webworkid = this.getNewId()
+
+      const avobj = new AVSpeakerStream({
+        webworkid
+      })
+      this.registerForFinal(avobj, webworkid)
+
+      return avobj
+    } catch (error) {
+      console.log('error opening audio device', error)
     }
   }
 }
