@@ -109,6 +109,9 @@ class AVCodec {
 
   async write(chunk) {
     if (!chunk) return
+    if (this.codec.state === 'closed') {
+      this.recreateCodec()
+    }
     if (this.codecOnWrite) this.codecOnWrite(chunk)
 
     const codecprom = this.codecProcess(chunk)
@@ -139,8 +142,11 @@ class AVCodec {
 class AVEncoder extends AVCodec {
   constructor(args) {
     super(args)
-    this.cur = {}
     this.curcodec = null
+  }
+
+  recreateCodec() {
+    this.cur = {}
   }
 
   codecFull() {
@@ -163,12 +169,16 @@ class AVVideoEncoder extends AVEncoder {
   constructor(args) {
     super(args)
 
+    this.type = 'video'
+
     this.outputlevel = args.outputlevel
-
-    this.lastkeyframetime = 0
-
     this.output = this.output.bind(this)
+    this.recreateCodec()
+  }
 
+  recreateCodec() {
+    super.recreateCodec()
+    this.lastkeyframetime = 0
     // eslint-disable-next-line no-undef
     this.codec = new VideoEncoder({
       output: this.output,
@@ -228,15 +238,20 @@ class AVVideoEncoder extends AVEncoder {
 }
 
 class AVAudioEncoder extends AVEncoder {
-  static levelbitrate = [150_000, 64_000, 128_000]
+  static levelbitrate = [15_000, 64_000, 128_000]
 
   constructor(args) {
     super(args)
+    this.type = 'audio'
 
     this.outputlevel = args.outputlevel
 
     this.output = this.output.bind(this)
+    this.recreateCodec()
+  }
 
+  recreateCodec() {
+    super.recreateCodec()
     // eslint-disable-next-line no-undef
     this.codec = new AudioEncoder({
       output: this.output,
@@ -276,10 +291,13 @@ class AVAudioEncoder extends AVEncoder {
 class AVDecoder extends AVCodec {
   constructor(args) {
     super(args)
-    this.configured = false
 
     this.output = this.output.bind(this)
     this.codecOnWrite = this.codecOnWrite.bind(this)
+  }
+
+  recreateCodec() {
+    this.configured = false
   }
 
   codecFull() {
@@ -315,6 +333,11 @@ class AVVideoDecoder extends AVDecoder {
   constructor(args) {
     super(args)
     this.type = 'video'
+    this.recreateCodec()
+  }
+
+  recreateCodec() {
+    super.recreateCodec()
     // eslint-disable-next-line no-undef
     this.codec = new VideoDecoder({
       output: this.output,
@@ -336,6 +359,11 @@ class AVAudioDecoder extends AVDecoder {
   constructor(args) {
     super(args)
     this.type = 'audio'
+    this.recreateCodec()
+  }
+
+  recreateCodec() {
+    super.recreateCodec()
     // eslint-disable-next-line no-undef
     this.codec = new AudioDecoder({
       output: this.output,
