@@ -211,23 +211,44 @@ class DbMeter extends Component {
 export class VideoControl extends Component {
   constructor(args) {
     super(args)
-    this.state = { camera: undefined, microphone: undefined, muted: false }
+    this.state = {
+      camera: undefined,
+      microphone: undefined,
+      spkmuted: false,
+      micmuted: true
+    }
     this.devicesChanged = this.devicesChanged.bind(this)
   }
 
-  syncMuted() {
+  syncSpkMuted() {
     if (this.props.speakerset) {
-      const muted = this.props.speakerset.muted()
-      if (muted !== this.state.muted) this.setState({ muted })
+      const spkmuted = this.props.speakerset.muted()
+      if (spkmuted !== this.state.spkmuted) this.setState({ spkmuted })
+    }
+  }
+
+  syncMicMuted() {
+    if (this.state.microphone) {
+      const micmuted = this.state.microphone.muted()
+      if (micmuted !== this.state.micmuted) this.setState({ micmuted })
     }
   }
 
   speakerToggle() {
     if (this.props.speakerset) {
-      const muted = this.state.muted
-      if (muted) this.props.speakerset.muteOff()
+      const spkmuted = this.state.spkmuted
+      if (spkmuted) this.props.speakerset.muteOff()
       else this.props.speakerset.muteOn()
-      this.setState({ muted: !muted })
+      this.setState({ spkmuted: !spkmuted })
+    }
+  }
+
+  micToggle() {
+    if (this.state.microphone) {
+      const micmuted = this.state.micmuted
+      if (micmuted) this.state.microphone.muteOff()
+      else this.state.microphone.muteOn()
+      this.setState({ micmuted: !micmuted })
     }
   }
 
@@ -235,7 +256,7 @@ export class VideoControl extends Component {
     this.cameraStart()
     this.microphoneStart()
     navigator.mediaDevices.ondevicechange = this.devicesChanged
-    this.syncMuted()
+    this.syncSpkMuted()
   }
 
   componentWillUnmount() {
@@ -257,7 +278,7 @@ export class VideoControl extends Component {
     if (prevProps.id !== this.props.id && this.state.microphone) {
       if (this.props.id) this.state.microphone.setDestId(this.props.id)
     }
-    this.syncMuted()
+    this.syncSpkMuted()
   }
 
   async devicesChanged(event) {
@@ -394,13 +415,16 @@ export class VideoControl extends Component {
           <Button
             icon='pi pi-phone'
             id='bt-audio'
-            className={selbuttonCls}
-            onClick={(e) => this.audioop.toggle(e)}
+            className={this.state.micmuted ? deselbuttonCls : selbuttonCls}
+            onClick={(e) => {
+              this.audioop.toggle(e)
+              this.micToggle()
+            }}
           ></Button>
           <Button
             icon='pi pi-volume-off'
             id='bt-audio'
-            className={this.state.muted ? deselbuttonCls : selbuttonCls}
+            className={this.state.spkmuted ? deselbuttonCls : selbuttonCls}
             onClick={(e) => this.speakerToggle()}
           ></Button>
         </div>

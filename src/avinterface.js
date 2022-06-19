@@ -237,6 +237,7 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
     this.dbUpdate = this.dbUpdate.bind(this)
     this.dbupdate = setInterval(this.dbUpdate, 100)
     this.dbCbs = new Set()
+    this.mute = true
   }
 
   close() {
@@ -271,6 +272,34 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
       }
       return dbout
     } else return -10000
+  }
+
+  muteOn() {
+    if (this.track && !this.mute) {
+      this.track.enabled = false
+      this.mute = true
+      AVInterface.worker.postMessage({
+        task: 'muteChangeMic',
+        webworkid: this.webworkid,
+        muted: this.mute
+      })
+    }
+  }
+
+  muteOff() {
+    if (this.track && this.mute) {
+      this.track.enabled = true
+      this.mute = false
+      AVInterface.worker.postMessage({
+        task: 'muteChangeMic',
+        webworkid: this.webworkid,
+        muted: this.mute
+      })
+    }
+  }
+
+  muted() {
+    return this.mute
   }
 
   async switchMicrophone(id, nosave) {
@@ -339,6 +368,7 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
     this.tracksource = tracksource
 
     this.track = track
+    if (this.mute) this.track.enabled = false
   }
 }
 

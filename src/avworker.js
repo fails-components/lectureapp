@@ -576,8 +576,18 @@ class AVOneFrameToManyScaler extends AVOneToMany {
 }
 
 class AVOneToManyCopy extends AVOneToMany {
+  constructor(args) {
+    super(args)
+    this.muted = true
+  }
+
+  changeMute(muted) {
+    this.muted = muted
+  }
+
   async transform(frame) {
     const resframe = {}
+    if (this.muted) return resframe
 
     for (const out in this.outputlevel) {
       if (out > this.outputlevelmax) continue // outlevel seems to be suspended
@@ -1741,6 +1751,10 @@ class AVAudioInputProcessor extends AVInputProcessor {
     })
   }
 
+  changeMute(muted) {
+    this.multscaler.changeMute(muted)
+  }
+
   initPipeline() {
     super.initPipeline()
     this.multscaler = new AVOneToManyCopy({
@@ -2242,6 +2256,12 @@ class AVWorker {
           object.switchAudioMicrophone({
             inputstream: event.data.readable
           })
+        }
+        break
+      case 'muteChangeMic':
+        {
+          const object = this.objects[event.data.webworkid]
+          object.changeMute(event.data.muted)
         }
         break
       case 'close':
