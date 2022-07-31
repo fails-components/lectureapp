@@ -625,6 +625,18 @@ class SocketWorker {
       }
     })
 
+    this.socket.removeAllListeners('transportinfo')
+    this.socket.on('transportinfo', (data) => {
+      this.av.postMessage({
+        task: 'transportinfo',
+        data: {
+          url: data.url,
+          wsurl: data.wsurl,
+          spki: data.spki
+        }
+      })
+    })
+
     // TODO
     this.socket.removeAllListeners('reloadBoard')
     this.socket.on('reloadBoard', (data) => {

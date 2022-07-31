@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+import { WebTransport as WebTransportWS } from '@fails-components/webtransport-ponyfill-websocket'
 
 export class AVTransport {
   static interf = null
@@ -25,8 +26,8 @@ export class AVTransport {
       throw new Error('AVTransport already created')
     AVTransport.interf = this
 
-    this.hostname = (args && args.hostname) || '192.168.1.108'
-    this.port = (args && args.port) || 8081
+    this.hostinfocb = args.cb
+
     this.connected = new Promise((resolve, reject) => {
       this.connectedres = resolve
       this.connectedrej = reject
@@ -39,51 +40,100 @@ export class AVTransport {
 
   async startConnection() {
     try {
-      const url = 'https://' + this.hostname + ':' + this.port + '/avfails'
-      const spki =
-        '12:E1:8B:A3:C0:62:33:55:B1:FD:51:43:E7:86:0F:AF:B6:6F:85:E4:B9:43:0F:4B:BF:AF:B7:FF:FA:DD:14:CE'
-
-      const spkiab = new Uint8Array(
-        spki.split(':').map((el) => parseInt(el, 16))
-      )
-
-      const serverCertificateHashes = [
-        {
-          algorithm: 'sha-256',
-          value: spkiab
-        }
-      ]
-      console.log('startconnection', serverCertificateHashes)
+      console.log('startconnection')
+      let forcewebsocket = false // for debugging set to true
+      // eslint-disable-next-line no-undef
+      if (!WebTransport) {
+        console.log('Browser has no WebTransport support fall back to ponyfill')
+        forcewebsocket = true
+      }
+      // WebTransportWS
       while (true) {
+        const hinfo = await this.hostinfocb()
+        if (!hinfo) {
+          await new Promise((resolve) => {
+            setTimeout(resolve, 1000)
+          })
+          continue
+        }
+        const url = hinfo.url // 'https://' + this.hostname + ':' + this.port + '/avfails'
+        const wsurl = hinfo.wsurl
+        // eslint-disable-next-line no-useless-concat
+        // 'ws://' + /* this.hostname */ 'localhost' + ':' + this.port + '/avfails'
+        const spki = hinfo.spki
+        // '42:93:91:B2:8C:A6:8E:F1:E9:89:41:04:D6:9C:57:CE:B9:0A:0B:5E:11:4C:04:24:9A:5E:15:3E:D8:59:1B:8D'
+        const spkiab = new Uint8Array(
+          spki.split(':').map((el) => parseInt(el, 16))
+        )
+        const serverCertificateHashes = [
+          {
+            algorithm: 'sha-256',
+            value: spkiab
+          }
+        ]
+
         let webtransport = false
-        try {
-          // eslint-disable-next-line no-undef
-          this.transport = new WebTransport(url, { serverCertificateHashes })
-          this.transport.closed
-            .then(() => {
-              console.log(
-                'The HTTP/3 connection to ',
-                url,
-                'closed gracefully.'
-              )
-            })
-            .catch((error) => {
-              console.error(
-                'The HTTP/3 connection to',
-                url,
-                'closed due to ',
-                error,
-                '.'
-              )
-            })
-          await this.transport.ready
-          webtransport = true
-          this.connectedres()
-          console.log('webtransport is ready', this.transport)
-        } catch (error) {
-          console.log('webtransport connection or closed failed', error)
-          // add here the fallback to websocket later
-          this.connectedrej(error)
+        if (!forcewebsocket) {
+          try {
+            // eslint-disable-next-line no-undef
+            this.transport = new WebTransport(url, { serverCertificateHashes })
+            this.transport.closed
+              .then(() => {
+                console.log(
+                  'The HTTP/3 connection to ',
+                  url,
+                  'closed gracefully.'
+                )
+              })
+              .catch((error) => {
+                console.error(
+                  'The HTTP/3 connection to',
+                  url,
+                  'closed due to ',
+                  error,
+                  '.'
+                )
+              })
+            await this.transport.ready
+            webtransport = true
+            this.connectedres()
+            console.log('webtransport is ready', this.transport)
+          } catch (error) {
+            console.log('webtransport connection or closed failed', error)
+          }
+        }
+        if (!webtransport) {
+          try {
+            this.transport = new WebTransportWS(wsurl)
+            this.transport.closed
+              .then(() => {
+                console.log(
+                  'The Websocket connection to ',
+                  url,
+                  'closed gracefully.'
+                )
+              })
+              .catch((error) => {
+                console.error(
+                  'The Websocket connection to',
+                  url,
+                  'closed due to ',
+                  error,
+                  '.'
+                )
+              })
+            await this.transport.ready
+            webtransport = true
+            this.connectedres()
+            console.log('webtransport over websocket is ready', this.transport)
+          } catch (error) {
+            console.log(
+              'webtransport over websocket connection or closed failed',
+              error
+            )
+            // also the fallback did not work
+            this.connectedrej(error)
+          }
         }
 
         if (webtransport) {
@@ -104,8 +154,6 @@ export class AVTransport {
           this.connectedrej = reject
         })
       }
-
-      // this.echoTestsConnection()
     } catch (error) {
       console.log('other webtransport error', error)
     }
@@ -117,7 +165,7 @@ export class AVTransport {
       await this.connected
       return await this.transport.createBidirectionalStream()
     } catch (error) {
-      console.log('problen in getOutgoingStream', error)
+      console.log('problem in getOutgoingStream', error)
       return undefined
     }
   }
@@ -127,7 +175,7 @@ export class AVTransport {
       await this.connected
       return await this.transport.createBidirectionalStream()
     } catch (error) {
-      console.log('problen in getIncomingStream', error)
+      console.log('problem in getIncomingStream', error)
       throw new Error('getIncomingStream failed')
     }
   }

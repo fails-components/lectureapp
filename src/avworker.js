@@ -1328,7 +1328,8 @@ class AVProcessor {
               console.log('pipeToLoop reconnectInput failed', error)
             }
             console.log('pipeToLoop called reconnectInput after')
-          } else await new Promise((resolve) => setTimeout(resolve, 1000))
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000))
         }
 
         if (writerfailed) {
@@ -1347,7 +1348,8 @@ class AVProcessor {
               console.log('pipeToLoop reconnectOutput failed', error)
             }
             console.log('pipeToLoop called reconnectOutput after')
-          } else await new Promise((resolve) => setTimeout(resolve, 1000))
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000))
         }
       } catch (error) {
         console.log(args.tag, ' error in pipe to loop', error)
@@ -2183,6 +2185,7 @@ class AVWorker {
     this.objects = {}
 
     this.handleNetworkControl = this.handleNetworkControl.bind(this)
+    this.transportInfoProm = Promise.resolve()
   }
 
   handleNetworkControl(message) {
@@ -2190,12 +2193,31 @@ class AVWorker {
     if (message.data.task === 'keychange') {
       const keyobj = message.data.keyobject
       AVKeyStore.getKeyStore().incomingKey(keyobj)
+    } else if (message.data.task === 'transportinfo') {
+      if (this.transportInfoRes) {
+        const res = this.transportInfoRes
+        delete this.transportInfoRes
+        delete this.transportInfoRej
+        res(message.data.data)
+      }
     }
   }
 
   sendMessage(message) {
     // eslint-disable-next-line no-restricted-globals
     self.postMessage(message)
+  }
+
+  async getTransportInfo() {
+    await this.transportInfoProm
+    this.transportInfoProm = new Promise((resolve, reject) => {
+      this.transportInfoRes = resolve
+      this.transportInfoRej = reject
+      AVWorker.ncPipe.postMessage({
+        command: 'gettransportinfo'
+      })
+    })
+    return this.transportInfoProm
   }
 
   onMessage(event) {
@@ -2356,9 +2378,16 @@ class AVWorker {
 }
 
 console.log('before startConnection')
-new AVTransport().startConnection()
+// eslint-disable-next-line prefer-const
+let avworker
+new AVTransport({
+  cb: async () => {
+    if (avworker) return await avworker.getTransportInfo()
+    return null
+  }
+}).startConnection()
 
-const avworker = new AVWorker()
+avworker = new AVWorker()
 // eslint-disable-next-line no-restricted-globals
 self.addEventListener('message', avworker.onMessage)
 console.log('AVWorker started')
