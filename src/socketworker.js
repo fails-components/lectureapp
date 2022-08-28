@@ -627,14 +627,23 @@ class SocketWorker {
 
     this.socket.removeAllListeners('transportinfo')
     this.socket.on('transportinfo', (data) => {
-      this.av.postMessage({
-        task: 'transportinfo',
-        data: {
-          url: data.url,
-          wsurl: data.wsurl,
-          spki: data.spki
-        }
-      })
+      if (data.error) {
+        this.av.postMessage({
+          task: 'transportinfo',
+          error: data.error
+        })
+        this.servererrorhandler(-1, 'AVS: ' + data.error, 'AVS Transport error')
+      } else {
+        this.av.postMessage({
+          task: 'transportinfo',
+          data: {
+            url: data.url,
+            wsurl: data.wsurl,
+            spki: data.spki,
+            token: data.token
+          }
+        })
+      }
     })
 
     // TODO

@@ -17,6 +17,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 import { WebTransport as WebTransportWS } from '@fails-components/webtransport-ponyfill-websocket'
+import { serialize as BSONserialize } from 'bson'
 
 export class AVTransport {
   static interf = null
@@ -52,7 +53,7 @@ export class AVTransport {
         const hinfo = await this.hostinfocb()
         if (!hinfo) {
           await new Promise((resolve) => {
-            setTimeout(resolve, 1000)
+            setTimeout(resolve, 5000)
           })
           continue
         }
@@ -137,15 +138,34 @@ export class AVTransport {
         }
 
         if (webtransport) {
+          // do authentification
+          try {
+            const rs = this.transport.incomingBidirectionalStreams
+            const rsreader = rs.getReader()
+            try {
+              const { value } = await rsreader.read()
+              if (value) {
+                const awrt = value.writable.getWriter()
+                const payload = BSONserialize({ token: hinfo.token })
+                await awrt.write(payload)
+                await awrt.close()
+                value.readable.cancel(0)
+              }
+            } catch (error) {
+              console.log('error passing auth token reader', error)
+            }
+            rsreader.releaseLock()
+          } catch (error) {
+            console.log('error passing auth token', error)
+          }
           try {
             await this.transport.closed
           } catch (error) {
             console.log('Webtransport was closed with', error)
           }
-        } else {
-          // if we failed wait sometime, before we renew
-          await new Promise((resolve) => setTimeout(resolve, 2000))
         }
+        // if we failed wait sometime, before we renew, we should wait in any case
+        await new Promise((resolve) => setTimeout(resolve, 2000))
         console.log('webtransport renew connection')
         // get a new connection, and inform that streams need to be renewed
 

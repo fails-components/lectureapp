@@ -2194,7 +2194,14 @@ class AVWorker {
       const keyobj = message.data.keyobject
       AVKeyStore.getKeyStore().incomingKey(keyobj)
     } else if (message.data.task === 'transportinfo') {
-      if (this.transportInfoRes) {
+      if (message.data.error) {
+        if (this.transportInfoRes) {
+          const res = this.transportInfoRes
+          delete this.transportInfoRes
+          delete this.transportInfoRej
+          res(null)
+        }
+      } else if (this.transportInfoRes) {
         const res = this.transportInfoRes
         delete this.transportInfoRes
         delete this.transportInfoRej
@@ -2209,7 +2216,11 @@ class AVWorker {
   }
 
   async getTransportInfo() {
-    await this.transportInfoProm
+    try {
+      await this.transportInfoProm
+    } catch (error) {
+      // ignore, not my business
+    }
     this.transportInfoProm = new Promise((resolve, reject) => {
       this.transportInfoRes = resolve
       this.transportInfoRej = reject
