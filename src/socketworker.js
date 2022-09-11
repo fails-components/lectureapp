@@ -625,27 +625,6 @@ class SocketWorker {
       }
     })
 
-    this.socket.removeAllListeners('transportinfo')
-    this.socket.on('transportinfo', (data) => {
-      if (data.error) {
-        this.av.postMessage({
-          task: 'transportinfo',
-          error: data.error
-        })
-        this.servererrorhandler(-1, 'AVS: ' + data.error, 'AVS Transport error')
-      } else {
-        this.av.postMessage({
-          task: 'transportinfo',
-          data: {
-            url: data.url,
-            wsurl: data.wsurl,
-            spki: data.spki,
-            token: data.token
-          }
-        })
-      }
-    })
-
     // TODO
     this.socket.removeAllListeners('reloadBoard')
     this.socket.on('reloadBoard', (data) => {
@@ -749,6 +728,9 @@ class SocketWorker {
   sendId() {
     // eslint-disable-next-line no-restricted-globals
     self.postMessage({ task: 'idinform', id: this.socket.id })
+    this.av.postMessage({
+      task: 'idchange'
+    })
   }
 
   initializeSocketHandlersNotepads() {
@@ -832,7 +814,59 @@ class SocketWorker {
 
   handleAV(event) {
     if (event.data.command && this.socket) {
-      this.socket.emit(event.data.command, event.data.data)
+      this.socket.emit(event.data.command, event.data.data, (data) => {
+        switch (event.data.command) {
+          case 'gettransportinfo':
+            if (data.error) {
+              this.av.postMessage({
+                task: 'transportinfo',
+                error: data.error
+              })
+              this.servererrorhandler(
+                -1,
+                'AVS: ' + data.error,
+                'AVS Transport error'
+              )
+            } else {
+              this.av.postMessage({
+                task: 'transportinfo',
+                data: {
+                  url: data.url,
+                  wsurl: data.wsurl,
+                  spki: data.spki,
+                  token: data.token
+                }
+              })
+            }
+            break
+          case 'getrouting':
+            console.log('getrouting', data)
+            if (data.error) {
+              this.av.postMessage({
+                task: 'tickets',
+                error: data.error,
+                webworkid: event.data.webworkid
+              })
+              this.servererrorhandler(
+                -1,
+                'AVS: ' + data.error,
+                'AVS ticket error'
+              )
+            } else {
+              this.av.postMessage({
+                task: 'tickets',
+                data: {
+                  tickets: data.tickets
+                },
+                webworkid: event.data.webworkid
+              })
+            }
+            break
+
+          default:
+          // do nothing
+        }
+      })
     }
   }
 

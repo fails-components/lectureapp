@@ -39,6 +39,18 @@ export class AVTransport {
     return AVTransport.interf
   }
 
+  forceReconnect() {
+    try {
+      if (this.transport)
+        this.transport.close({
+          closeCode: 0,
+          reason: 'WS control disconnected'
+        })
+    } catch (error) {
+      console.log('forceReconnect error', error)
+    }
+  }
+
   async startConnection() {
     try {
       console.log('startconnection')

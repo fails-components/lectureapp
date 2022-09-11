@@ -1198,6 +1198,10 @@ class AVDeFramer extends BasicDeframer {
 }
 
 class AVProcessor {
+  constructor(args) {
+    this.webworkid = args.webworkid
+  }
+
   async pipeToLoop(
     args // srcstream, deststream, reset as callback
   ) {
@@ -1248,9 +1252,17 @@ class AVProcessor {
             args.resetOutput
           )
           if (writer) {
-            if (!writerfailed) writer.close() // close the webtransport stream
-            writer.releaseLock()
-            if (deststream) deststreamWritable.close()
+            try {
+              if (!writerfailed) writer.close() // close the webtransport stream
+              writer.releaseLock()
+            } catch (error) {
+              console.log('writer close failed', error)
+            }
+            try {
+              if (deststream) deststreamWritable.close()
+            } catch (error) {
+              console.log('deststream writable close failed', error)
+            }
           }
           res.value = undefined
           res.done = undefined
@@ -1275,9 +1287,17 @@ class AVProcessor {
             args.resetInput
           )
           if (reader) {
-            if (!readerfailed) reader.cancel()
-            reader.releaseLock()
-            if (srcstream) srcstreamReadable.cancel()
+            try {
+              if (!readerfailed) reader.cancel()
+              reader.releaseLock()
+            } catch (error) {
+              console.log('reader failed close', error)
+            }
+            try {
+              if (srcstream) srcstreamReadable.cancel()
+            } catch (error) {
+              console.log('writer failed close', error)
+            }
           }
           srcstream = cursrcstream
           srcstreamReadable = cursrcstreamReadable
@@ -1358,13 +1378,55 @@ class AVProcessor {
       }
     }
   }
+
+  async getTickets({ id, dir }) {
+    try {
+      await this.ticketProm
+    } catch (error) {
+      // ignore, not my business
+    }
+    this.ticketProm = new Promise((resolve, reject) => {
+      this.ticketRes = resolve
+      this.ticketRej = reject
+      AVWorker.ncPipe.postMessage({
+        command: 'getrouting',
+        data: {
+          id,
+          dir
+        },
+        webworkid: this.webworkid
+      })
+    })
+    return this.ticketProm
+  }
+
+  receiveTickets(data) {
+    if (data.error || !data.data) {
+      if (this.ticketRes) {
+        const res = this.ticketRes
+        delete this.ticketRes
+        delete this.ticketRej
+        res(null)
+      }
+    } else if (this.ticketRes) {
+      const res = this.ticketRes
+      delete this.ticketRes
+      delete this.ticketRej
+      res(
+        data.data.tickets.map((el) => ({
+          aeskey: el.aeskey ? new Uint8Array(el.aeskey) : undefined,
+          payload: el.payload ? new Uint8Array(el.payload) : undefined,
+          iv: el.iv ? new Uint8Array(el.iv) : undefined
+        }))
+      )
+    }
+  }
 }
 
 class AVInputProcessor extends AVProcessor {
   // input means input from camera
   constructor(args) {
     super(args)
-    this.webworkid = args.webworkid
     this.inputstream = args.inputstream
 
     this.encoder = {}
@@ -1584,17 +1646,33 @@ class AVInputProcessor extends AVProcessor {
           this.pipeToLoop({
             deststream: () => this.streamDest[quality],
             srcstream: () => this.framer[quality],
-            resetOutput: () => {
-              this.framer[quality].resetOutput() // gets a new empty stream
-              // then queue the bson
-              this.framer[quality].sendBson({
-                command: 'configure',
-                dir: 'incoming', // routers perspective
-                id: this.destid,
-                quality,
-                type: this.datatype
-              })
-              this.framer[quality].resendConfigs()
+            resetOutput: async () => {
+              try {
+                const tickets = await this.getTickets({
+                  id: this.destid,
+                  dir: 'out'
+                })
+                if (!tickets) {
+                  await new Promise((resolve) => {
+                    // take a break
+                    setTimeout(resolve, 5000)
+                  })
+                  throw new Error('no tickets retry after 5 seconds')
+                }
+                this.framer[quality].resetOutput() // gets a new empty stream
+                // then queue the bson
+                this.framer[quality].sendBson({
+                  command: 'configure',
+                  dir: 'incoming', // routers perspective
+                  tickets,
+                  quality,
+                  type: this.datatype
+                })
+                this.framer[quality].resendConfigs()
+              } catch (error) {
+                console.log('resetOutput failed', error)
+                throw new Error('resetOutput failed')
+              }
             },
             reconnectOutput: async () => await this.reconnect(),
             tag: quality + ' out ' + this.datatype
@@ -1795,7 +1873,6 @@ class AVAudioInputProcessor extends AVInputProcessor {
 class AVOutputProcessor extends AVProcessor {
   constructor(args) {
     super(args)
-    this.webworkid = args.webworkid
 
     this.qualityInspect = this.qualityInspect.bind(this)
 
@@ -1825,6 +1902,7 @@ class AVOutputProcessor extends AVProcessor {
   }
 
   finalize() {
+    clearInterval(this.nopint)
     this.close()
   }
 
@@ -1961,22 +2039,28 @@ class AVOutputProcessor extends AVProcessor {
         this.pipeToLoop({
           deststream: () => this.streamSrc,
           srcstream: () => this.inputctrlframer,
-          resetOutput: () => {
+          resetOutput: async () => {
+            const tickets = await this.getTickets({ id: this.srcid, dir: 'in' })
             this.inputctrlframer.reset()
-            const writmes = this.inputctrlframer.writable.getWriter()
-            writmes.write({
+            this.sendControlMessage({
               command: 'configure',
               dir: 'outgoing', // routers perspective
-              id: this.srcid,
+              tickets,
               type: this.datatype
             })
-            writmes.releaseLock()
           },
           reconnectOutput: async () => await this.reconnect(),
           tag: 'output in control ' + this.datatype
         })
       }
       pipesMaker()
+
+      this.nopint = setInterval(() => {
+        console.log('send nop')
+        this.sendControlMessage({
+          command: 'nop'
+        })
+      }, 4000)
     } catch (error) {
       console.log('build incoming pipeline error', error)
     }
@@ -2028,9 +2112,10 @@ class AVOutputProcessor extends AVProcessor {
         await this.reconnect()
       }
     } else {
+      const tickets = await this.getTickets({ id, dir: 'in' })
       this.sendControlMessage({
         task: 'chgId',
-        id: this.srcid
+        tickets
       })
     }
   }
@@ -2207,6 +2292,18 @@ class AVWorker {
         delete this.transportInfoRej
         res(message.data.data)
       }
+    } else if (message.data.task === 'tickets') {
+      const object = this.objects[message.data.webworkid]
+      if (object && object.receiveTickets) {
+        object.receiveTickets(message.data)
+      } else {
+        console.log('unknown webworkid handleNetworkControl')
+      }
+    } else if (message.data.task === 'idchange') {
+      // this invalidates alls tickets and connections, so we must cut the avtransport connection
+      console.log('idchange reconnect')
+      const avtransport = AVTransport.getInterface()
+      if (avtransport) avtransport.forceReconnect()
     }
   }
 
