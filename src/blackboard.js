@@ -634,8 +634,17 @@ export class BackgroundPDFPage extends Component {
     this.renderPage()
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps, prevState) {
     this.renderPage()
+    if (prevState.page !== this.state.page && prevState.page) {
+      prevState.page.pageobj.cleanup()
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.state.page) {
+      this.state.page.pageobj.cleanup()
+    }
   }
 
   async renderPage() {
@@ -725,9 +734,18 @@ export class BackgroundPDF extends Component {
     if (this.props.url !== this.state.url) {
       try {
         // ok we have to load
+        if (this.pdf) {
+          this.pdf.destroy()
+          delete this.pdf
+        }
         const pdf = await pdfjs.getDocument(this.props.url).promise
         // console.log("pdf", pdf);
         if (pdf) this.pdf = pdf
+        else {
+          this.setState({ pageinfo: [], url: 'failed' })
+          console.log('got no pdf document')
+          return
+        }
         // now we have the pdf, we have to get information about the available pages
         let pageinfo = []
         for (let pagenum = 1; pagenum <= pdf.numPages; pagenum++) {
@@ -759,12 +777,25 @@ export class BackgroundPDF extends Component {
   }
 
   componentDidMount() {
-    this.loadPDF()
+    this.loadPDF().catch((error) =>
+      console.log('initial load pdf problem:', error)
+    )
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (this.props.url !== prevProps.url) {
+      this.loadPDF().catch((error) => console.log('load pdf problem:', error))
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.pdf) {
+      this.pdf.destroy()
+      delete this.pdf
+    }
   }
 
   render() {
-    this.loadPDF()
-
     const pages = this.state.pageinfo
 
     let curpages = []
