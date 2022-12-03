@@ -2030,8 +2030,10 @@ export class BlackboardNotepad extends Component {
       )
       this.magicpointerid = event.pointerId
       if (this.deletebox()) this.deletebox().deactivate()
-      if (this.toolbox()) {
-        this.toolbox().setCanTooltip(false)
+      const tb = this.toolbox()
+      if (tb) {
+        tb.setCanTooltip(false)
+        tb.deactivate()
       }
       if (this.realblackboard && this.realblackboard.current) {
         this.realblackboard.current.startMagicPath(
@@ -2486,8 +2488,10 @@ export class BlackboardNotepad extends Component {
         'cY',
         event.clientY
       )
-      if (this.toolbox()) {
-        this.toolbox().setCanTooltip(true)
+      const tb = this.toolbox()
+      if (tb) {
+        tb.setCanTooltip(true)
+        tb.reactivate()
       }
       delete this.magicpointerid
       if (this.realblackboard && this.realblackboard.current) {

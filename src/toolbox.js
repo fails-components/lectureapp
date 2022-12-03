@@ -536,8 +536,13 @@ export class ToolBox extends Component {
   }
 
   reactivate() {
-    console.log('reactivate')
+    console.log('reactivate toolbox')
     this.setState({ activated: true })
+  }
+
+  deactivate() {
+    console.log('deactivate toolbox')
+    this.setState({ activated: false })
   }
 
   scrollPointerdown(event) {
