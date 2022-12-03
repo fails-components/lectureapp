@@ -635,8 +635,8 @@ export class BackgroundPDFPage extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    this.renderPage()
     if (prevState.page !== this.state.page && prevState.page) {
+      this.renderPage()
       prevState.page.pageobj.cleanup()
     }
   }
@@ -747,31 +747,51 @@ export class BackgroundPDF extends Component {
           return
         }
         // now we have the pdf, we have to get information about the available pages
-        let pageinfo = []
-        for (let pagenum = 1; pagenum <= pdf.numPages; pagenum++) {
+        let pageprom = []
+        this.setState({ pageinfo: [], url: this.props.url })
+        const ypos = (this.props.yend + this.props.ystart) * 0.5
+        const pages = new Array(pdf.numPages)
+          .fill(null)
+          .map((el, index) => index + 1)
+        pages.sort(
+          (a, b) => Math.abs(a * 1.414 - ypos) - Math.abs(b * 1.414 - ypos)
+        )
+        for (const pagenum of pages) {
           const helpfunc = async (pn) => {
-            const page = await pdf.getPage(pn)
-            const dimen = page.getViewport({ scale: 2000 })
+            try {
+              const page = await pdf.getPage(pn)
+              const dimen = page.getViewport({ scale: 2000 })
 
-            return {
-              pagenum: pn,
-              pageobj: page,
-              height: dimen.height / dimen.width
+              this.setState((state, props) => {
+                const newpageinfo = state.pageinfo.map((el) => el)
+                newpageinfo[pn - 1] = {
+                  pagenum: pn,
+                  pageobj: page,
+                  height: dimen.height / dimen.width
+                }
+                // perfect now we can calculate from tos
+                let curpos = 0
+                for (let pidx = 0; pidx < newpageinfo.length; pidx++) {
+                  if (newpageinfo[pidx]) {
+                    newpageinfo[pidx].from = curpos
+                    curpos += newpageinfo[pidx].height
+                    newpageinfo[pidx].to = curpos
+                  } else {
+                    curpos += 1.414 // assume A4 for empty
+                  }
+                }
+                return { pageinfo: newpageinfo }
+              })
+            } catch (error) {
+              console.log('Problem loading page ', pagenum, ':', error)
             }
           }
-          pageinfo.push(helpfunc(pagenum))
+          pageprom.push(helpfunc(pagenum))
         }
-        pageinfo = await Promise.all(pageinfo)
-        // perfect now we can calculate from tos
-        let curpos = 0
-        for (let pidx = 0; pidx < pageinfo.length; pidx++) {
-          pageinfo[pidx].from = curpos
-          curpos += pageinfo[pidx].height
-          pageinfo[pidx].to = curpos
-        }
-        this.setState({ pageinfo, url: this.props.url })
+        pageprom = await Promise.all(pageprom)
       } catch (error) {
         console.log('loadPDF failed', error)
+        this.setState({ url: 'failed' })
       }
     }
   }
@@ -813,15 +833,17 @@ export class BackgroundPDF extends Component {
       )
 
       // console.log("curpages",curpages);
-      curpages = curpages.map((el) => (
-        <BackgroundPDFPage
-          page={el}
-          ystart={this.props.ystart}
-          key={el.pagenum + 'page'}
-          bbwidth={this.props.bbwidth}
-          zIndex={this.props.zIndex}
-        ></BackgroundPDFPage>
-      ))
+      curpages = curpages
+        .filter((el) => !!el)
+        .map((el) => (
+          <BackgroundPDFPage
+            page={el}
+            ystart={this.props.ystart}
+            key={el.pagenum + 'page'}
+            bbwidth={this.props.bbwidth}
+            zIndex={this.props.zIndex}
+          ></BackgroundPDFPage>
+        ))
     }
 
     return <div>{curpages}</div>
