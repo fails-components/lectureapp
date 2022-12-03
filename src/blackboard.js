@@ -2030,6 +2030,9 @@ export class BlackboardNotepad extends Component {
       )
       this.magicpointerid = event.pointerId
       if (this.deletebox()) this.deletebox().deactivate()
+      if (this.toolbox()) {
+        this.toolbox().setCanTooltip(false)
+      }
       if (this.realblackboard && this.realblackboard.current) {
         this.realblackboard.current.startMagicPath(
           pos.x / this.props.bbwidth,
@@ -2093,6 +2096,9 @@ export class BlackboardNotepad extends Component {
       } else {
         // console.log( "startpath check",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth );
         // console.log("startpath tool check", this.toolcolor, this.toolsize,this.props.bbwidth);
+        if (this.toolbox()) {
+          this.toolbox().setCanTooltip(false)
+        }
         // ok we have to generate an objid
         this.objnum++
         this.pointerobjnum[event.pointerId] = this.objnum
@@ -2480,6 +2486,9 @@ export class BlackboardNotepad extends Component {
         'cY',
         event.clientY
       )
+      if (this.toolbox()) {
+        this.toolbox().setCanTooltip(true)
+      }
       delete this.magicpointerid
       if (this.realblackboard && this.realblackboard.current) {
         await this.realblackboard.current.finishMagic((pos) => {
@@ -2491,6 +2500,9 @@ export class BlackboardNotepad extends Component {
         })
       }
     } else if (event.pointerId in this.pointerdraw === true) {
+      if (this.toolbox()) {
+        this.toolbox().setCanTooltip(true)
+      }
       const objid = this.pointerobjids[event.pointerId]
       console.log(
         'pointerup pointerId:',

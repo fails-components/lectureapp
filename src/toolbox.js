@@ -131,6 +131,7 @@ export class ToolBox extends Component {
     this.state.secondtoolstep = false
     this.state.selectedPickerid = 1
     this.state.canundo = false
+    this.state.cantooltip = true
 
     this.svgscale = 2000 // should be kept constant
 
@@ -390,6 +391,11 @@ export class ToolBox extends Component {
     if (this.state.canundo !== !!canundo) this.setState({ canundo: !!canundo })
   }
 
+  setCanTooltip(cantooltip) {
+    if (this.state.cantooltip !== cantooltip)
+      this.setState({ cantooltip: !!cantooltip })
+  }
+
   scrollboardSetReference() {
     const scrollref = this.blackboard().getStartScrollboardTB()
     this.scrollboardreference = scrollref
@@ -594,6 +600,8 @@ export class ToolBox extends Component {
       position: 'top',
       showDelay: 1000
     }
+
+    if (!this.state.cantooltip) ttopts.disable = true
 
     const selbuttonclass = (cond, add) =>
       cond
