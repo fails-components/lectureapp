@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-import { WebTransport as WebTransportWS } from '@fails-components/webtransport-ponyfill-websocket'
+// import { WebTransport as WebTransportWS } from '@fails-components/webtransport-ponyfill-websocket'
 import { serialize as BSONserialize } from 'bson'
 
 export class AVTransport {
@@ -109,13 +109,14 @@ export class AVTransport {
               })
             await this.transport.ready
             webtransport = true
-            this.connectedres()
-            console.log('webtransport is ready', this.transport)
+            console.log('webtransport is ready' /*, this.transport */)
           } catch (error) {
             console.log('webtransport connection or closed failed', error)
           }
         }
         if (!webtransport) {
+          this.connectedrej('no websocket' + wsurl) // fall back
+          /*
           try {
             this.transport = new WebTransportWS(wsurl)
             this.transport.closed
@@ -137,7 +138,6 @@ export class AVTransport {
               })
             await this.transport.ready
             webtransport = true
-            this.connectedres()
             console.log('webtransport over websocket is ready', this.transport)
           } catch (error) {
             console.log(
@@ -146,11 +146,13 @@ export class AVTransport {
             )
             // also the fallback did not work
             this.connectedrej(error)
-          }
+          } */
         }
 
         if (webtransport) {
           // do authentification
+          console.log('webtransport start auth')
+          let authfailed = false
           try {
             const rs = this.transport.incomingBidirectionalStreams
             const rsreader = rs.getReader()
@@ -160,20 +162,35 @@ export class AVTransport {
                 const awrt = value.writable.getWriter()
                 const payload = BSONserialize({ token: hinfo.token })
                 await awrt.write(payload)
-                await awrt.close()
-                value.readable.cancel(0)
+                awrt.close().catch((err) => {
+                  console.log('webtransport auth writer close problem:', err)
+                })
+                value.readable.cancel(0).catch((err) => {
+                  console.log('webtransport auth reader cancel problem:', err)
+                })
               }
+              rsreader.releaseLock()
+              this.connectedres()
             } catch (error) {
+              authfailed = true
+              this.connectedrej()
               console.log('error passing auth token reader', error)
             }
-            rsreader.releaseLock()
           } catch (error) {
+            authfailed = true
+            this.connectedrej()
             console.log('error passing auth token', error)
           }
-          try {
-            await this.transport.closed
-          } catch (error) {
-            console.log('Webtransport was closed with', error)
+          if (!authfailed) {
+            console.log('webtransport auth send')
+            try {
+              await this.transport.closed
+              console.log('webtransport closed go to restart')
+            } catch (error) {
+              console.log('Webtransport was closed with', error)
+            }
+          } else {
+            console.log('webtransport auth failed')
           }
         }
         // if we failed wait sometime, before we renew, we should wait in any case
@@ -198,7 +215,8 @@ export class AVTransport {
       return await this.transport.createBidirectionalStream()
     } catch (error) {
       console.log('problem in getOutgoingStream', error)
-      return undefined
+      this.forceReconnect()
+      throw new Error('getOutgoingStream failed', error)
     }
   }
 
@@ -208,7 +226,8 @@ export class AVTransport {
       return await this.transport.createBidirectionalStream()
     } catch (error) {
       console.log('problem in getIncomingStream', error)
-      throw new Error('getIncomingStream failed')
+      this.forceReconnect()
+      throw new Error('getIncomingStream failed', error)
     }
   }
 

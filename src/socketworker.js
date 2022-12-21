@@ -46,15 +46,14 @@ class SocketWorker {
 
     this.idents = {}
 
-    this.keyobject = { exptime: Date.now() / 1000 + 10 } // we have 20 seconds for a new key
+    this.keyobject = { exptime: Date.now() / 1000 + 7.5 + 5 * Math.random() } // we have 20 seconds for a new key
 
     const bidarray = new Uint32Array(2)
     crypto.getRandomValues(bidarray)
     this.keymasterBidding = Math.abs(
       ((0xfffff & bidarray[0]) << 32) | bidarray[1]
     )
-    // eslint-disable-next-line no-restricted-globals
-    self.setInterval(this.periodicStatusCheck, 1000)
+    setInterval(this.periodicStatusCheck, 1000)
   }
 
   async periodicStatusCheck() {
@@ -76,7 +75,7 @@ class SocketWorker {
         (!this.keymasterQueryTime || this.keymasterQueryTime - now < 0)
       ) {
         this.socket.emit('keymasterQuery') // tells the handlers, to query the keymaster
-        this.keymasterQueryTime = now + 20 // give them 20 seconds to fix this
+        this.keymasterQueryTime = now + 20 + 10 * Math.random() // give them 20 seconds to fix this
         this.keymaster = false
       }
     } else if (
@@ -845,20 +844,30 @@ class SocketWorker {
               this.av.postMessage({
                 task: 'tickets',
                 error: data.error,
-                webworkid: event.data.webworkid
+                webworkid: event.data.webworkid,
+                queryid: event.data.queryid
               })
               this.servererrorhandler(
                 -1,
                 'AVS: ' + data.error,
                 'AVS ticket error'
               )
+            } else if (data.notfound) {
+              console.log('client not found in network', data.notfound)
+              this.av.postMessage({
+                task: 'tickets',
+                error: 'Client not found in network',
+                webworkid: event.data.webworkid,
+                queryid: event.data.queryid
+              })
             } else {
               this.av.postMessage({
                 task: 'tickets',
                 data: {
                   tickets: data.tickets
                 },
-                webworkid: event.data.webworkid
+                webworkid: event.data.webworkid,
+                queryid: event.data.queryid
               })
             }
             break

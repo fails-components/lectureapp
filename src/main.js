@@ -1052,6 +1052,7 @@ export class FailsBoard extends FailsBasis {
       let newvideo = false
       if (dp) {
         if (
+          !this.avoffers.video[dp] ||
           this.avoffers.video[dp].time < Date.now() - 30 * 1000 ||
           dp === this.state.id
         ) {
@@ -1067,7 +1068,8 @@ export class FailsBoard extends FailsBasis {
         for (const id in video) {
           if (
             video[id].time > Date.now() - 30 * 1000 &&
-            (video[id].time > curtime || curid === this.state.id)
+            (video[id].time > curtime ||
+              (curid === this.state.id && video[id].time > curtime - 5 * 1000))
           ) {
             curtime = video[id].time
             curid = id
@@ -1078,7 +1080,10 @@ export class FailsBoard extends FailsBasis {
         }
       }
     }
-    if (selaid && selaid !== dp) this.setState({ dispvideo: selaid })
+    if (selaid && selaid !== dp) {
+      console.log('change video to', selaid)
+      this.setState({ dispvideo: selaid })
+    }
     // now figure out if the audio has changed
     if (
       !this.state.listaudio ||
