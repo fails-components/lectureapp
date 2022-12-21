@@ -2,4 +2,3 @@ node_modules
 .env.development.local
 /build
 /dist
-.npmrc
