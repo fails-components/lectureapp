@@ -53,6 +53,7 @@ jobs:
       - run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check if version has been updated
         id: check
@@ -70,15 +71,19 @@ jobs:
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm publish --tag next
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm dist-tag add @fails-components/lectureapp@${{ steps.check.outputs.version }} latest
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm dist-tag add @fails-components/lectureapp@${{ steps.check.outputs.version }} latestunstable
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
