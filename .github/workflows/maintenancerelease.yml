@@ -20,6 +20,8 @@ jobs:
       - run: git config --global user.name 'Fails maintenance bot'
       - run: git config --global user.email 'marten.richter@freenet.de'
       - run: npx browserslist@latest --update-db --yes
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: git diff --quiet || (git add package-lock.json && git commit -m "update browserslist")
       - run: npm version patch
       - run: git push
