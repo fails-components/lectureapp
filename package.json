@@ -1,6 +1,6 @@
 {
   "name": "@fails-components/lectureapp",
-  "version": "1.0.7",
+  "version": "1.0.12",
   "description": "Lecture app of fails",
   "author": "Marten Richter",
   "license": "AGPL-3.0-or-later",
@@ -43,7 +43,7 @@
     "react-scripts": "^5.0.1",
     "react-transition-group": "^4.4.1",
     "sass": "^1.47.0",
-    "socket.io-client": "^4.3.2",
+    "socket.io-client": "^4.5.3",
     "ua-parser-js": "^1.0.2",
     "uuid": "^8.3.2"
   },

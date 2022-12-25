@@ -19,7 +19,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/delete-package-versions@v2
+    - uses: actions/delete-package-versions@v3
       with: 
         package-name: 'lectureapp'
         min-versions-to-keep: 10

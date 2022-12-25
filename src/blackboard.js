@@ -634,8 +634,17 @@ export class BackgroundPDFPage extends Component {
     this.renderPage()
   }
 
-  componentDidUpdate() {
-    this.renderPage()
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.page !== this.state.page && prevState.page) {
+      this.renderPage()
+      prevState.page.pageobj.cleanup()
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.state.page) {
+      this.state.page.pageobj.cleanup()
+    }
   }
 
   async renderPage() {
@@ -725,46 +734,88 @@ export class BackgroundPDF extends Component {
     if (this.props.url !== this.state.url) {
       try {
         // ok we have to load
+        if (this.pdf) {
+          this.pdf.destroy()
+          delete this.pdf
+        }
         const pdf = await pdfjs.getDocument(this.props.url).promise
         // console.log("pdf", pdf);
         if (pdf) this.pdf = pdf
+        else {
+          this.setState({ pageinfo: [], url: 'failed' })
+          console.log('got no pdf document')
+          return
+        }
         // now we have the pdf, we have to get information about the available pages
-        let pageinfo = []
-        for (let pagenum = 1; pagenum <= pdf.numPages; pagenum++) {
+        let pageprom = []
+        this.setState({ pageinfo: [], url: this.props.url })
+        const ypos = (this.props.yend + this.props.ystart) * 0.5
+        const pages = new Array(pdf.numPages)
+          .fill(null)
+          .map((el, index) => index + 1)
+        pages.sort(
+          (a, b) => Math.abs(a * 1.414 - ypos) - Math.abs(b * 1.414 - ypos)
+        )
+        for (const pagenum of pages) {
           const helpfunc = async (pn) => {
-            const page = await pdf.getPage(pn)
-            const dimen = page.getViewport({ scale: 2000 })
+            try {
+              const page = await pdf.getPage(pn)
+              const dimen = page.getViewport({ scale: 2000 })
 
-            return {
-              pagenum: pn,
-              pageobj: page,
-              height: dimen.height / dimen.width
+              this.setState((state, props) => {
+                const newpageinfo = state.pageinfo.map((el) => el)
+                newpageinfo[pn - 1] = {
+                  pagenum: pn,
+                  pageobj: page,
+                  height: dimen.height / dimen.width
+                }
+                // perfect now we can calculate from tos
+                let curpos = 0
+                for (let pidx = 0; pidx < newpageinfo.length; pidx++) {
+                  if (newpageinfo[pidx]) {
+                    newpageinfo[pidx].from = curpos
+                    curpos += newpageinfo[pidx].height
+                    newpageinfo[pidx].to = curpos
+                  } else {
+                    curpos += 1.414 // assume A4 for empty
+                  }
+                }
+                return { pageinfo: newpageinfo }
+              })
+            } catch (error) {
+              console.log('Problem loading page ', pagenum, ':', error)
             }
           }
-          pageinfo.push(helpfunc(pagenum))
+          pageprom.push(helpfunc(pagenum))
         }
-        pageinfo = await Promise.all(pageinfo)
-        // perfect now we can calculate from tos
-        let curpos = 0
-        for (let pidx = 0; pidx < pageinfo.length; pidx++) {
-          pageinfo[pidx].from = curpos
-          curpos += pageinfo[pidx].height
-          pageinfo[pidx].to = curpos
-        }
-        this.setState({ pageinfo, url: this.props.url })
+        pageprom = await Promise.all(pageprom)
       } catch (error) {
         console.log('loadPDF failed', error)
+        this.setState({ url: 'failed' })
       }
     }
   }
 
   componentDidMount() {
-    this.loadPDF()
+    this.loadPDF().catch((error) =>
+      console.log('initial load pdf problem:', error)
+    )
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (this.props.url !== prevProps.url) {
+      this.loadPDF().catch((error) => console.log('load pdf problem:', error))
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.pdf) {
+      this.pdf.destroy()
+      delete this.pdf
+    }
   }
 
   render() {
-    this.loadPDF()
-
     const pages = this.state.pageinfo
 
     let curpages = []
@@ -782,15 +833,17 @@ export class BackgroundPDF extends Component {
       )
 
       // console.log("curpages",curpages);
-      curpages = curpages.map((el) => (
-        <BackgroundPDFPage
-          page={el}
-          ystart={this.props.ystart}
-          key={el.pagenum + 'page'}
-          bbwidth={this.props.bbwidth}
-          zIndex={this.props.zIndex}
-        ></BackgroundPDFPage>
-      ))
+      curpages = curpages
+        .filter((el) => !!el)
+        .map((el) => (
+          <BackgroundPDFPage
+            page={el}
+            ystart={this.props.ystart}
+            key={el.pagenum + 'page'}
+            bbwidth={this.props.bbwidth}
+            zIndex={this.props.zIndex}
+          ></BackgroundPDFPage>
+        ))
     }
 
     return <div>{curpages}</div>
@@ -2041,6 +2094,11 @@ export class BlackboardNotepad extends Component {
       )
       this.magicpointerid = event.pointerId
       if (this.deletebox()) this.deletebox().deactivate()
+      const tb = this.toolbox()
+      if (tb) {
+        tb.setCanTooltip(false)
+        tb.deactivate()
+      }
       if (this.realblackboard && this.realblackboard.current) {
         this.realblackboard.current.startMagicPath(
           pos.x / this.props.bbwidth,
@@ -2104,6 +2162,9 @@ export class BlackboardNotepad extends Component {
       } else {
         // console.log( "startpath check",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth );
         // console.log("startpath tool check", this.toolcolor, this.toolsize,this.props.bbwidth);
+        if (this.toolbox()) {
+          this.toolbox().setCanTooltip(false)
+        }
         // ok we have to generate an objid
         this.objnum++
         this.pointerobjnum[event.pointerId] = this.objnum
@@ -2498,6 +2559,11 @@ export class BlackboardNotepad extends Component {
         'cY',
         event.clientY
       )
+      const tb = this.toolbox()
+      if (tb) {
+        tb.setCanTooltip(true)
+        tb.reactivate()
+      }
       delete this.magicpointerid
       if (this.realblackboard && this.realblackboard.current) {
         await this.realblackboard.current.finishMagic((pos) => {
@@ -2509,6 +2575,9 @@ export class BlackboardNotepad extends Component {
         })
       }
     } else if (event.pointerId in this.pointerdraw === true) {
+      if (this.toolbox()) {
+        this.toolbox().setCanTooltip(true)
+      }
       const objid = this.pointerobjids[event.pointerId]
       console.log(
         'pointerup pointerId:',
