@@ -18,15 +18,7 @@
 */
 
 import React, { Component } from 'react'
-import {
-  NetworkSource,
-  NetworkSink,
-  Dispatcher,
-  Collection,
-  MemContainer,
-  DrawObjectGlyph,
-  DrawObjectPicture
-} from '@fails-components/data'
+import { DrawObjectGlyph, DrawObjectPicture } from '@fails-components/data'
 import { SHA1 } from 'jshashes'
 import Color from 'color'
 
@@ -899,15 +891,7 @@ export class Blackboard extends Component {
     this.state.scrolloffset = 0
     this.state.drawversion = 0
 
-    this.incomdispatcher = new Dispatcher()
-    this.incomdispatcher.addSink(this) // we also want to draw everything
-    this.collection = new Collection(function (id, data) {
-      return new MemContainer(id, data)
-    }, {})
-    this.incomdispatcher.addSink(this.collection)
-
-    this.networkreceive = new NetworkSource(this.incomdispatcher)
-
+    this.changeStorage()
     this.lastbbtemp = null
 
     this.lastrenderprops = {}
@@ -931,6 +915,18 @@ export class Blackboard extends Component {
     this.changeMagic = this.changeMagic.bind(this)
     this.updateObjectsId = setInterval(this.updateObjects, 40)
     this.isdirty = false
+  }
+
+  changeStorage(prevstorage) {
+    if (this.props.storage) {
+      this.networkreceive = this.props.storage.networkreceive
+      this.props.storage.incomdispatcher.addSink(this) // we also want to draw everything
+      this.collection = this.props.storage.collection
+    } else {
+      this.networkreceive = undefined
+      this.collection = undefined
+      if (prevstorage) this.props.storage.incomdispatcher.removeSink(this)
+    }
   }
 
   changeMagic() {
@@ -968,6 +964,7 @@ export class Blackboard extends Component {
                 cs.scrollx,
                 cs.scrolly
               )
+            this.props.notepadscreen.setCommandState(cs)
           }
           this.replaceData(data.data, callback)
         }
@@ -1007,13 +1004,22 @@ export class Blackboard extends Component {
 
   } */
 
-  componentDidUpdate(prevprops) {
+  componentDidUpdate(prevprops, prevState) {
     if (
       !isNaN(this.props.pageoffset) &&
       prevprops.pageoffset !== this.props.pageoffset
     ) {
       this.checkRedraw()
     }
+    if (prevprops.storage !== this.props.storage) {
+      this.changeStorage(prevprops.storage)
+    }
+  }
+
+  componentWillUnmount() {
+    this.networkreceive = undefined
+    this.collection = undefined
+    if (this.props.storage) this.props.storage.incomdispatcher.removeSink(this)
   }
 
   toolbox() {
@@ -1312,7 +1318,7 @@ export class Blackboard extends Component {
     }
 
     if (y !== 0 && true) {
-      // console.log("scrollboard",y,this.state.scrolloffset);
+      // console.log('scrollboard', y, this.state.scrolloffset)
       let newpos = /* this.curscrollpos+ */ y
       if (newpos < 0) newpos = 0
       this.setState({ curscrollpos: newpos })
@@ -1394,10 +1400,6 @@ export class Blackboard extends Component {
     return this.state.curscrollpos
   }
 
-  getCalcScrollPos() {
-    return this.state.curscrollpos + this.state.scrolloffset
-  }
-
   replaceData(data, callback) {
     if (data.data) {
       this.collection.replaceStoredData(data.number, data.data) // also do this only if the container is non empty
@@ -1405,7 +1407,6 @@ export class Blackboard extends Component {
       if (data.number === 'command') {
         const cs = this.collection.commandcontainer.getCurCommandState()
         if (callback) callback(cs) // calls the outgoing dispatcher
-        console.log('replace data command' /*, cs */)
         if (cs.scrollx || cs.scrolly)
           this.scrollBoard(cs.time, 'data', cs.scrollx, cs.scrolly)
       }
@@ -1536,6 +1537,8 @@ export class Blackboard extends Component {
   }
 
   renderObjects(usecache, el) {
+    let zindex = el.preview ? 10 : 50
+    if (this.props.zOffset) zindex += this.props.zOffset
     const key = el.objid
     let rendercache = el.getRenderCache(key)
     if (!rendercache || !usecache) {
@@ -1546,7 +1549,7 @@ export class Blackboard extends Component {
             key={key}
             backcolor={this.props.backcolor}
             pixelwidth={this.props.bbwidth}
-            zIndex={el.preview ? 10 : 50}
+            zIndex={zindex}
             predraw={el.preview}
           ></SVGWriting2>
         )
@@ -1562,7 +1565,7 @@ export class Blackboard extends Component {
             selected={el.isSelected()}
             x={(el.posx + ox) * this.props.bbwidth}
             y={(el.posy + oy) * this.props.bbwidth}
-            zIndex={el.preview ? 10 : 50}
+            zIndex={zindex}
             width={el.width * this.props.bbwidth}
             height={el.height * this.props.bbwidth}
             url={el.url}
@@ -1585,6 +1588,8 @@ export class Blackboard extends Component {
   }
 
   render() {
+    let zoffset = 0
+    if (this.props.zOffset) zoffset += this.props.zOffset
     let cursor = 'auto'
     if (this.props.isnotepad) cursor = this.cursor()
     let usecache = true
@@ -1605,30 +1610,6 @@ export class Blackboard extends Component {
       .map(
         usecache ? this.renderObjectsWithCache : this.renderObjectsWithoutCache
       )
-    /*   const wobj = []
-    for (const prop in this.workobj) {
-      if (!this.preworkobj[prop]) {
-        const key = 'work' + prop
-        let rendercache = this.workobj[prop].getRenderCache(key)
-        if (!rendercache || !usecache) {
-          rendercache = (
-            <SVGWriting2
-              glyph={this.workobj[prop]}
-              backcolor={this.props.backcolor}
-              pixelwidth={this.props.bbwidth}
-              zIndex={50}
-              predraw={true}
-              key={key}
-            >
-              {' '}
-            </SVGWriting2>
-          )
-          this.workobj[prop].setRenderCache(key, rendercache)
-        }
-
-        wobj.push(rendercache)
-      }
-    } */
 
     const pwobj = []
     for (const prop in this.preworkobj) {
@@ -1640,7 +1621,7 @@ export class Blackboard extends Component {
             glyph={this.preworkobj[prop]}
             backcolor={this.props.backcolor}
             pixelwidth={this.props.bbwidth}
-            zIndex={50}
+            zIndex={50 + zoffset}
             preview={true}
             key={key}
           >
@@ -1666,6 +1647,9 @@ export class Blackboard extends Component {
         style={{
           width: '100%',
           height: '100%',
+          position: 'absolute',
+          left: '0px',
+          top: '0px',
           cursor,
           overscrollBehavior: 'none',
           touchAction: 'none',
@@ -1678,7 +1662,7 @@ export class Blackboard extends Component {
             ystart={ystart}
             yend={yend}
             bbwidth={this.props.bbwidth}
-            zIndex={9}
+            zIndex={9 + zoffset}
           >
             {' '}
           </BackgroundPDF>
@@ -1691,7 +1675,7 @@ export class Blackboard extends Component {
               <ImageHelper
                 x={this.props.addpict.posx * this.props.bbwidth}
                 y={this.props.addpict.posy * this.props.bbwidth}
-                zIndex={50}
+                zIndex={50 + zoffset}
                 width={this.props.addpict.width * this.props.bbwidth}
                 height={this.props.addpict.height * this.props.bbwidth}
                 url={this.props.addpict.url}
@@ -1701,14 +1685,14 @@ export class Blackboard extends Component {
             )}
             {this.magicobject &&
               this.magicobject.getRenderObject({
-                zIndex: 51 /* z Index */,
+                zIndex: 51 + zoffset /* z Index */,
                 pixelwidth: this.props.bbwidth
               })}
 
             <SVGSpotlight
               ref={this.spotlight}
               bbwidth={this.props.bbwidth}
-              zIndex={51}
+              zIndex={51 + zoffset}
             ></SVGSpotlight>
           </span>
         )}
@@ -1728,17 +1712,6 @@ export class BlackboardNotepad extends Component {
     this.curkeyscroll = 0
 
     this.realblackboard = React.createRef()
-
-    this.outgodispatcher = new Dispatcher()
-    // this.outgodispatcher.blocked = true // we block initially, not any more
-
-    this.networksender = new NetworkSink((data) => {
-      this.props.bbchannel.postMessage({
-        command: 'drawcommand',
-        data
-      })
-    })
-    this.outgodispatcher.addSink(this.networksender)
 
     this.pointerobjids = {} // count obj
     this.pointerobjnum = {}
@@ -1854,9 +1827,9 @@ export class BlackboardNotepad extends Component {
   }
 
   setblocked(isblocked) {
-    if (this.outgodispatcher) {
-      this.outgodispatcher.blocked = isblocked
-      console.log('dispatcher blocked', this.outgodispatcher.blocked)
+    if (this.props.outgoingsink) {
+      this.props.outgoingsink.blocked = isblocked
+      console.log('dispatcher blocked', this.props.outgoingsink.blocked)
     }
   }
 
@@ -1935,7 +1908,7 @@ export class BlackboardNotepad extends Component {
   undo() {
     if (this.undostack.length > 0) {
       const element = this.undostack.pop()
-      this.outgodispatcher.deleteObject(
+      this.props.outgoingsink.deleteObject(
         null,
         element.objid,
         null,
@@ -2020,7 +1993,12 @@ export class BlackboardNotepad extends Component {
       else el.check++
       if (this.checkPalmReject(el.event)) {
         console.log('palm object dismissed retro active')
-        this.outgodispatcher.deleteObject(null, el.objid, null, el.storagenum)
+        this.props.outgoingsink.deleteObject(
+          null,
+          el.objid,
+          null,
+          el.storagenum
+        )
         delete this.pointerdraw[el.event.pointerId]
         delete this.pointerobjids[el.event.pointerId]
         delete this.pointerobjnum[el.event.pointerId]
@@ -2102,10 +2080,10 @@ export class BlackboardNotepad extends Component {
       if (this.realblackboard && this.realblackboard.current) {
         this.realblackboard.current.startMagicPath(
           pos.x / this.props.bbwidth,
-          pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+          pos.y / this.props.bbwidth + this.calcCurpos(),
           {
             // datatarget
-            sink: this.outgodispatcher,
+            sink: this.props.outgoingsink,
             newobjid: (oldid) => this.recycleObjId(oldid),
             deselect: () => {
               if (this.realblackboard && this.realblackboard.current)
@@ -2122,7 +2100,7 @@ export class BlackboardNotepad extends Component {
     if (event.pointerId in this.pointerdraw === true) {
       // finish stale paths
       const objid = this.pointerobjids[event.pointerId]
-      this.outgodispatcher.finishPath(null, objid, null)
+      this.props.outgoingsink.finishPath(null, objid, null)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preFinishPath(null, objid, null)
 
@@ -2142,7 +2120,7 @@ export class BlackboardNotepad extends Component {
             // this.addpictsprite.position=pos;
             this.setState({
               addpictposx: pos.x / this.props.bbwidth,
-              addpictposy: pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+              addpictposy: pos.y / this.props.bbwidth + this.calcCurpos(),
               // addpictmode: 3 /* for drawing */
               addpictmode: 2 /* for drawing */
             })
@@ -2172,15 +2150,15 @@ export class BlackboardNotepad extends Component {
         const objid = this.calcObjId(event.pointerId)
         this.pointerobjids[event.pointerId] = objid
         this.pointerstoragenum[event.pointerId] = Math.floor(
-          pos.y / this.props.bbwidth + this.getCalcScrollPos()
+          pos.y / this.props.bbwidth + this.calcCurpos()
         )
         // console.log("objid",objid);
-        this.outgodispatcher.startPath(
+        this.props.outgoingsink.startPath(
           null,
           objid,
           null,
           pos.x / this.props.bbwidth,
-          pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+          pos.y / this.props.bbwidth + this.calcCurpos(),
           this.tooltype,
           Color(this.toolcolor).rgbNumber(),
           // (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
@@ -2193,7 +2171,7 @@ export class BlackboardNotepad extends Component {
             objid,
             null,
             pos.x / this.props.bbwidth,
-            pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+            pos.y / this.props.bbwidth + this.calcCurpos(),
             this.tooltype,
             Color(this.toolcolor).rgbNumber(),
             // (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
@@ -2223,7 +2201,7 @@ export class BlackboardNotepad extends Component {
     this.rightmousescrollx = event.screenX
     this.rightmousescrolly = event.screenY
     this.rightmousescroll = true
-    this.rightmousescrollpos = this.getCalcScrollPos()
+    this.rightmousescrollpos = this.calcCurpos()
     // console.log("rightdown");
     this.mouseidentifier = null
   }
@@ -2231,8 +2209,7 @@ export class BlackboardNotepad extends Component {
   calcAddPictSize(state, pos) {
     const aspectratio = this.curPictAspect()
     let nx = pos.x / this.props.bbwidth - state.addpictposx
-    let ny =
-      pos.y / this.props.bbwidth + this.getCalcScrollPos() - state.addpictposy
+    let ny = pos.y / this.props.bbwidth + this.calcCurpos() - state.addpictposy
     if (nx === 0) nx = 0.001
     if (ny === 0) ny = 0.001
     if (nx > ny) {
@@ -2253,7 +2230,7 @@ export class BlackboardNotepad extends Component {
             y:
               state.addpictposy +
               /* this.state.addpictheight */ size.ny -
-              this.getCalcScrollPos()
+              this.calcCurpos()
           })
       } else {
         if (this.confirmbox())
@@ -2262,7 +2239,7 @@ export class BlackboardNotepad extends Component {
             y:
               state.addpictposy +
               /* this.state.addpictheight */ size.ny -
-              this.getCalcScrollPos()
+              this.calcCurpos()
           })
       }
       return { addpictwidth: size.nx, addpictheight: size.ny }
@@ -2358,12 +2335,12 @@ export class BlackboardNotepad extends Component {
       if (distance > 0) {
         const objid = this.pointerobjids[mevent.pointerId]
         // console.log("distance check,",distance,pos.x,pos.y,pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCurScrollPos()  );
-        this.outgodispatcher.addToPath(
+        this.props.outgoingsink.addToPath(
           null,
           objid,
           null,
           pos.x / this.props.bbwidth,
-          pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+          pos.y / this.props.bbwidth + this.calcCurpos(),
           mevent.pressure
         )
         if (this.realblackboard && this.realblackboard.current)
@@ -2373,7 +2350,7 @@ export class BlackboardNotepad extends Component {
             objid,
             null,
             pos.x / this.props.bbwidth,
-            pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+            pos.y / this.props.bbwidth + this.calcCurpos(),
             mevent.pressure
           )
         this.lastpos[mevent.pointerId] = pos
@@ -2423,7 +2400,7 @@ export class BlackboardNotepad extends Component {
           if (this.checkPalmReject(event) && !this.magictool) {
             // dismiss object
             console.log('palm object dismissed')
-            this.outgodispatcher.deleteObject(
+            this.props.outgoingsink.deleteObject(
               null,
               this.pointerobjids[event.pointerId],
               null,
@@ -2454,7 +2431,7 @@ export class BlackboardNotepad extends Component {
           if (this.realblackboard && this.realblackboard.current)
             this.realblackboard.current.addToMagicPath(
               pos.x / this.props.bbwidth,
-              pos.y / this.props.bbwidth + this.getCalcScrollPos()
+              pos.y / this.props.bbwidth + this.calcCurpos()
             )
         } else {
           this.pointerdraw[event.pointerId]++
@@ -2474,8 +2451,7 @@ export class BlackboardNotepad extends Component {
             case 4:
               this.setState({
                 addpictposx: pos.x / this.props.bbwidth,
-                addpictposy:
-                  pos.y / this.props.bbwidth + this.getCalcScrollPos()
+                addpictposy: pos.y / this.props.bbwidth + this.calcCurpos()
               })
               break
             case 3:
@@ -2499,14 +2475,14 @@ export class BlackboardNotepad extends Component {
         if (this.laserpointer)
           this.fogHandle(
             pos.x / this.props.bbwidth,
-            pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+            pos.y / this.props.bbwidth + this.calcCurpos(),
             event.pointerId,
             now
           )
       }
       // console.log("mousemove");
     } else {
-      this.outgodispatcher.scrollBoard(
+      this.props.outgoingsink.scrollBoard(
         null,
         this.clientId,
         0,
@@ -2570,7 +2546,7 @@ export class BlackboardNotepad extends Component {
           if (this.deletebox())
             this.deletebox().reactivate({
               x: pos.x,
-              y: pos.y - this.getCalcScrollPos()
+              y: pos.y - this.calcCurpos()
             })
         })
       }
@@ -2603,15 +2579,15 @@ export class BlackboardNotepad extends Component {
         pos.x,
         pos.y,
         pos.x / this.props.bbwidth,
-        pos.y / this.props.bbwidth + this.getCalcScrollPos()
+        pos.y / this.props.bbwidth + this.calcCurpos()
       ) */
       if (event.clientX !== 0 && event.clientY !== 0) {
-        this.outgodispatcher.addToPath(
+        this.props.outgoingsink.addToPath(
           null,
           objid,
           null,
           pos.x / this.props.bbwidth,
-          pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+          pos.y / this.props.bbwidth + this.calcCurpos(),
           event.pressure
         )
         if (this.realblackboard && this.realblackboard.current)
@@ -2620,12 +2596,12 @@ export class BlackboardNotepad extends Component {
             objid,
             null,
             pos.x / this.props.bbwidth,
-            pos.y / this.props.bbwidth + this.getCalcScrollPos(),
+            pos.y / this.props.bbwidth + this.calcCurpos(),
             event.pressure
           )
       }
       this.addUndo(objid, this.pointerstoragenum[event.pointerId])
-      this.outgodispatcher.finishPath(null, objid, null)
+      this.props.outgoingsink.finishPath(null, objid, null)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preFinishPath(null, objid, null)
 
@@ -2645,7 +2621,7 @@ export class BlackboardNotepad extends Component {
 
   rightup(event) {
     if (this.rightmousescroll) {
-      this.outgodispatcher.scrollBoard(
+      this.props.outgoingsink.scrollBoard(
         null,
         this.clientId,
         0,
@@ -2667,8 +2643,8 @@ export class BlackboardNotepad extends Component {
 
   scrollboardTB(x, y, reference) {
     // console.log("scrollboardTB",x,y,reference);
-    if (this.outgodispatcher)
-      this.outgodispatcher.scrollBoard(null, this.clientId, 0, reference + y)
+    if (this.props.outgoingsink)
+      this.props.outgoingsink.scrollBoard(null, this.clientId, 0, reference + y)
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.preScrollBoard(
         null,
@@ -2697,8 +2673,8 @@ export class BlackboardNotepad extends Component {
 
     curkeyscroll += y
     if (curkeyscroll <= 0) curkeyscroll = 0.0001
-    if (this.outgodispatcher)
-      this.outgodispatcher.scrollBoard(null, this.clientId, 0, curkeyscroll)
+    if (this.props.outgoingsink)
+      this.props.outgoingsink.scrollBoard(null, this.clientId, 0, curkeyscroll)
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.preScrollBoard(
         null,
@@ -2759,7 +2735,7 @@ export class BlackboardNotepad extends Component {
           element.storagenum,
           element
         )
-        this.outgodispatcher.deleteObject(
+        this.props.outgoingsink.deleteObject(
           null,
           element.objid,
           null,
@@ -2870,7 +2846,7 @@ export class BlackboardNotepad extends Component {
 
       const objid = this.calcObjId('picture')
       // todo report about new picture
-      this.outgodispatcher.addPicture(
+      this.props.outgoingsink.addPicture(
         null,
         objid,
         null,
@@ -2955,9 +2931,14 @@ export class BlackboardNotepad extends Component {
       return this.realblackboard.current.getCurScrollPos()
   }
 
-  getCalcScrollPos() {
+  calcCurpos() {
     if (this.realblackboard && this.realblackboard.current)
-      return this.realblackboard.current.getCalcScrollPos()
+      return this.realblackboard.current.calcCurpos()
+  }
+
+  doRedraw(data) {
+    if (this.realblackboard && this.realblackboard.current)
+      return this.realblackboard.current.doRedraw()
   }
 
   render() {
@@ -3011,9 +2992,14 @@ export class BlackboardNotepad extends Component {
           bbwidth={this.props.bbwidth}
           addpict={addpict}
           bbheight={this.props.bbheight}
+          storage={this.props.storage}
           ref={this.realblackboard}
           notepadscreen={this.props.notepadscreen}
           isnotepad={true}
+          zOffset={this.props.notesmode ? 100 : undefined}
+          notesmode={this.props.notesmode}
+          pageoffset={this.props.pageoffset}
+          pageoffsetabsolute={this.props.pageoffsetabsolute}
         ></Blackboard>
       </div>
     )
