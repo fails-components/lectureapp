@@ -139,11 +139,20 @@ function checkValidServiceWorker(swUrl, config) {
         (contentType != null && contentType.indexOf('javascript') === -1)
       ) {
         // No service worker found. Probably a different app. Reload the page.
-        navigator.serviceWorker.ready.then((registration) => {
-          registration.unregister().then(() => {
-            window.location.reload()
+        navigator.serviceWorker.ready
+          .then((registration) => {
+            registration
+              .unregister()
+              .then(() => {
+                window.location.reload()
+              })
+              .catch((error) => {
+                console.log('ServiceWorker reg error:', error)
+              })
           })
-        })
+          .catch((error) => {
+            console.log('ServiceWorker error:', error)
+          })
       } else {
         // Service worker found. Proceed as normal.
         registerValidSW(swUrl, config)
