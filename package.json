@@ -20,13 +20,14 @@
     "eject": "react-scripts eject"
   },
   "dependencies": {
-    "@fails-components/config": "^1.0.1",
-    "@fails-components/data": "^1.0.1",
-    "@fortawesome/fontawesome-svg-core": "^1.2.36",
-    "@fortawesome/free-solid-svg-icons": "^5.15.4",
-    "@fortawesome/react-fontawesome": "^0.1.16",
+    "@fails-components/config": "^1.1.0",
+    "@fails-components/data": "^1.1.0",
+    "@fortawesome/fontawesome-svg-core": "^6.2.1",
+    "@fortawesome/free-solid-svg-icons": "^6.2.1",
+    "@fortawesome/react-fontawesome": "^0.2.0",
     "chart.js": "^3.5.1",
     "color": "^3.1.3",
+    "dexie": "^3.2.2",
     "file-loader": "^6.2.0",
     "jshashes": "^1.0.8",
     "jwt-decode": "^3.1.2",
@@ -42,7 +43,7 @@
     "react-transition-group": "^4.4.1",
     "sass": "^1.47.0",
     "socket.io-client": "^4.5.3",
-    "ua-parser-js": "^1.0.2",
+    "ua-parser-js": "^1.0.32",
     "uuid": "^8.3.2"
   },
   "devDependencies": {

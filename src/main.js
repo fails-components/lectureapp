@@ -37,7 +37,7 @@ import { Chart } from 'primereact/chart'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faDesktop, faBars } from '@fortawesome/free-solid-svg-icons'
+import { faDesktop, faBars, faFilePen } from '@fortawesome/free-solid-svg-icons'
 import failsLogo from './logo/logo2.svg'
 import failsLogoLong from './logo/logo1.svg'
 import {
@@ -57,6 +57,7 @@ import {
   fiWristTopRight
 } from './icons/icons.js'
 import { NoteScreenBase } from './notepad.js'
+import { NoteTools } from './toolbox'
 import { io } from 'socket.io-client'
 // eslint-disable-next-line camelcase
 import jwt_decode from 'jwt-decode'
@@ -663,7 +664,9 @@ export class FailsBasis extends Component {
         message:
           'Please use a Blink based browser such as Chrome, Chromium, Edge, etc..!',
         header: 'Unsupported browser warning',
-        icon: 'pi pi-exclamation-triangle'
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Ok',
+        rejectClassName: 'hiddenButton'
       })
     }
   }
@@ -1978,6 +1981,8 @@ export class FailsNotes extends FailsBasis {
     this.state.pageoffset = 0
     this.state.scrollunlock = false
 
+    this.state.notesmode = false
+
     this.state.chattext = ''
 
     this.notepaduuid = null
@@ -2027,7 +2032,9 @@ export class FailsNotes extends FailsBasis {
       'lecturedetail',
       function (data) {
         console.log('got lecture detail', data)
-        this.setState({ lectdetail: data })
+        this.setState({
+          lectdetail: { ...data, uuid: this.decodedToken()?.lectureuuid }
+        })
       }.bind(this)
     )
 
@@ -2138,6 +2145,208 @@ export class FailsNotes extends FailsBasis {
     this.setState({ polltask: 2, votesel: undefined })
   }
 
+  onNotesmodeEnterDialog({ persist, tryPersist, persistGranted }) {
+    if (this.state.notesmodeEDiaShown) {
+      if (persist) this.setState({ notesmode: true })
+      return
+    }
+
+    if (tryPersist || persistGranted) {
+      confirmDialog({
+        message:
+          "Fails stores student notes in your device's browser and not in the Cloud.\n" +
+          (!persistGranted
+            ? 'Fails will ask the browser to allow data persistance, please confirm, if the browsers asks.'
+            : ''),
+        header: 'Ask browser for data persistance',
+        icon: 'pi pi-question-circle',
+        accept: () => {
+          navigator.storage
+            .persist()
+            .then((persisted) => {
+              if (persisted) {
+                this.setState({ notesmode: true, notesmodeEDiaShown: true })
+              } else {
+                this.onNotesmodeEnterDialog({ persist: false })
+              }
+            })
+            .catch((error) => {
+              console.log('Error on persistance', error)
+            })
+        },
+        acceptLabel: 'Ok',
+        rejectClassName: 'hiddenButton'
+      })
+    } else {
+      if (persist) {
+        confirmDialog({
+          message:
+            "Fails stores student's notes in your device's browser and not in the Cloud.\n The browser confirmed, that data is marked persistent,\n i.e it will not be deleted randomly by the browser.",
+          header: 'Storage information',
+          icon: 'pi pi-info-circle',
+          acceptLabel: 'Ok',
+          rejectClassName: 'hiddenButton'
+        })
+        this.setState({ notesmode: true, notesmodeEDiaShown: true })
+      } else {
+        confirmDialog({
+          message:
+            "Fails stores student's notes in your device's browser and not in the Cloud.\n The browser denied data persistence, the browser can delete your notes anytime. \n Try to install Fails as a browser app or bookmark this page and reload!",
+          header: 'Storage information',
+          icon: 'pi pi-exclamation-triangle',
+          acceptLabel: 'Ok',
+          rejectClassName: 'hiddenButton'
+        })
+        this.setState({ notesmode: true, notesmodeEDiaShown: true })
+      }
+    }
+  }
+
+  onNotesmodeToggle() {
+    if (this.state.notesmode) {
+      this.setState({ notesmode: false })
+    } else {
+      // First we need to figure out, if we have permissions for persistance
+      if (navigator.storage?.persisted) {
+        navigator.storage.persisted().then((isPersisted) => {
+          console.log('ispersisted', isPersisted)
+          if (isPersisted) {
+            this.onNotesmodeEnterDialog({ persist: true })
+          } else {
+            if (navigator.permissions)
+              navigator.permissions
+                .query({ name: 'persistent-storage' })
+                .then((result) => {
+                  console.log('perm query result', result)
+                  if (result.state === 'granted')
+                    this.onNotesmodeEnterDialog({ persistGranted: true })
+                  else if (result.state === 'prompt') {
+                    this.onNotesmodeEnterDialog({ tryPersist: true })
+                  } else this.onNotesmodeEnterDialog({ persist: false })
+                })
+            else this.onNotesmodeEnterDialog({ tryPersist: true })
+          }
+        })
+      } else {
+        this.onNotesmodeEnterDialog({ persist: false })
+      }
+    }
+  }
+
+  getButtons() {
+    const notesmode = this.state.notesmode
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top',
+      showDelay: 1000
+    }
+    return (
+      <div>
+        <Button
+          icon={this.state.scrollunlock ? 'pi pi-lock-open' : 'pi pi-lock'}
+          className='p-button-raised p-button-rounded p-m-2'
+          tooltip='Lock/unlock scrolling to lecturer'
+          tooltipOptions={ttopts}
+          onClick={this.toggleScrollUnlock}
+        />
+        <Button
+          icon='pi pi-arrow-up'
+          className='p-button-raised p-button-rounded p-m-2'
+          tooltip='Scroll up'
+          tooltipOptions={ttopts}
+          onClick={() =>
+            this.setState((state) => ({
+              pageoffset: state.scrollunlock
+                ? Math.max(0, state.pageoffset - 0.5)
+                : state.pageoffset - 0.5
+            }))
+          }
+        />
+        <InputText
+          value={this.state.pageoffset}
+          disabled
+          style={{ width: '40px' }}
+          className='p-inputtext-sm p-m-2'
+        />
+
+        <Button
+          icon='pi pi-arrow-down'
+          className='p-button-raised p-button-rounded p-m-2'
+          tooltip='Scroll down'
+          tooltipOptions={ttopts}
+          onClick={() =>
+            this.setState((state) => ({
+              pageoffset: state.pageoffset + 0.5
+            }))
+          }
+        />
+        <Button
+          icon='pi pi-comment'
+          className='p-button-raised p-button-rounded p-m-2'
+          onClick={(e) => this.chatop.toggle(e)}
+          tooltip='Send comment to lecturer'
+          tooltipOptions={ttopts}
+          aria-haspopup
+          aria-controls='overlay_panel'
+        />
+        <Button
+          icon={<FontAwesomeIcon icon={faFilePen} />}
+          className={
+            this.state.notesmode
+              ? 'p-button-raised p-button-rounded p-m-2'
+              : 'p-button-secondary p-button-raised p-button-rounded p-m-2'
+          }
+          tooltip='Annotate the lecture'
+          tooltipOptions={ttopts}
+          key={5}
+          onClick={() => this.onNotesmodeToggle()}
+        />
+        <Button
+          icon={fiFailsLogo}
+          key={4}
+          tooltip='Info about Fails'
+          tooltipOptions={ttopts}
+          onClick={(e) => {
+            if (this.ossinfo) this.ossinfo.toggle(e)
+          }}
+          className='p-button-raised p-button-rounded p-m-2'
+        />
+        {notesmode && (
+          <NoteTools
+            getnotepad={() => this.noteref}
+            addclass='p-m-2 fadeMenu'
+          />
+        )}
+
+        <OverlayPanel ref={(el) => (this.chatop = el)}>
+          {this.detectLatex(this.state.chattext) && (
+            <React.Fragment>
+              <h4>Preview: </h4>
+              {this.convertToLatex(this.state.chattext)}
+              <br></br>
+            </React.Fragment>
+          )}
+          <h4>Question ($...$ for math):</h4>
+          <InputTextarea
+            rows={5}
+            cols={30}
+            value={this.state.chattext}
+            onChange={(e) => this.setState({ chattext: e.target.value })}
+            autoResize
+          />
+
+          {this.state.chattext !== '' && (
+            <Button
+              icon={'pi pi-send'}
+              className='p-button-raised p-button-rounded p-m-2'
+              onClick={this.sendChatMessage}
+            />
+          )}
+        </OverlayPanel>
+      </div>
+    )
+  }
+
   render() {
     // console.log("current states", this.state);
 
@@ -2231,8 +2440,10 @@ export class FailsNotes extends FailsBasis {
 
         <NoteScreenBase
           isnotepad={false}
+          notesmode={this.state.notesmode}
           pageoffset={this.state.pageoffset}
           pageoffsetabsolute={this.state.scrollunlock}
+          lectdetail={this.state.lectdetail}
           backgroundcolor={
             this.state.bgpdf
               ? '#FFFFFF'
@@ -2277,81 +2488,7 @@ export class FailsNotes extends FailsBasis {
         <div
           style={{ position: 'absolute', top: '2vh', left: '1vw', zIndex: 150 }}
         >
-          <div>
-            <Button
-              icon={this.state.scrollunlock ? 'pi pi-lock-open' : 'pi pi-lock'}
-              className='p-button-raised p-button-rounded p-m-2'
-              onClick={this.toggleScrollUnlock}
-            />
-            <Button
-              icon='pi pi-arrow-up'
-              className='p-button-raised p-button-rounded p-m-2'
-              onClick={() =>
-                this.setState((state) => ({
-                  pageoffset: state.scrollunlock
-                    ? Math.max(0, state.pageoffset - 0.5)
-                    : state.pageoffset - 0.5
-                }))
-              }
-            />
-            <InputText
-              value={this.state.pageoffset}
-              disabled
-              style={{ width: '40px' }}
-              className='p-inputtext-sm p-m-2'
-            />
-
-            <Button
-              icon='pi pi-arrow-down'
-              className='p-button-raised p-button-rounded p-m-2'
-              onClick={() =>
-                this.setState((state) => ({
-                  pageoffset: state.pageoffset + 0.5
-                }))
-              }
-            />
-            <Button
-              icon='pi pi-comment'
-              className='p-button-raised p-button-rounded p-m-2'
-              onClick={(e) => this.chatop.toggle(e)}
-              aria-haspopup
-              aria-controls='overlay_panel'
-            />
-            <Button
-              icon={fiFailsLogo}
-              key={4}
-              onClick={(e) => {
-                if (this.ossinfo) this.ossinfo.toggle(e)
-              }}
-              className='p-button-raised p-button-rounded p-m-2'
-            />
-
-            <OverlayPanel ref={(el) => (this.chatop = el)}>
-              {this.detectLatex(this.state.chattext) && (
-                <React.Fragment>
-                  <h4>Preview: </h4>
-                  {this.convertToLatex(this.state.chattext)}
-                  <br></br>
-                </React.Fragment>
-              )}
-              <h4>Question ($...$ for math):</h4>
-              <InputTextarea
-                rows={5}
-                cols={30}
-                value={this.state.chattext}
-                onChange={(e) => this.setState({ chattext: e.target.value })}
-                autoResize
-              />
-
-              {this.state.chattext !== '' && (
-                <Button
-                  icon={'pi pi-send'}
-                  className='p-button-raised p-button-rounded p-m-2'
-                  onClick={this.sendChatMessage}
-                />
-              )}
-            </OverlayPanel>
-          </div>
+          {this.getButtons()}
         </div>
         <Dialog
           header='Poll'

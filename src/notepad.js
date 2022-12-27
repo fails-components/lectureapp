@@ -17,9 +17,109 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import React, { Component } from 'react'
+import React, { Component, Fragment } from 'react'
 import { Blackboard, BlackboardNotepad } from './blackboard.js'
 import { ToolBox, ConfirmBox, DeleteBox } from './toolbox.js'
+import {
+  Dispatcher,
+  Collection,
+  MemContainer,
+  NetworkSink,
+  NetworkSource,
+  Sink
+} from '@fails-components/data'
+import Dexie from 'dexie'
+
+class DBManager {
+  static manager = undefined
+  constructor() {
+    this.db = new Dexie('FailsDatabase')
+    this.db.version(1).stores({
+      lectures: 'uuid, title, coursetitle', // also includes boards
+      lectureboards: 'uuidboard, uuid, board'
+    })
+  }
+
+  async getLecture(uuid) {
+    return await this.db.lectures.get(uuid)
+  }
+
+  async addUpdateLecture(uuid, obj) {
+    await this.db.transaction('rw', 'lectures', async () => {
+      const curobj = await this.db.lectures.get(uuid)
+      if (curobj) await this.db.lectures.update(uuid, obj)
+      else await this.db.lectures.put(obj)
+    })
+  }
+
+  async addUpdateContainer(uuid, board, boarddata) {
+    await this.db.transaction('rw', 'lectures', 'lectureboards', async () => {
+      const curobj = await this.db.lectures.get(uuid)
+      if (!curobj) throw new Error('DB lecture does not exist')
+
+      if (curobj.boards) {
+        if (!curobj.boards.includes(board)) {
+          await this.db.lectures.update(uuid, {
+            boards: [...curobj.boards, board]
+          })
+        }
+      } else {
+        await this.db.lectures.update(uuid, { boards: [board] })
+      }
+      // got it
+      await this.db.lectureboards.put({
+        uuidboard: uuid + ':' + board,
+        uuid,
+        board,
+        boarddata
+      })
+    })
+  }
+
+  async getBoards(uuid) {
+    return await this.db.lectureboards
+      .where('uuid')
+      .equals(uuid)
+      .sortBy('board')
+  }
+
+  static getDBManager() {
+    if (DBManager.manager) return DBManager.manager
+    DBManager.manager = new DBManager()
+    return DBManager.manager
+  }
+}
+
+class ScrollSink extends Sink {
+  constructor(destsink) {
+    super()
+    this.destsink = destsink
+  }
+
+  scrollBoard(time, clientnum, x, y) {
+    this.destsink.scrollBoard(time, clientnum, x, y)
+  }
+}
+
+class StorageHandler {
+  constructor() {
+    this.incomdispatcher = new Dispatcher()
+    this.collection = new Collection(function (id, data) {
+      return new MemContainer(id, data)
+    }, {})
+    this.incomdispatcher.addSink(this.collection)
+  }
+
+  addNetworkSupport() {
+    this.networkreceive = new NetworkSource(this.incomdispatcher)
+  }
+
+  setScrollSink(destsink) {
+    if (this.scrollsink) return
+    this.scrollsink = new ScrollSink(destsink)
+    this.incomdispatcher.addSink(this.scrollsink)
+  }
+}
 
 export class NoteScreenBase extends Component {
   constructor(props) {
@@ -35,29 +135,112 @@ export class NoteScreenBase extends Component {
     this.state.devicePixelRatio = window.devicePixelRatio || 1.0
 
     this.blackboard = React.createRef()
+    this.blackboardnotes = React.createRef()
     this.toolbox = React.createRef()
     this.confirmbox = React.createRef()
     this.deletebox = React.createRef()
 
+    this.storage = new StorageHandler()
+    this.storage.addNetworkSupport()
+
     this.running = false
 
+    this.lectdetail = {} // local copy to track changes
+
     this.backgroundbw = true
+    this.addUpdateLocalStorage()
+
+    this.outgodispatcher = new Dispatcher()
+
+    this.networksender = new NetworkSink((data) => {
+      this.netSend('drawcommand', data)
+    })
+    this.outgodispatcher.addSink(this.networksender)
+  }
+
+  addUpdateLocalStorage() {
+    if (!this.props.isnotepad && this.props.notesmode) {
+      if (!this.localstorage) {
+        this.localstorage = new StorageHandler()
+        this.storage.setScrollSink(this.localstorage.incomdispatcher)
+        this.setState({ localstorage: this.localstorage })
+      }
+    }
+  }
+
+  loadNotesFromLocalStorage(uuid) {
+    const dbman = DBManager.getDBManager()
+    dbman
+      .getBoards(uuid)
+      .then((boards) => {
+        if (!boards) return
+        boards.forEach((board) => {
+          this.localstorage.collection.replaceStoredData(
+            board.board,
+            board.boarddata
+          )
+        })
+        if (this.storage?.collection?.commandcontainer?.getCurCommandState) {
+          const cs =
+            this.storage.collection.commandcontainer.getCurCommandState()
+          this.setCommandState(cs)
+        }
+        if (this.blackboardnotes?.current)
+          this.blackboardnotes?.current.doRedraw()
+      })
+      .catch((error) => {
+        console.log('Problem getNFLS', error)
+      })
+  }
+
+  autosaveNotes() {
+    if (!this.lectdetail?.uuid) return
+    const uuid = this.lectdetail?.uuid
+    const dbman = DBManager.getDBManager()
+    const collection = this.localstorage.collection
+    const containers = this.localstorage.collection.containers
+    const contdirty = this.localstorage.collection.contdirty
+    // iterate through all dirty containers and save them
+    const proms = []
+    for (const cont in contdirty) {
+      if (contdirty[cont]) {
+        const data = containers[cont].getContainerData()
+
+        const prom = dbman
+          .addUpdateContainer(uuid, cont, data)
+          .then(() => {
+            collection.unDirty(cont)
+            contdirty[cont] = false
+          })
+          .catch((error) => {
+            console.log(
+              'saving container: ',
+              cont,
+              'uuid: ',
+              uuid,
+              'failed: ',
+              error
+            )
+          })
+        proms.push(prom)
+      }
+    }
   }
 
   componentDidMount() {
     console.log('Component mount notepad')
-    const myself = this
-    this.resizeeventlistener = function (event) {
+
+    this.resizeeventlistener = (event) => {
       const iwidth = window.innerWidth
       const iheight = window.innerHeight
 
       console.log('resize event!' + event + iwidth + ' ' + iheight)
 
-      myself.props.updateSizes({ scrollheight: iheight / iwidth })
+      this.props.updateSizes({ scrollheight: iheight / iwidth })
       console.log('resize' /*, myself.bgtrick */, iheight / iwidth)
 
       console.log('device pixel ratio', window.devicePixelRatio)
-      myself.setState({
+      this.setState({
         bbwidth: iwidth,
         bbheight: iheight,
         devicePixelRatio: window.devicePixelRatio || 1
@@ -87,6 +270,56 @@ export class NoteScreenBase extends Component {
     // requestAnimationFrame(this.animate);
   }
 
+  componentDidUpdate(prevProps, prevState) {
+    this.addUpdateLocalStorage()
+    if (this.props.notesmode !== prevProps.notesmode) {
+      if (!this.props.notesmode && this.notesautosaver) {
+        clearInterval(this.notesautosaver)
+        delete this.notesautosaver
+      }
+    }
+
+    if (this.props.notesmode) {
+      if (this.props.notesmode && !this.notesautosaver) {
+        this.notesautosaver = setInterval(() => {
+          this.autosaveNotes()
+        }, 10 * 1000)
+      }
+      if (this.props?.lectdetail !== this.lectdetail) {
+        const lectdetail = this.props.lectdetail
+        if (lectdetail && lectdetail.uuid) {
+          const dbman = DBManager.getDBManager()
+          const { title, coursetitle, instructors } = lectdetail
+          this.localstorage.collection.clearContainers()
+          dbman
+            .addUpdateLecture(lectdetail.uuid, {
+              uuid: lectdetail.uuid,
+              title,
+              coursetitle,
+              instructors
+            })
+            .catch((error) => {
+              console.log('Problem db in componentDidUpdate', error)
+            })
+            .then(() => {
+              this.loadNotesFromLocalStorage(lectdetail.uuid)
+            })
+        }
+        this.lectdetail = lectdetail
+      } else {
+        if (this.props.notesmode !== prevProps.notesmode) {
+          if (this.storage?.collection?.commandcontainer?.getCurCommandState) {
+            const cs =
+              this.storage.collection.commandcontainer.getCurCommandState()
+            this.setCommandState(cs)
+          }
+          if (this.blackboardnotes?.current)
+            this.blackboardnotes?.current.doRedraw()
+        }
+      }
+    }
+  }
+
   initNotepad() {
     if (this.props.isnotepad) {
       // this.confirmbox = new ConfirmBox(this.stage,this.blackboard); // TODO
@@ -107,37 +340,21 @@ export class NoteScreenBase extends Component {
     if (this.props.noteref) this.props.noteref(this)
   }
 
-  /*
-    animate(timestamp)
-    {
-       // if (this.blackboard) this.blackboard.current.updateGraphics(timestamp); //obsolete?
-        if (this.toolbox) this.toolbox.updateGraphics(timestamp);
-        if (this.confirmbox) this.confirmbox.updateGraphics(timestamp);
-
-        // render the stage
-        //this.renderer.render(this.stage);
-
-        if (this.running) requestAnimationFrame(this.animate);
-        return this.running;
-    }; */
-
   setScrollOffset(scrolloffset) {
     this.scrolloffset = scrolloffset
-    // console.log(this.blackboard.current)
     if (this.blackboard && this.blackboard.current)
       this.blackboard.current.setScrollOffset(scrolloffset)
+    if (this.blackboardnotes && this.blackboardnotes.current)
+      this.blackboardnotes.current.setScrollOffset(scrolloffset)
   }
 
   componentWillUnmount() {
     console.log('shutdown notepad')
-    // this.blackboard.current.shutdown();
     this.running = false
     //  this.stage.destroy();
     window.removeEventListener('resize', this.resizeeventlistener)
     window.removeEventListener('keydown', this.onKeyDown, false)
     this.resizeeventlistener = null
-    // this.renderer.view.remove();
-    // this.renderer.destroy(true);
   }
 
   calcCurpos() {
@@ -192,8 +409,13 @@ export class NoteScreenBase extends Component {
   }
 
   replaceData(data) {
-    if (this.blackboard && this.blackboard.current)
-      this.blackboard.current.replaceData(data)
+    if (this.blackboard && this.blackboard.current) {
+      if (this.props.notesmode)
+        this.blackboard.current.replaceData(data, (cs) =>
+          this.setCommandState(cs)
+        )
+      else this.blackboard.current.replaceData(data)
+    }
   }
 
   netSend(command, data) {
@@ -220,14 +442,15 @@ export class NoteScreenBase extends Component {
       case 0x28: // arrowdown
         if (this.blackboard.current.scrollboardKeys)
           this.blackboard.current.scrollboardKeys(0, 0.05)
+        if (this.blackboardnotes.current.scrollboardKeys)
+          this.blackboardnotes.current.scrollboardKeys(0, 0.05)
         break
       case 0x26: // arrowUp
         if (this.blackboard.current.scrollboardKeys)
           this.blackboard.current.scrollboardKeys(0, -0.05)
+        if (this.blackboardnotes.current.scrollboardKeys)
+          this.blackboardnotes.current.scrollboardKeys(0, -0.05)
         break
-      /* case 0x44: { // "d"
-              this.blackboard.current.toggleDebugView();
-           }break; */
       default:
         break
     }
@@ -235,6 +458,24 @@ export class NoteScreenBase extends Component {
 
   getBlackboard() {
     if (this.blackboard) return this.blackboard.current
+  }
+
+  setCommandState(cs) {
+    if (this.localstorage?.incomdispatcher) {
+      if (cs.scrollx || cs.scrolly)
+        this.localstorage.incomdispatcher.scrollBoard(
+          cs.time,
+          'data',
+          cs.scrollx,
+          cs.scrolly
+        )
+
+      this.localstorage.incomdispatcher.setTimeandScrollPos(
+        cs.time,
+        cs.scrollx,
+        cs.scrolly
+      )
+    }
   }
 
   render() {
@@ -268,21 +509,46 @@ export class NoteScreenBase extends Component {
           </span>
         )}
         {!this.props.isnotepad ? (
-          <Blackboard
-            ref={this.blackboard}
-            backcolor={this.props.backgroundcolor}
-            backclass={this.props.backclass}
-            notepadscreen={this}
-            bbwidth={this.state.bbwidth}
-            bbheight={this.state.bbheight}
-            pageoffset={
-              (this.props.pageoffset * this.state.bbheight) / this.state.bbwidth
-            }
-            pageoffsetabsolute={this.props.pageoffsetabsolute}
-          ></Blackboard>
+          <Fragment>
+            <Blackboard
+              ref={this.blackboard}
+              storage={this.storage}
+              backcolor={this.props.backgroundcolor}
+              backclass={this.props.backclass}
+              notepadscreen={this}
+              bbwidth={this.state.bbwidth}
+              bbheight={this.state.bbheight}
+              pageoffset={
+                (this.props.pageoffset * this.state.bbheight) /
+                this.state.bbwidth
+              }
+              pageoffsetabsolute={this.props.pageoffsetabsolute}
+            ></Blackboard>
+            {this.props.notesmode && (
+              <BlackboardNotepad
+                ref={this.blackboardnotes}
+                storage={this.state.localstorage}
+                outgoingsink={this.state.localstorage?.incomdispatcher}
+                backcolor={this.props.backgroundcolor}
+                backclass={''}
+                notepadscreen={this}
+                bbwidth={this.state.bbwidth}
+                bbheight={this.state.bbheight}
+                devicePixelRatio={this.state.devicePixelRatio}
+                pageoffset={
+                  (this.props.pageoffset * this.state.bbheight) /
+                  this.state.bbwidth
+                }
+                pageoffsetabsolute={this.props.pageoffsetabsolute}
+                notesmode={true}
+              ></BlackboardNotepad>
+            )}
+          </Fragment>
         ) : (
           <BlackboardNotepad
             ref={this.blackboard}
+            storage={this.storage}
+            outgoingsink={this.outgodispatcher}
             backcolor={this.props.backgroundcolor}
             backclass={this.props.backclass}
             notepadscreen={this}

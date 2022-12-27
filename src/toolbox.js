@@ -72,12 +72,16 @@ class ColorPickerButton2 extends Component {
   }
 
   render() {
+    let addclass = ' '
+    if (this.props.addclass) addclass += this.props.addclass
     const selbuttonclass = (cond, add) =>
       cond
         ? // eslint-disable-next-line no-unneeded-ternary
           (add ? add : '') +
-          'p-button-primary p-button-raised p-button-rounded tbChild'
-        : 'p-button-secondary p-button-raised p-button-rounded tbChild'
+          'p-button-primary p-button-raised p-button-rounded tbChild' +
+          addclass
+        : 'p-button-secondary p-button-raised p-button-rounded tbChild' +
+          addclass
 
     return (
       <Button
@@ -112,48 +116,12 @@ class ColorPickerButton2 extends Component {
   }
 }
 
-export class ToolBox extends Component {
+export class ToolHandling extends Component {
   constructor(props) {
     super(props)
-    if (this.blackboard()) this.blackboard().current.toolbox = this
-    this.stage = props.stage
-
-    this.state = {}
-
-    this.state.posy = 0.1
-    this.state.activated = true
-
-    console.log('bbwidth in tb', this.props.bbwidth)
-    this.state.pencolor = '#FFFFFF' // "#99FF99";
-    this.state.markercolor = '#CCFF33'
-    this.state.pensize = 1
-    this.state.selectedButtonid = 5
-    this.state.secondtoolstep = false
-    this.state.selectedPickerid = 1
-    this.state.canundo = false
-    this.state.cantooltip = true
-
     this.svgscale = 2000 // should be kept constant
 
     this.lasttool = 5
-
-    this.tbx = 0.8 // constant toolbox pos
-    this.lastpostime = Date.now()
-    this.divheight = 32
-    this.divwidth = 32
-
-    this.secondtoolnum = 0
-
-    this.lastUpdateTime = performance.now()
-
-    // dynamics
-
-    this.lastdrawpos = false
-    this.lastdrawposx = 0
-    this.lastdrawposy = 0
-
-    this.lastvx = 0
-    this.lastvy = 0
 
     this.colorwheelcolors = [
       '#FFFFFF',
@@ -181,16 +149,22 @@ export class ToolBox extends Component {
       '#FF0000'
     ]
 
-    this.scrollPointerdown = this.scrollPointerdown.bind(this)
-    this.scrollPointerup = this.scrollPointerup.bind(this)
-    this.scrollPointermove = this.scrollPointermove.bind(this)
     this.changeBBConfig = this.changeBBConfig.bind(this)
-    this.addRemoveTouchToolGuardian = this.addRemoveTouchToolGuardian.bind(this)
-    this.addRemoveWristToolGuardian = this.addRemoveWristToolGuardian.bind(this)
-
     this.undo = this.undo.bind(this)
+  }
 
-    this.scrollButtonRef = React.createRef()
+  setStateDefaults(state) {
+    state.activated = true
+
+    console.log('bbwidth in tb', this.props.bbwidth)
+    state.pencolor = '#FFFFFF' // "#99FF99";
+    state.markercolor = '#CCFF33'
+    state.pensize = 1
+    state.selectedButtonid = 5
+    state.secondtoolstep = false
+    state.selectedPickerid = 1
+    state.canundo = false
+    state.cantooltip = true
   }
 
   setBBConfig(prop, val) {
@@ -203,87 +177,6 @@ export class ToolBox extends Component {
     const blackboard = this.blackboard()
     if (blackboard) {
       blackboard.saveConfig(prop, val)
-    }
-  }
-
-  blackboard() {
-    if (this.props.notepad && this.props.notepad.blackboard)
-      return this.props.notepad.blackboard.current
-  }
-
-  scrollheight() {
-    return this.props.bbheight / this.props.bbwidth
-  }
-
-  componentDidMount() {
-    // select defaults after mount
-    let penselect = 2
-    for (penselect = 2; penselect < this.pensizesizes.length; penselect++) {
-      if (
-        this.pensizesizes[penselect] *
-          0.001 *
-          this.svgscale *
-          this.props.bbwidth *
-          this.props.devicePixelRatio >=
-        1.0
-      )
-        break
-    }
-
-    this.selectColor(3, this.tmcolorwheelcolors[2], 20)
-    this.selectColor(2, this.colorwheelcolors[0], this.pensizesizes[penselect])
-    this.selectColor(1, this.colorwheelcolors[0], 10)
-
-    if (this.blackboard())
-      this.blackboard().setPenTool(
-        this.colorwheelcolors[0],
-        this.pensizesizes[penselect]
-      )
-  }
-
-  componentDidUpdate() {
-    if (this.divref) {
-      if (
-        this.divref.offsetHeight !== this.divheight ||
-        this.divref.offsetWidth !== this.divwidth
-      ) {
-        this.divheight = this.divref.offsetHeight
-        this.divwidth = this.divref.offsetWidth
-        // console.log('divheight changed', this.divheight)
-        if (!this.scrollmodeactiv) this.reportDrawPos()
-      }
-    }
-  }
-
-  addRemoveSecondToolGuardian(newguard, oldbuttonid) {
-    if (this.secondtoolnum) clearTimeout(this.secondtoolnum)
-    this.secondtoolnum = null
-    if (newguard)
-      this.secondtoolnum = setTimeout(() => {
-        if (oldbuttonid) this.selectTool(oldbuttonid)
-        this.setState({ secondtoolstep: 0 })
-      }, 8000)
-  }
-
-  addRemoveTouchToolGuardian(newguard) {
-    if (this.touchtoolnum) clearTimeout(this.touchtoolnum)
-    this.touchtoolnum = null
-    if (newguard) {
-      this.addRemoveSecondToolGuardian(newguard)
-      this.touchtoolnum = setTimeout(() => {
-        this.setState({ touchtool: null })
-      }, 5000)
-    }
-  }
-
-  addRemoveWristToolGuardian(newguard) {
-    if (this.wristtoolnum) clearTimeout(this.wristtoolnum)
-    this.wristtoolnum = null
-    if (newguard) {
-      this.addRemoveTouchToolGuardian(true)
-      this.wristtoolnum = setTimeout(() => {
-        this.setState({ wristtool: null })
-      }, 5000)
     }
   }
 
@@ -360,6 +253,41 @@ export class ToolBox extends Component {
     })
   }
 
+  addRemoveSecondToolGuardian(newguard, oldbuttonid) {
+    if (this.secondtoolnum) clearTimeout(this.secondtoolnum)
+    this.secondtoolnum = null
+    if (newguard)
+      this.secondtoolnum = setTimeout(() => {
+        if (oldbuttonid) this.selectTool(oldbuttonid)
+        this.setState({ secondtoolstep: 0 })
+      }, 8000)
+  }
+
+  setDefaults() {
+    let penselect = 2
+    for (penselect = 2; penselect < this.pensizesizes.length; penselect++) {
+      if (
+        this.pensizesizes[penselect] *
+          0.001 *
+          this.svgscale *
+          this.props.bbwidth *
+          this.props.devicePixelRatio >=
+        1.0
+      )
+        break
+    }
+
+    this.selectColor(3, this.tmcolorwheelcolors[2], 20)
+    this.selectColor(2, this.colorwheelcolors[0], this.pensizesizes[penselect])
+    this.selectColor(1, this.colorwheelcolors[0], 10)
+
+    if (this.blackboard())
+      this.blackboard().setPenTool(
+        this.colorwheelcolors[0],
+        this.pensizesizes[penselect]
+      )
+  }
+
   selectColor(pickerid, color, size) {
     this.addRemoveSecondToolGuardian(true)
     switch (pickerid) {
@@ -394,6 +322,331 @@ export class ToolBox extends Component {
   setCanTooltip(cantooltip) {
     if (this.state.cantooltip !== cantooltip)
       this.setState({ cantooltip: !!cantooltip })
+  }
+
+  getColorButtons({ addclass }) {
+    const colorwheel = []
+    // this.addChild(this.colorwheel);
+
+    let it = 0
+    for (it = 0; it < this.colorwheelcolors.length; it++) {
+      const newcolorbutton = (
+        <ColorPickerButton2
+          toolbox={this}
+          color={this.colorwheelcolors[it]}
+          addclass={addclass}
+          pickerid={1}
+          size={20}
+          sizefac={1}
+          alpha={1}
+          key={it}
+          selected={this.state.pencolor === this.colorwheelcolors[it]}
+        />
+      )
+      colorwheel.push(newcolorbutton)
+    }
+
+    // this.colorwheel.arrangeButtons();
+
+    const pensizewheel = []
+
+    const bbwidth = this.state.bbwidth || this.props.bbwidth
+
+    for (it = 0; it < this.pensizesizes.length; it++) {
+      const newcolorbutton = (
+        <ColorPickerButton2
+          toolbox={this}
+          color={'#ffffff'}
+          addclass={addclass}
+          pickerid={2}
+          selected={this.state.pensize === this.pensizesizes[it]}
+          size={this.pensizesizes[it] * 0.001 * bbwidth}
+          mysize={this.pensizesizes[it] * 0.001 * bbwidth}
+          sizefac={/* this.props.devicePixelRatio */ 1.0}
+          alpha={1}
+          key={it}
+        />
+      )
+
+      if (
+        this.pensizesizes[it] *
+          0.001 *
+          this.svgscale *
+          (this.state.devicePixelRatio || this.props.devicePixelRatio) *
+          bbwidth <
+        1.0
+      )
+        continue
+
+      pensizewheel.push(newcolorbutton)
+    }
+
+    // this.pensizewheel.arrangeButtons();
+
+    const tmcolorwheel = []
+
+    for (it = 0; it < this.tmcolorwheelcolors.length; it++) {
+      const newcolorbutton = (
+        <ColorPickerButton2
+          toolbox={this}
+          color={this.tmcolorwheelcolors[it]}
+          addclass={addclass}
+          pickerid={3}
+          size={20}
+          sizefac={1}
+          scalefac={1}
+          alpha={0.5}
+          key={it}
+          selected={this.state.markercolor === this.tmcolorwheelcolors[it]}
+        />
+      )
+      tmcolorwheel.push(newcolorbutton)
+    }
+    return { colorwheel, pensizewheel, tmcolorwheel }
+  }
+}
+
+export class NoteTools extends ToolHandling {
+  constructor(args) {
+    super(args)
+    this.state = {}
+    this.setStateDefaults(this.state)
+    this.state.devicePixelRatio = window.devicePixelRatio || 1.0
+  }
+
+  blackboard() {
+    if (!this.props.getnotepad) return
+    const notepad = this.props.getnotepad()
+    if (!notepad) return
+
+    if (!notepad.blackboardnotes) return
+    return notepad.blackboardnotes.current
+  }
+
+  componentDidMount() {
+    this.resizeeventlistener = (event) => {
+      const iwidth = window.innerWidth
+      const iheight = window.innerHeight
+
+      this.props.updateSizes({ scrollheight: iheight / iwidth })
+      this.setState({
+        bbwidth: iwidth,
+        bbheight: iheight,
+        devicePixelRatio: window.devicePixelRatio || 1
+      })
+    }
+
+    window.addEventListener('resize', this.resizeeventlistener)
+
+    if (
+      this.state.bbwidth !== window.innerWidth ||
+      this.state.bbheight !== window.innerHeight
+    ) {
+      this.setState({
+        bbwidth: window.innerWidth,
+        bbheight: window.innerHeight,
+        devicePixelRatio: window.devicePixelRatio || 1
+      })
+    }
+  }
+
+  render() {
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top',
+      showDelay: 1000
+    }
+
+    if (!this.state.cantooltip) ttopts.disable = true
+
+    const setclass =
+      'p-button-secondary p-button-raised p-button-rounded ' +
+      this.props.addclass
+
+    const selbuttonclass = (cond, add) =>
+      cond
+        ? (add || '') +
+          'p-button-raised p-button-rounded ' +
+          this.props.addclass
+        : 'p-button-secondary p-button-raised p-button-rounded ' +
+          this.props.addclass
+
+    const magicbutton = (
+      <Button
+        icon={fiMagicwand}
+        tooltip='Select magically'
+        tooltipOptions={ttopts}
+        key={8}
+        onClick={(e) => this.selectTool(8)}
+        className={selbuttonclass(this.state.selectedButtonid === 8)}
+      />
+    )
+
+    const eraserbutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faEraser} />}
+        tooltip='Erase'
+        tooltipOptions={ttopts}
+        key={3}
+        onClick={(e) => this.selectTool(3)}
+        className={selbuttonclass(this.state.selectedButtonid === 3)}
+      />
+    )
+
+    const markerbutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faHighlighter} />}
+        tooltip='Use marker'
+        tooltipOptions={ttopts}
+        key={4}
+        onClick={(e) => {
+          this.selectTool(4)
+        }}
+        className={selbuttonclass(this.state.selectedButtonid === 4)}
+      />
+    )
+
+    const penbutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faPen} />}
+        tooltip='Use pen, click twice for pen sizes'
+        tooltipOptions={ttopts}
+        key={5}
+        onClick={(e) => {
+          this.selectTool(5)
+        }}
+        className={selbuttonclass(this.state.selectedButtonid === 5)}
+      />
+    )
+    const undobutton = (
+      <Button
+        icon={<FontAwesomeIcon icon={faUndoAlt} />}
+        tooltip='Undo last command'
+        tooltipOptions={ttopts}
+        key={9}
+        onClick={this.undo}
+        className={setclass}
+      />
+    )
+
+    const maintools = []
+    maintools.push(penbutton)
+    maintools.push(markerbutton)
+    maintools.push(eraserbutton)
+    maintools.push(magicbutton)
+    if (this.state.canundo) maintools.push(undobutton)
+
+    const { colorwheel, pensizewheel, tmcolorwheel } = this.getColorButtons({
+      addclass: this.props.addclass
+    })
+
+    if (this.state.selectedButtonid === 5) {
+      if (this.state.secondtoolstep === 1) {
+        maintools.push(<div>{colorwheel} </div>)
+      } else if (this.state.secondtoolstep === 2) {
+        maintools.push(<div>{pensizewheel} </div>)
+      }
+    }
+    if (this.state.selectedButtonid === 4) {
+      if (this.state.secondtoolstep === 1) {
+        maintools.push(<div>{tmcolorwheel} </div>)
+      }
+    }
+
+    return maintools
+  }
+}
+
+export class ToolBox extends ToolHandling {
+  constructor(props) {
+    super(props)
+    if (this.blackboard()) this.blackboard().current.toolbox = this
+
+    this.state = {}
+
+    this.state.posy = 0.1
+    this.setStateDefaults(this.state)
+
+    this.tbx = 0.8 // constant toolbox pos
+    this.lastpostime = Date.now()
+    this.divheight = 32
+    this.divwidth = 32
+
+    this.secondtoolnum = 0
+
+    this.lastUpdateTime = performance.now()
+
+    // dynamics
+
+    this.lastdrawpos = false
+    this.lastdrawposx = 0
+    this.lastdrawposy = 0
+
+    this.lastvx = 0
+    this.lastvy = 0
+
+    this.scrollPointerdown = this.scrollPointerdown.bind(this)
+    this.scrollPointerup = this.scrollPointerup.bind(this)
+    this.scrollPointermove = this.scrollPointermove.bind(this)
+    this.addRemoveTouchToolGuardian = this.addRemoveTouchToolGuardian.bind(this)
+    this.addRemoveWristToolGuardian = this.addRemoveWristToolGuardian.bind(this)
+
+    this.scrollButtonRef = React.createRef()
+  }
+
+  blackboard() {
+    if (this.props.notepad && this.props.notepad.blackboard)
+      return this.props.notepad.blackboard.current
+  }
+
+  scrollheight() {
+    return this.props.bbheight / this.props.bbwidth
+  }
+
+  componentDidMount() {
+    this.setDefaults()
+    // select defaults after mount
+
+    if (this.state.touchOn === undefined && this.blackboard())
+      this.blackboard().pushTouchConfigToToolbox()
+  }
+
+  componentDidUpdate() {
+    if (this.divref) {
+      if (
+        this.divref.offsetHeight !== this.divheight ||
+        this.divref.offsetWidth !== this.divwidth
+      ) {
+        this.divheight = this.divref.offsetHeight
+        this.divwidth = this.divref.offsetWidth
+        // console.log('divheight changed', this.divheight)
+        if (!this.scrollmodeactiv) this.reportDrawPos()
+      }
+    }
+    if (this.state.touchOn === undefined && this.blackboard())
+      this.blackboard().pushTouchConfigToToolbox()
+  }
+
+  addRemoveTouchToolGuardian(newguard) {
+    if (this.touchtoolnum) clearTimeout(this.touchtoolnum)
+    this.touchtoolnum = null
+    if (newguard) {
+      this.addRemoveSecondToolGuardian(newguard)
+      this.touchtoolnum = setTimeout(() => {
+        this.setState({ touchtool: null })
+      }, 5000)
+    }
+  }
+
+  addRemoveWristToolGuardian(newguard) {
+    if (this.wristtoolnum) clearTimeout(this.wristtoolnum)
+    this.wristtoolnum = null
+    if (newguard) {
+      this.addRemoveTouchToolGuardian(true)
+      this.wristtoolnum = setTimeout(() => {
+        this.setState({ wristtool: null })
+      }, 5000)
+    }
   }
 
   scrollboardSetReference() {
@@ -595,11 +848,6 @@ export class ToolBox extends Component {
   }
 
   render() {
-    // move to state ?
-
-    if (this.state.touchOn === undefined && this.blackboard())
-      this.blackboard().pushTouchConfigToToolbox()
-
     const ttopts = {
       className: 'teal-tooltip',
       position: 'top',
@@ -610,8 +858,7 @@ export class ToolBox extends Component {
 
     const selbuttonclass = (cond, add) =>
       cond
-        ? // eslint-disable-next-line no-unneeded-ternary
-          (add ? add : '') +
+        ? (add || '') +
           'p-button-primary p-button-raised p-button-rounded tbChild'
         : 'p-button-secondary p-button-raised p-button-rounded tbChild'
 
@@ -1050,84 +1297,23 @@ export class ToolBox extends Component {
       </div>
     ))
 
-    const colorwheel = []
-    // this.addChild(this.colorwheel);
-
-    let it = 0
-    for (it = 0; it < this.colorwheelcolors.length; it++) {
-      const newcolorbutton = (
-        <div className='p-mr-2 p-mb-2' id={it} key={it}>
-          <ColorPickerButton2
-            toolbox={this}
-            color={this.colorwheelcolors[it]}
-            pickerid={1}
-            size={20}
-            sizefac={1}
-            alpha={1}
-            key={it}
-            selected={this.state.pencolor === this.colorwheelcolors[it]}
-          />
-        </div>
-      )
-      colorwheel.push(newcolorbutton)
-    }
-
-    // this.colorwheel.arrangeButtons();
-
-    const pensizewheel = []
-
-    for (it = 0; it < this.pensizesizes.length; it++) {
-      const newcolorbutton = (
-        <div className='p-mr-2 p-mb-2' id={it} key={it}>
-          <ColorPickerButton2
-            toolbox={this}
-            color={'#ffffff'}
-            pickerid={2}
-            selected={this.state.pensize === this.pensizesizes[it]}
-            size={this.pensizesizes[it] * 0.001 * this.props.bbwidth}
-            mysize={this.pensizesizes[it] * 0.001 * this.props.bbwidth}
-            sizefac={/* this.props.devicePixelRatio */ 1.0}
-            alpha={1}
-            key={it}
-          />
-        </div>
-      )
-
-      if (
-        this.pensizesizes[it] *
-          0.001 *
-          this.svgscale *
-          this.props.devicePixelRatio *
-          this.props.bbwidth <
-        1.0
-      )
-        continue
-
-      pensizewheel.push(newcolorbutton)
-    }
-
-    // this.pensizewheel.arrangeButtons();
-
-    const tmcolorwheel = []
-
-    for (it = 0; it < this.tmcolorwheelcolors.length; it++) {
-      const newcolorbutton = (
-        <div className='p-mr-2 p-mb-2' id={it} key={it}>
-          <ColorPickerButton2
-            toolbox={this}
-            color={this.tmcolorwheelcolors[it]}
-            pickerid={3}
-            size={20}
-            sizefac={1}
-            scalefac={1}
-            alpha={0.5}
-            key={it}
-            selected={this.state.markercolor === this.tmcolorwheelcolors[it]}
-          />
-        </div>
-      )
-      tmcolorwheel.push(newcolorbutton)
-    }
+    let { colorwheel, pensizewheel, tmcolorwheel } =
+      this.getColorButtons('p-mr-2 p-mb-2')
+    colorwheel = colorwheel.map((el, it) => (
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
+        {el}
+      </div>
+    ))
+    pensizewheel = pensizewheel.map((el, it) => (
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
+        {el}
+      </div>
+    ))
+    tmcolorwheel = tmcolorwheel.map((el, it) => (
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
+        {el}
+      </div>
+    ))
 
     let tbposabove = false
     if (this.state.posy < this.scrollheight() * 0.5) tbposabove = true
