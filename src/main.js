@@ -970,7 +970,8 @@ export class FailsBoard extends FailsBasis {
       this.socket = io(notepadhandler + '/notepads', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
         path: '/notepad.io',
-        multiplex: false
+        multiplex: false,
+        transports: ['websocket']
       })
       this.initializeNotepadSocket(this.socket)
       this.updateSizes() // no argument no effect
@@ -1731,7 +1732,8 @@ export class FailsScreen extends FailsBasis {
       this.socket = io(notepadhandler + '/screens', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
         path: '/notepad.io',
-        multiplex: false
+        multiplex: false,
+        transports: ['websocket']
       })
       this.initializeScreenSocket(this.socket)
     }
@@ -2008,7 +2010,8 @@ export class FailsNotes extends FailsBasis {
       this.socket = io(noteshandler + '/notes', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
         path: '/notes.io',
-        multiplex: false
+        multiplex: false,
+        transports: ['websocket']
       })
       this.initializeNotesSocket(this.socket)
     }

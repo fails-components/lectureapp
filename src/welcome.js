@@ -75,7 +75,8 @@ export class Welcome extends Component {
       (window.location.port !== '' ? ':' + window.location.port : '')
     this.socket = io(authhandler + '/auth', {
       path: '/auth.io',
-      multiplex: false
+      multiplex: false,
+      transports: ['websocket']
     })
 
     this.socket.removeAllListeners('reqprocessed')
