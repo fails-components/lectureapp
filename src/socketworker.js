@@ -334,7 +334,8 @@ class SocketWorker {
       this.socket = io(notepadhandler + '/notepads', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
         path: '/notepad.io',
-        multiplex: false
+        multiplex: false,
+        transports: ['websocket']
       })
       this.initializeSocketHandlersNotepads()
       this.initializeSocketHandlers()
@@ -358,7 +359,8 @@ class SocketWorker {
       this.socket = io(notepadhandler + '/screens', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
         path: '/notepad.io',
-        multiplex: false
+        multiplex: false,
+        transports: ['websocket']
       })
       this.initializeSocketHandlersScreens()
       this.initializeSocketHandlers()
@@ -382,7 +384,8 @@ class SocketWorker {
       this.socket = io(noteshandler + '/notes', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
         path: '/notes.io',
-        multiplex: false
+        multiplex: false,
+        transports: ['websocket']
       })
 
       this.initializeSocketHandlersNotes()
