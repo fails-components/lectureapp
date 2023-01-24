@@ -292,7 +292,7 @@ export class MagicObject {
       )
     }
     strings.push('Z')
-    this.svgpath = strings.join()
+    this.svgpath = strings.join('')
 
     this.pathdirty = false
   }
