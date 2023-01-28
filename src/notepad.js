@@ -460,6 +460,14 @@ export class NoteScreenBase extends Component {
     if (this.blackboard) return this.blackboard.current
   }
 
+  getEditBlackboard() {
+    if (this.props.isnotepad) {
+      if (this.blackboard) return this.blackboard.current
+    } else if (this.props.notesmode) {
+      if (this.blackboardnotes) return this.blackboardnotes.current
+    }
+  }
+
   setCommandState(cs) {
     if (this.localstorage?.incomdispatcher) {
       if (cs.scrollx || cs.scrolly)
@@ -579,7 +587,7 @@ export class NoteScreenBase extends Component {
             notepad={this}
           />
         )}
-        {this.props.isnotepad && (
+        {(this.props.isnotepad || this.props.notesmode) && (
           <DeleteBox
             ref={this.deletebox}
             bbwidth={this.state.bbwidth}

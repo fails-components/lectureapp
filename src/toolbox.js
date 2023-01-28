@@ -1615,8 +1615,8 @@ export class DeleteBox extends Component {
   }
 
   blackboard() {
-    if (this.props.notepad && this.props.notepad.blackboard)
-      return this.props.notepad.blackboard.current
+    if (this.props.notepad && this.props.notepad.getEditBlackboard)
+      return this.props.notepad.getEditBlackboard()
   }
 
   reactivate(position) {
