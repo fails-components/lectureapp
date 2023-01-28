@@ -627,8 +627,13 @@ export class BackgroundPDFPage extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (prevState.page !== this.state.page && prevState.page) {
+    if (
+      prevProps.page !== this.props.page ||
+      prevProps.bbwidth !== this.props.bbwidth
+    ) {
       this.renderPage()
+    }
+    if (prevState.page !== this.state.page && prevState.page) {
       prevState.page.pageobj.cleanup()
     }
   }
