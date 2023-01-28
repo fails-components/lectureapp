@@ -339,7 +339,7 @@ export class ToolHandling extends Component {
           size={20}
           sizefac={1}
           alpha={1}
-          key={it}
+          key={it + '_col'}
           selected={this.state.pencolor === this.colorwheelcolors[it]}
         />
       )
@@ -364,7 +364,7 @@ export class ToolHandling extends Component {
           mysize={this.pensizesizes[it] * 0.001 * bbwidth}
           sizefac={/* this.props.devicePixelRatio */ 1.0}
           alpha={1}
-          key={it}
+          key={it + '_pensize'}
         />
       )
 
@@ -396,7 +396,7 @@ export class ToolHandling extends Component {
           sizefac={1}
           scalefac={1}
           alpha={0.5}
-          key={it}
+          key={it + '_tm_col'}
           selected={this.state.markercolor === this.tmcolorwheelcolors[it]}
         />
       )
@@ -544,14 +544,14 @@ export class NoteTools extends ToolHandling {
 
     if (this.state.selectedButtonid === 5) {
       if (this.state.secondtoolstep === 1) {
-        maintools.push(<div>{colorwheel} </div>)
+        maintools.push(<div key='colorwheel'>{colorwheel} </div>)
       } else if (this.state.secondtoolstep === 2) {
-        maintools.push(<div>{pensizewheel} </div>)
+        maintools.push(<div key='pensizewheel'>{pensizewheel} </div>)
       }
     }
     if (this.state.selectedButtonid === 4) {
       if (this.state.secondtoolstep === 1) {
-        maintools.push(<div>{tmcolorwheel} </div>)
+        maintools.push(<div key='tmcolorwheel'>{tmcolorwheel} </div>)
       }
     }
 
