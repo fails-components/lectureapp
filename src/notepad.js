@@ -468,6 +468,14 @@ export class NoteScreenBase extends Component {
     }
   }
 
+  getNoteTools() {
+    if (this.props.isnotepad) {
+      if (this.blackboard) return this.toolbox?.current
+    } else if (this.props.notesmode) {
+      if (this.blackboardnotes) return this.props.notetools?.current
+    }
+  }
+
   setCommandState(cs) {
     if (this.localstorage?.incomdispatcher) {
       if (cs.scrollx || cs.scrolly)

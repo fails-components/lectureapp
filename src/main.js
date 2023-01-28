@@ -1988,6 +1988,7 @@ export class FailsNotes extends FailsBasis {
     this.state.chattext = ''
 
     this.notepaduuid = null
+    this.notetools = React.createRef()
 
     this.toggleScrollUnlock = this.toggleScrollUnlock.bind(this)
     this.sendChatMessage = this.sendChatMessage.bind(this)
@@ -2316,6 +2317,7 @@ export class FailsNotes extends FailsBasis {
         />
         {notesmode && (
           <NoteTools
+            ref={this.notetools}
             getnotepad={() => this.noteref}
             addclass='p-m-2 fadeMenu'
             bbwidth={window.innerWidth}
@@ -2446,6 +2448,7 @@ export class FailsNotes extends FailsBasis {
         <NoteScreenBase
           isnotepad={false}
           notesmode={this.state.notesmode}
+          notetools={this.notetools}
           pageoffset={this.state.pageoffset}
           pageoffsetabsolute={this.state.scrollunlock}
           lectdetail={this.state.lectdetail}

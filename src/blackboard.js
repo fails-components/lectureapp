@@ -972,6 +972,11 @@ export class Blackboard extends Component {
       return this.props.notepadscreen.toolbox.current
   }
 
+  notetools() {
+    if (this.props.notepadscreen?.getNoteTools)
+      return this.props.notepadscreen.getNoteTools()
+  }
+
   scrollheight() {
     return this.props.bbheight / this.props.bbwidth
   }
@@ -1776,6 +1781,11 @@ export class BlackboardNotepad extends Component {
     return null
   }
 
+  notetools() {
+    if (this.props.notepadscreen?.getNoteTools)
+      return this.props.notepadscreen.getNoteTools()
+  }
+
   confirmbox() {
     if (this.props.notepadscreen && this.props.notepadscreen.confirmbox)
       return this.props.notepadscreen.confirmbox.current
@@ -1834,8 +1844,8 @@ export class BlackboardNotepad extends Component {
 
   addUndo(objid, storagenum) {
     if (objid && Number.isInteger(storagenum)) {
-      if (this.toolbox()) {
-        this.toolbox().setCanUndo(true)
+      if (this.notetools()) {
+        this.notetools().setCanUndo(true)
       }
       this.undostack.push({ objid, storagenum })
     }
@@ -1851,8 +1861,8 @@ export class BlackboardNotepad extends Component {
         null,
         element.storagenum
       )
-      if (this.undostack.length === 0 && this.toolbox()) {
-        this.toolbox().setCanUndo(false)
+      if (this.undostack.length === 0 && this.notetools()) {
+        this.notetools().setCanUndo(false)
       }
     }
   }
@@ -2009,9 +2019,12 @@ export class BlackboardNotepad extends Component {
       )
       this.magicpointerid = event.pointerId
       if (this.deletebox()) this.deletebox().deactivate()
+      const nt = this.notetools()
+      if (nt) {
+        nt.setCanTooltip(false)
+      }
       const tb = this.toolbox()
       if (tb) {
-        tb.setCanTooltip(false)
         tb.deactivate()
       }
       if (this.realblackboard && this.realblackboard.current) {
@@ -2077,8 +2090,8 @@ export class BlackboardNotepad extends Component {
       } else {
         // console.log( "startpath check",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth );
         // console.log("startpath tool check", this.toolcolor, this.toolsize,this.props.bbwidth);
-        if (this.toolbox()) {
-          this.toolbox().setCanTooltip(false)
+        if (this.notetools()) {
+          this.notetools().setCanTooltip(false)
         }
         // ok we have to generate an objid
         this.objnum++
@@ -2465,9 +2478,12 @@ export class BlackboardNotepad extends Component {
         'cY',
         event.clientY
       )
+      const nt = this.notetools()
+      if (nt) {
+        nt.setCanTooltip(true)
+      }
       const tb = this.toolbox()
       if (tb) {
-        tb.setCanTooltip(true)
         tb.reactivate()
       }
       delete this.magicpointerid
@@ -2481,8 +2497,8 @@ export class BlackboardNotepad extends Component {
         })
       }
     } else if (event.pointerId in this.pointerdraw === true) {
-      if (this.toolbox()) {
-        this.toolbox().setCanTooltip(true)
+      if (this.notetools()) {
+        this.notetools().setCanTooltip(true)
       }
       const objid = this.pointerobjids[event.pointerId]
       console.log(
@@ -2678,8 +2694,8 @@ export class BlackboardNotepad extends Component {
   setMagicTool() {
     this.deselectOldTool()
     this.undostack = []
-    if (this.toolbox()) {
-      this.toolbox().setCanUndo(false)
+    if (this.notetools()) {
+      this.notetools().setCanUndo(false)
     }
     this.magictool = true
     if (this.realblackboard && this.realblackboard.current)
