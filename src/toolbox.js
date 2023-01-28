@@ -424,6 +424,8 @@ export class NoteTools extends ToolHandling {
   }
 
   componentDidMount() {
+    this.setDefaults()
+    // select defaults after mount
     this.resizeeventlistener = (event) => {
       const iwidth = window.innerWidth
       const iheight = window.innerHeight

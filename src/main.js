@@ -2318,6 +2318,8 @@ export class FailsNotes extends FailsBasis {
           <NoteTools
             getnotepad={() => this.noteref}
             addclass='p-m-2 fadeMenu'
+            bbwidth={window.innerWidth}
+            devicePixelRatio={window.devicePixelRatio}
           />
         )}
 
