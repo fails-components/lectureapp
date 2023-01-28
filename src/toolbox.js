@@ -567,6 +567,7 @@ export class ToolBox extends ToolHandling {
     this.state = {}
 
     this.state.posy = 0.1
+    this.state.tbkey = 'tb0'
     this.setStateDefaults(this.state)
 
     this.tbx = 0.8 // constant toolbox pos
@@ -706,7 +707,6 @@ export class ToolBox extends ToolHandling {
 
     // console.log('reportdrawpos', x, y)
 
-    let finaly = 0
     // ok the idea as as follows, if drawing is close, the toolbox is in an circle around the drawing
     const circlerad = 0.1 // 0.2
     const circleradw = circlerad + (1.1 * this.divwidth) / this.props.bbwidth
@@ -737,6 +737,8 @@ export class ToolBox extends ToolHandling {
     ) */
 
     this.setState((state) => {
+      let finaly = 0
+      let tbkey = state.tbkey
       if (d * d > circleradw * circleradw) {
         // no intersection
         finaly = Math.max(Math.min(bottom, y), 0.1 * scrollheight)
@@ -773,8 +775,15 @@ export class ToolBox extends ToolHandling {
           }
         }
       }
+      if (
+        ((finaly < y && state.posy > y) || (finaly > y && state.posy < y)) &&
+        x > 0.5
+      ) {
+        // Beam if you cross writing
+        tbkey = 'tb' + (Number(tbkey.substring(2)) + 1)
+      }
       // console.log('finaly', finaly)
-      return { posy: finaly }
+      return { posy: finaly, tbkey }
     })
   }
 
@@ -1328,6 +1337,7 @@ export class ToolBox extends ToolHandling {
     return (
       <div
         className={tbclass}
+        key={this.state.tbkey}
         style={{
           position: 'absolute',
           top: this.state.posy * this.props.bbwidth + 'px',
