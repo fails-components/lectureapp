@@ -442,14 +442,14 @@ export class NoteScreenBase extends Component {
       case 0x28: // arrowdown
         if (this.blackboard.current.scrollboardKeys)
           this.blackboard.current.scrollboardKeys(0, 0.05)
-        if (this.blackboardnotes.current.scrollboardKeys)
-          this.blackboardnotes.current.scrollboardKeys(0, 0.05)
+        // if (this.blackboardnotes.current.scrollboardKeys)
+        //   this.blackboardnotes.current.scrollboardKeys(0, 0.05)
         break
       case 0x26: // arrowUp
         if (this.blackboard.current.scrollboardKeys)
           this.blackboard.current.scrollboardKeys(0, -0.05)
-        if (this.blackboardnotes.current.scrollboardKeys)
-          this.blackboardnotes.current.scrollboardKeys(0, -0.05)
+        // if (this.blackboardnotes.current.scrollboardKeys)
+        //   this.blackboardnotes.current.scrollboardKeys(0, -0.05)
         break
       default:
         break
@@ -557,6 +557,7 @@ export class NoteScreenBase extends Component {
                 }
                 pageoffsetabsolute={this.props.pageoffsetabsolute}
                 notesmode={true}
+                informDraw={this.props.informDraw}
               ></BlackboardNotepad>
             )}
           </Fragment>
@@ -571,6 +572,7 @@ export class NoteScreenBase extends Component {
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
             devicePixelRatio={this.state.devicePixelRatio}
+            informDraw={this.props.informDraw}
           ></BlackboardNotepad>
         )}
         {this.props.isnotepad && (

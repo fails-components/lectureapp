@@ -1994,6 +1994,7 @@ export class FailsNotes extends FailsBasis {
     this.sendChatMessage = this.sendChatMessage.bind(this)
     this.onVoteSel = this.onVoteSel.bind(this)
     this.onCastvote = this.onCastvote.bind(this)
+    this.informDraw = this.informDraw.bind(this)
   }
 
   componentDidMount() {
@@ -2095,6 +2096,17 @@ export class FailsNotes extends FailsBasis {
         })
       }.bind(this)
     )
+  }
+
+  informDraw() {
+    if (!this.state.scrollunlock) {
+      const curoffset = this.noteref.calcCurpos()
+      this.setState((state) => {
+        if (!state.scrollunlock) {
+          return { scrollunlock: !state.scrollunlock, pageoffset: curoffset }
+        }
+      })
+    }
   }
 
   toggleScrollUnlock() {
@@ -2476,6 +2488,7 @@ export class FailsNotes extends FailsBasis {
           noteref={this.getNoteRef}
           updateSizes={this.updateSizes}
           hidden={!this.state.casttoscreens}
+          informDraw={this.informDraw}
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div

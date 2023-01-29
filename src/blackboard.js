@@ -2022,6 +2022,7 @@ export class BlackboardNotepad extends Component {
         'cY',
         event.clientY
       )
+      if (this.props.informDraw) this.props.informDraw()
       this.magicpointerid = event.pointerId
       if (this.deletebox()) this.deletebox().deactivate()
       const nt = this.notetools()
@@ -2067,6 +2068,7 @@ export class BlackboardNotepad extends Component {
 
     if (event.pointerId in this.pointerdraw === false) {
       this.pointerdraw[event.pointerId] = 1
+      if (this.props.informDraw) this.props.informDraw()
 
       if (this.addpictmode !== 0) {
         switch (this.addpictmode) {
@@ -2152,6 +2154,7 @@ export class BlackboardNotepad extends Component {
 
   rightdown(event) {
     // console.log("rightdown1");
+    if (this.props.notesmode) return
 
     this.rightmousescrollx = event.screenX
     this.rightmousescrolly = event.screenY
@@ -2606,6 +2609,7 @@ export class BlackboardNotepad extends Component {
   }
 
   scrollboardKeys(x, y) {
+    if (this.props.notesmode) return
     // console.log("scrollboardKeys",x,y,this.getCurScrollPos(),this.state.curkeyscroll);
     const time = Date.now()
 
