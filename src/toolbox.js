@@ -775,9 +775,11 @@ export class ToolBox extends ToolHandling {
           }
         }
       }
+      const beamborder =
+        -0.5 * (this.divwidth / this.props.bbwidth) + this.tbx - 0.02
       if (
         ((finaly < y && state.posy > y) || (finaly > y && state.posy < y)) &&
-        x > 0.5
+        x > beamborder
       ) {
         // Beam if you cross writing
         tbkey = 'tb' + (Number(tbkey.substring(2)) + 1)
