@@ -18,6 +18,7 @@
 */
 import React, { Component, Fragment } from 'react'
 import failsLogo from './logo/logo2.svg'
+import failsLogoExp from './logo/logo2exp.svg'
 import { Button } from 'primereact/button'
 import { OverlayPanel } from 'primereact/overlaypanel'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -1360,7 +1361,10 @@ export class ToolBox extends ToolHandling {
         >
           <div className='p-grid'>
             <div className='p-col-3'>
-              <img src={failsLogo} alt='FAILS logo' />
+              <img
+                src={this.props.experimental ? failsLogoExp : failsLogo}
+                alt='FAILS logo'
+              />
             </div>
             <div className='p-col-9'>
               <h4>
@@ -1383,10 +1387,11 @@ export class ToolBox extends ToolHandling {
           Build upon the shoulders of giants, see{' '}
           <a href='/static/oss'> OSS attribution and licensing.</a>
           <br /> <br />
-          Lectureapp version {process.env.REACT_APP_VERSION} <br /> Browser:{' '}
-          {uaparser.getBrowser().name} (Version: {uaparser.getBrowser().version}
-          ) with Engine: {uaparser.getEngine().name} (Version:{' '}
-          {uaparser.getEngine().version})
+          Lectureapp version {process.env.REACT_APP_VERSION}{' '}
+          {this.props.experimental && <b>(Experimental version)</b>}
+          <br /> Browser: {uaparser.getBrowser().name} (Version:{' '}
+          {uaparser.getBrowser().version}) with Engine:{' '}
+          {uaparser.getEngine().name} (Version: {uaparser.getEngine().version})
           {uaparser.getEngine().name !== 'Blink' && (
             <React.Fragment>
               <br /> <br />

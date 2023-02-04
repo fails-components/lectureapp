@@ -40,6 +40,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faDesktop, faBars, faFilePen } from '@fortawesome/free-solid-svg-icons'
 import failsLogo from './logo/logo2.svg'
 import failsLogoLong from './logo/logo1.svg'
+import failsLogoExp from './logo/logo2exp.svg'
+import failsLogoLongExp from './logo/logo1exp.svg'
 import {
   fiAddNotepad,
   fiAddScreen,
@@ -293,7 +295,10 @@ export class FailsBasis extends Component {
       >
         <div className='p-grid p-align-center'>
           <div className='p-col-3'>
-            <img src={failsLogo} alt='FAILS logo' />
+            <img
+              src={this.experimental() ? failsLogoExp : failsLogo}
+              alt='FAILS logo'
+            />
           </div>
           <div className='p-col-9'>
             <p>
@@ -535,6 +540,21 @@ export class FailsBasis extends Component {
     })
   }
 
+  experimental() {
+    const exp = window.location.pathname.includes('experimental')
+    const token = this.decodedToken()
+    console.log('token', token)
+
+    if (exp && token && !token.appversion !== 'stable') {
+      console.log(
+        'token app version and path does not match',
+        window.location.pathname,
+        token.appversion
+      )
+    }
+    return exp
+  }
+
   loadDataDialog() {
     return (
       <Dialog
@@ -549,7 +569,10 @@ export class FailsBasis extends Component {
       >
         <div className='p-grid p-align-center'>
           <div className='p-col-3'>
-            <img src={failsLogo} alt='FAILS logo' />
+            <img
+              src={this.experimental() ? failsLogoExp : failsLogo}
+              alt='FAILS logo'
+            />
           </div>
           <div className='p-col-9'>
             <div className='p-d-flex p-flex-column'>
@@ -1511,6 +1534,7 @@ export class FailsBoard extends FailsBasis {
           updateSizes={this.updateSizes}
           toggleFullscreen={this.toggleFullscreen}
           showscreennumber={this.state.showscreennumber}
+          experimental={this.experimental()}
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div
@@ -1815,7 +1839,7 @@ export class FailsScreen extends FailsBasis {
     const failslogo = (
       <div className='p-p-6'>
         <img
-          src={failsLogoLong}
+          src={this.experimental() ? failsLogoLongExp : failsLogoLong}
           style={{ width: '20vw' }}
           alt='FAILS logo long'
         />
@@ -1943,6 +1967,7 @@ export class FailsScreen extends FailsBasis {
           height={this.props.height}
           noteref={this.getNoteRef}
           updateSizes={this.updateSizes}
+          experimental={this.experimental()}
         ></NoteScreenBase>
         <Sidebar
           visible={!this.state.casttoscreens}
@@ -2432,7 +2457,10 @@ export class FailsNotes extends FailsBasis {
         >
           <div className='p-grid'>
             <div className='p-col-3'>
-              <img src={failsLogo} alt='FAILS logo' />
+              <img
+                src={this.experimental() ? failsLogoExp : failsLogo}
+                alt='FAILS logo'
+              />
             </div>
             <div className='p-col-9'>
               <h4>
@@ -2489,6 +2517,7 @@ export class FailsNotes extends FailsBasis {
           updateSizes={this.updateSizes}
           hidden={!this.state.casttoscreens}
           informDraw={this.informDraw}
+          experimental={this.experimental()}
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div

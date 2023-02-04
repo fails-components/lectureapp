@@ -587,6 +587,7 @@ export class NoteScreenBase extends Component {
             toggleFullscreen={this.props.toggleFullscreen}
             mainstate={this.props.mainstate}
             dispres={this.dispres}
+            experimental={this.props.experimental}
           />
         )}
         {this.props.isnotepad && (
