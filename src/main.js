@@ -545,7 +545,7 @@ export class FailsBasis extends Component {
     const token = this.decodedToken()
     console.log('token', token)
 
-    if (exp && token && !token.appversion !== 'stable') {
+    if (exp && token && token.appversion === 'stable') {
       console.log(
         'token app version and path does not match',
         window.location.pathname,
