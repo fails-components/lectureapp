@@ -915,6 +915,80 @@ class ShortcutsMessage extends React.Component {
   }
 }
 
+class ChatMessage extends React.Component {
+  constructor(args) {
+    super(args)
+    this.state = { hideName: true }
+  }
+
+  render() {
+    let displayname
+    const data = this.props.data
+    if (data.displayname) {
+      if (this.state.hideName) {
+        displayname = data.displayname.replace(/[a-z]/g, '*')
+      } else {
+        displayname = data.displayname
+      }
+    }
+
+    const retobj = (
+      <React.Fragment>
+        <span className='p-toast-message-icon pi pi-info-circle'></span>
+        <div className='p-toast-message-text'>
+          {displayname && (
+            <div className='buttonheadinggroup'>
+              <h3>{displayname + ':'} </h3>
+              <Button
+                icon={!this.state.hideName ? fiEyeOn : fiEyeOff}
+                className='p-button-primary p-button-text p-button-rounded p-m-2'
+                onClick={() =>
+                  this.setState({ hideName: !this.state.hideName })
+                }
+              />
+            </div>
+          )}
+          {this.props.latex} <br></br>
+          <Button
+            icon='pi pi-ban'
+            className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+            onClick={(event) => {
+              confirmPopup({
+                target: event.currentTarget,
+                message:
+                  'Do you want to block ' +
+                  data.displayname +
+                  ' from sending messages for the remaining session!',
+                icon: 'pi pi-exclamation-triangle',
+                accept: this.props.blockChat()
+              })
+            }}
+          />
+          <Button
+            icon='pi pi-info-circle'
+            className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+            onClick={(event) => {
+              confirmPopup({
+                target: event.currentTarget,
+                message:
+                  'Forensic report: userhash: ' +
+                  data.userhash +
+                  '  Displayname: ' +
+                  data.displayname +
+                  '  Message: "' +
+                  data.text +
+                  '" You can copy and paste this and send it to your admin as evidence!',
+                icon: 'pi pi-exclamation-triangle'
+              })
+            }}
+          />
+        </div>
+      </React.Fragment>
+    )
+    return retobj
+  }
+}
+
 export class FailsBoard extends FailsBasis {
   constructor(props) {
     super(props)
@@ -1060,46 +1134,11 @@ export class FailsBoard extends FailsBasis {
       function (data) {
         console.log('Incoming chat', data)
         const retobj = (
-          <React.Fragment>
-            <span className='p-toast-message-icon pi pi-info-circle'></span>
-            <div className='p-toast-message-text'>
-              {data.displayname && <h3>{data.displayname + ':'}</h3>}
-              {this.convertToLatex(data.text)} <br></br>
-              <Button
-                icon='pi pi-ban'
-                className='p-button-danger p-button-outlined p-button-rounded p-m-2'
-                onClick={(event) => {
-                  confirmPopup({
-                    target: event.currentTarget,
-                    message:
-                      'Do you want to block ' +
-                      data.displayname +
-                      ' from sending messages for the remaining session!',
-                    icon: 'pi pi-exclamation-triangle',
-                    accept: () => this.blockChat(data.userhash)
-                  })
-                }}
-              />
-              <Button
-                icon='pi pi-info-circle'
-                className='p-button-danger p-button-outlined p-button-rounded p-m-2'
-                onClick={(event) => {
-                  confirmPopup({
-                    target: event.currentTarget,
-                    message:
-                      'Forensic report: userhash: ' +
-                      data.userhash +
-                      '  Displayname: ' +
-                      data.displayname +
-                      '  Message: "' +
-                      data.text +
-                      '" You can copy and paste this and send it to your admin as evidence!',
-                    icon: 'pi pi-exclamation-triangle'
-                  })
-                }}
-              />
-            </div>
-          </React.Fragment>
+          <ChatMessage
+            data={data}
+            blockChat={() => this.blockChat(data.userhash)}
+            latex={this.convertToLatex(data.text)}
+          />
         )
         if (this.blockchathash.indexOf(data.userhash) === -1) {
           this.toast.show({ severity: 'info', content: retobj, sticky: true })

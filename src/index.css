@@ -138,3 +138,8 @@ code {
   20% {opacity:0;}
   100% {opacity:1;}
 }
+
+.buttonheadinggroup {
+  display: flex;
+  align-items: center;
+}
