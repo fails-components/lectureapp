@@ -111,7 +111,7 @@ class ChannelEdit extends Component {
       return <React.Fragment>Waiting for data...</React.Fragment>
     const channels = this.props.channelinfo.map((el, ind) => {
       let type = 'Unknown'
-      if (el.type === 'notebooks') type = 'Note pile'
+      if (el.type === 'notebooks') type = 'Room'
       const notescreens = el.notescreens.map((el2) => {
         const index = this.props.availscreens.findIndex(
           (el3) => el3.uuid === el2.uuid
