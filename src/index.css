@@ -161,3 +161,8 @@ code {
   transition-timing-function: ease-out;
   transition-duration: 200ms;
 }
+
+.buttonheadinggroup {
+  display: flex;
+  align-items: center;
+}

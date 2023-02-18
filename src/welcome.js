@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import failsLogoLong from './logo/logo1.svg'
+import failsLogoLongExp from './logo/logo1exp.svg'
 import { RadioButton } from 'primereact/radiobutton'
 import { Button } from 'primereact/button'
 import QRCode from 'qrcode.react'
@@ -257,6 +258,7 @@ export class Welcome extends Component {
   }
 
   render() {
+    const experimental = window.location.pathname.includes('experimental')
     let fullscreensbuttons
     if (
       this.state.fullscreen ||
@@ -295,7 +297,7 @@ export class Welcome extends Component {
       <div className='p-d-flex p-flex-column fade-in-welcome'>
         <div className='p-mb-2 p-as-center'>
           <img
-            src={failsLogoLong}
+            src={experimental ? failsLogoLongExp : failsLogoLong}
             style={{ width: '50vw' }}
             alt='FAILS logo long'
           />

@@ -416,14 +416,14 @@ export class NoteScreenBase extends Component {
       case 0x28: // arrowdown
         if (this.blackboard.current.scrollboardKeys)
           this.blackboard.current.scrollboardKeys(0, 0.05)
-        if (this.blackboardnotes.current.scrollboardKeys)
-          this.blackboardnotes.current.scrollboardKeys(0, 0.05)
+        // if (this.blackboardnotes.current.scrollboardKeys)
+        //   this.blackboardnotes.current.scrollboardKeys(0, 0.05)
         break
       case 0x26: // arrowUp
         if (this.blackboard.current.scrollboardKeys)
           this.blackboard.current.scrollboardKeys(0, -0.05)
-        if (this.blackboardnotes.current.scrollboardKeys)
-          this.blackboardnotes.current.scrollboardKeys(0, -0.05)
+        // if (this.blackboardnotes.current.scrollboardKeys)
+        //   this.blackboardnotes.current.scrollboardKeys(0, -0.05)
         break
       default:
         break
@@ -432,6 +432,22 @@ export class NoteScreenBase extends Component {
 
   getBlackboard() {
     if (this.blackboard) return this.blackboard.current
+  }
+
+  getEditBlackboard() {
+    if (this.props.isnotepad) {
+      if (this.blackboard) return this.blackboard.current
+    } else if (this.props.notesmode) {
+      if (this.blackboardnotes) return this.blackboardnotes.current
+    }
+  }
+
+  getNoteTools() {
+    if (this.props.isnotepad) {
+      if (this.blackboard) return this.toolbox?.current
+    } else if (this.props.notesmode) {
+      if (this.blackboardnotes) return this.props.notetools?.current
+    }
   }
 
   setCommandState(cs) {
@@ -517,6 +533,7 @@ export class NoteScreenBase extends Component {
                 }
                 pageoffsetabsolute={this.props.pageoffsetabsolute}
                 notesmode={true}
+                informDraw={this.props.informDraw}
               ></BlackboardNotepad>
             )}
           </Fragment>
@@ -533,6 +550,7 @@ export class NoteScreenBase extends Component {
             bbheight={this.state.bbheight}
             reportDrawPosCB={this.props.reportDrawPosCB}
             devicePixelRatio={this.state.devicePixelRatio}
+            informDraw={this.props.informDraw}
           ></BlackboardNotepad>
         )}
         {this.props.isnotepad && (
@@ -548,6 +566,7 @@ export class NoteScreenBase extends Component {
             mainstate={this.props.mainstate}
             dispres={this.dispres}
             identobj={this.props.identobj}
+            experimental={this.props.experimental}
           />
         )}
         {this.props.isnotepad && (
@@ -558,7 +577,7 @@ export class NoteScreenBase extends Component {
             notepad={this}
           />
         )}
-        {this.props.isnotepad && (
+        {(this.props.isnotepad || this.props.notesmode) && (
           <DeleteBox
             ref={this.deletebox}
             bbwidth={this.state.bbwidth}

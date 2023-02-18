@@ -19,6 +19,7 @@
 import React, { Component, Fragment } from 'react'
 import failsLogo from './logo/logo2.svg'
 import { Badge } from 'primereact/badge'
+import failsLogoExp from './logo/logo2exp.svg'
 import { Button } from 'primereact/button'
 import { OverlayPanel } from 'primereact/overlaypanel'
 import { ListBox } from 'primereact/listbox'
@@ -417,7 +418,7 @@ export class ToolHandling extends Component {
           size={20}
           sizefac={1}
           alpha={1}
-          key={it}
+          key={it + '_col'}
           selected={this.state.pencolor === this.colorwheelcolors[it]}
         />
       )
@@ -442,7 +443,7 @@ export class ToolHandling extends Component {
           mysize={this.pensizesizes[it] * 0.001 * bbwidth}
           sizefac={/* this.props.devicePixelRatio */ 1.0}
           alpha={1}
-          key={it}
+          key={it + '_pensize'}
         />
       )
 
@@ -474,7 +475,7 @@ export class ToolHandling extends Component {
           sizefac={1}
           scalefac={1}
           alpha={0.5}
-          key={it}
+          key={it + '_tm_col'}
           selected={this.state.markercolor === this.tmcolorwheelcolors[it]}
         />
       )
@@ -502,6 +503,8 @@ export class NoteTools extends ToolHandling {
   }
 
   componentDidMount() {
+    this.setDefaults()
+    // select defaults after mount
     this.resizeeventlistener = (event) => {
       const iwidth = window.innerWidth
       const iheight = window.innerHeight
@@ -620,14 +623,14 @@ export class NoteTools extends ToolHandling {
 
     if (this.state.selectedButtonid === 5) {
       if (this.state.secondtoolstep === 1) {
-        maintools.push(<div>{colorwheel} </div>)
+        maintools.push(<div key='colorwheel'>{colorwheel} </div>)
       } else if (this.state.secondtoolstep === 2) {
-        maintools.push(<div>{pensizewheel} </div>)
+        maintools.push(<div key='pensizewheel'>{pensizewheel} </div>)
       }
     }
     if (this.state.selectedButtonid === 4) {
       if (this.state.secondtoolstep === 1) {
-        maintools.push(<div>{tmcolorwheel} </div>)
+        maintools.push(<div key='tmcolorwheel'>{tmcolorwheel} </div>)
       }
     }
 
@@ -643,6 +646,7 @@ export class ToolBox extends ToolHandling {
     this.state = {}
 
     this.state.posy = 0.1
+    this.state.tbkey = 'tb0'
     this.setStateDefaults(this.state)
 
     this.tbx = 0.8 // constant toolbox pos
@@ -782,7 +786,6 @@ export class ToolBox extends ToolHandling {
 
     // console.log('reportdrawpos', x, y)
 
-    let finaly = 0
     // ok the idea as as follows, if drawing is close, the toolbox is in an circle around the drawing
     const circlerad = 0.1 // 0.2
     const circleradw = circlerad + (1.1 * this.divwidth) / this.props.bbwidth
@@ -813,6 +816,8 @@ export class ToolBox extends ToolHandling {
     ) */
 
     this.setState((state) => {
+      let finaly = 0
+      let tbkey = state.tbkey
       if (d * d > circleradw * circleradw) {
         // no intersection
         finaly = Math.max(Math.min(bottom, y), 0.1 * scrollheight)
@@ -849,8 +854,17 @@ export class ToolBox extends ToolHandling {
           }
         }
       }
+      const beamborder =
+        -0.5 * (this.divwidth / this.props.bbwidth) + this.tbx - 0.02
+      if (
+        ((finaly < y && state.posy > y) || (finaly > y && state.posy < y)) &&
+        x > beamborder
+      ) {
+        // Beam if you cross writing
+        tbkey = 'tb' + (Number(tbkey.substring(2)) + 1)
+      }
       // console.log('finaly', finaly)
-      return { posy: finaly }
+      return { posy: finaly, tbkey }
     })
   }
 
@@ -1434,6 +1448,7 @@ export class ToolBox extends ToolHandling {
     return (
       <div
         className={tbclass}
+        key={this.state.tbkey}
         style={{
           position: 'absolute',
           top: this.state.posy * this.props.bbwidth + 'px',
@@ -1454,7 +1469,10 @@ export class ToolBox extends ToolHandling {
         >
           <div className='p-grid'>
             <div className='p-col-3'>
-              <img src={failsLogo} alt='FAILS logo' />
+              <img
+                src={this.props.experimental ? failsLogoExp : failsLogo}
+                alt='FAILS logo'
+              />
             </div>
             <div className='p-col-9'>
               <h4>
@@ -1477,10 +1495,11 @@ export class ToolBox extends ToolHandling {
           Build upon the shoulders of giants, see{' '}
           <a href='/static/oss'> OSS attribution and licensing.</a>
           <br /> <br />
-          Lectureapp version {process.env.REACT_APP_VERSION} <br /> Browser:{' '}
-          {uaparser.getBrowser().name} (Version: {uaparser.getBrowser().version}
-          ) with Engine: {uaparser.getEngine().name} (Version:{' '}
-          {uaparser.getEngine().version})
+          Lectureapp version {process.env.REACT_APP_VERSION}{' '}
+          {this.props.experimental && <b>(Experimental version)</b>}
+          <br /> Browser: {uaparser.getBrowser().name} (Version:{' '}
+          {uaparser.getBrowser().version}) with Engine:{' '}
+          {uaparser.getEngine().name} (Version: {uaparser.getEngine().version})
           {uaparser.getEngine().name !== 'Blink' && (
             <React.Fragment>
               <br /> <br />
@@ -1756,8 +1775,8 @@ export class DeleteBox extends Component {
   }
 
   blackboard() {
-    if (this.props.notepad && this.props.notepad.blackboard)
-      return this.props.notepad.blackboard.current
+    if (this.props.notepad && this.props.notepad.getEditBlackboard)
+      return this.props.notepad.getEditBlackboard()
   }
 
   reactivate(position) {

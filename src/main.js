@@ -40,6 +40,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faDesktop, faBars, faFilePen } from '@fortawesome/free-solid-svg-icons'
 import failsLogo from './logo/logo2.svg'
 import failsLogoLong from './logo/logo1.svg'
+import failsLogoExp from './logo/logo2exp.svg'
+import failsLogoLongExp from './logo/logo1exp.svg'
 import {
   fiAddNotepad,
   fiAddScreen,
@@ -110,7 +112,7 @@ class ChannelEdit extends Component {
       return <React.Fragment>Waiting for data...</React.Fragment>
     const channels = this.props.channelinfo.map((el, ind) => {
       let type = 'Unknown'
-      if (el.type === 'notebooks') type = 'Note pile'
+      if (el.type === 'notebooks') type = 'Room'
       const notescreens = el.notescreens.map((el2) => {
         const index = this.props.availscreens.findIndex(
           (el3) => el3.uuid === el2.uuid
@@ -325,7 +327,10 @@ export class FailsBasis extends Component {
       >
         <div className='p-grid p-align-center'>
           <div className='p-col-3'>
-            <img src={failsLogo} alt='FAILS logo' />
+            <img
+              src={this.experimental() ? failsLogoExp : failsLogo}
+              alt='FAILS logo'
+            />
           </div>
           <div className='p-col-9'>
             <p>
@@ -491,6 +496,21 @@ export class FailsBasis extends Component {
     })
   }
 
+  experimental() {
+    const exp = window.location.pathname.includes('experimental')
+    const token = this.decodedToken()
+    console.log('token', token)
+
+    if (exp && token && token.appversion === 'stable') {
+      console.log(
+        'token app version and path does not match',
+        window.location.pathname,
+        token.appversion
+      )
+    }
+    return exp
+  }
+
   loadDataDialog() {
     return (
       <Dialog
@@ -505,7 +525,10 @@ export class FailsBasis extends Component {
       >
         <div className='p-grid p-align-center'>
           <div className='p-col-3'>
-            <img src={failsLogo} alt='FAILS logo' />
+            <img
+              src={this.experimental() ? failsLogoExp : failsLogo}
+              alt='FAILS logo'
+            />
           </div>
           <div className='p-col-9'>
             <div className='p-d-flex p-flex-column'>
@@ -807,6 +830,80 @@ class ShortcutsMessage extends React.Component {
   }
 }
 
+class ChatMessage extends React.Component {
+  constructor(args) {
+    super(args)
+    this.state = { hideName: true }
+  }
+
+  render() {
+    let displayname
+    const data = this.props.data
+    if (data.displayname) {
+      if (this.state.hideName) {
+        displayname = data.displayname.replace(/[a-z]/g, '*')
+      } else {
+        displayname = data.displayname
+      }
+    }
+
+    const retobj = (
+      <React.Fragment>
+        <span className='p-toast-message-icon pi pi-info-circle'></span>
+        <div className='p-toast-message-text'>
+          {displayname && (
+            <div className='buttonheadinggroup'>
+              <h3>{displayname + ':'} </h3>
+              <Button
+                icon={!this.state.hideName ? fiEyeOn : fiEyeOff}
+                className='p-button-primary p-button-text p-button-rounded p-m-2'
+                onClick={() =>
+                  this.setState({ hideName: !this.state.hideName })
+                }
+              />
+            </div>
+          )}
+          {this.props.latex} <br></br>
+          <Button
+            icon='pi pi-ban'
+            className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+            onClick={(event) => {
+              confirmPopup({
+                target: event.currentTarget,
+                message:
+                  'Do you want to block ' +
+                  data.displayname +
+                  ' from sending messages for the remaining session!',
+                icon: 'pi pi-exclamation-triangle',
+                accept: this.props.blockChat()
+              })
+            }}
+          />
+          <Button
+            icon='pi pi-info-circle'
+            className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+            onClick={(event) => {
+              confirmPopup({
+                target: event.currentTarget,
+                message:
+                  'Forensic report: userhash: ' +
+                  data.userhash +
+                  '  Displayname: ' +
+                  data.displayname +
+                  '  Message: "' +
+                  data.text +
+                  '" You can copy and paste this and send it to your admin as evidence!',
+                icon: 'pi pi-exclamation-triangle'
+              })
+            }}
+          />
+        </div>
+      </React.Fragment>
+    )
+    return retobj
+  }
+}
+
 export class FailsBoard extends FailsBasis {
   constructor(props) {
     super(props)
@@ -936,47 +1033,12 @@ export class FailsBoard extends FailsBasis {
 
     notepadsocket.on('chatquestion', (data) => {
       console.log('Incoming chat', data)
-      const retobj = (
-        <React.Fragment>
-          <span className='p-toast-message-icon pi pi-info-circle'></span>
-          <div className='p-toast-message-text'>
-            {data.displayname && <h3>{data.displayname + ':'}</h3>}
-            {this.convertToLatex(data.text)} <br></br>
-            <Button
-              icon='pi pi-ban'
-              className='p-button-danger p-button-outlined p-button-rounded p-m-2'
-              onClick={(event) => {
-                confirmPopup({
-                  target: event.currentTarget,
-                  message:
-                    'Do you want to block ' +
-                    data.displayname +
-                    ' from sending messages for the remaining session!',
-                  icon: 'pi pi-exclamation-triangle',
-                  accept: () => this.blockChat(data.userhash)
-                })
-              }}
-            />
-            <Button
-              icon='pi pi-info-circle'
-              className='p-button-danger p-button-outlined p-button-rounded p-m-2'
-              onClick={(event) => {
-                confirmPopup({
-                  target: event.currentTarget,
-                  message:
-                    'Forensic report: userhash: ' +
-                    data.userhash +
-                    '  Displayname: ' +
-                    data.displayname +
-                    '  Message: "' +
-                    data.text +
-                    '" You can copy and paste this and send it to your admin as evidence!',
-                  icon: 'pi pi-exclamation-triangle'
-                })
-              }}
-            />
-          </div>
-        </React.Fragment>
+      const retobj =  (
+        <ChatMessage
+          data={data}
+          blockChat={() => this.blockChat(data.userhash)}
+          latex={this.convertToLatex(data.text)}
+        />
       )
       if (this.blockchathash.indexOf(data.userhash) === -1) {
         this.toast.show({ severity: 'info', content: retobj, sticky: true })
@@ -1477,6 +1539,7 @@ export class FailsBoard extends FailsBasis {
           toggleFullscreen={this.toggleFullscreen}
           showscreennumber={this.state.showscreennumber}
           identobj={this.state.identobj}
+          experimental={this.experimental()}
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div
@@ -1769,7 +1832,7 @@ export class FailsScreen extends FailsBasis {
     const failslogo = (
       <div className='p-p-6'>
         <img
-          src={failsLogoLong}
+          src={this.experimental() ? failsLogoLongExp : failsLogoLong}
           style={{ width: '20vw' }}
           alt='FAILS logo long'
         />
@@ -1898,6 +1961,7 @@ export class FailsScreen extends FailsBasis {
           height={this.props.height}
           noteref={this.getNoteRef}
           updateSizes={this.updateSizes}
+          experimental={this.experimental()}
         ></NoteScreenBase>
         <Sidebar
           visible={!this.state.casttoscreens}
@@ -1943,11 +2007,13 @@ export class FailsNotes extends FailsBasis {
     this.state.chattext = ''
 
     this.notepaduuid = null
+    this.notetools = React.createRef()
 
     this.toggleScrollUnlock = this.toggleScrollUnlock.bind(this)
     this.sendChatMessage = this.sendChatMessage.bind(this)
     this.onVoteSel = this.onVoteSel.bind(this)
     this.onCastvote = this.onCastvote.bind(this)
+    this.informDraw = this.informDraw.bind(this)
   }
 
   componentDidMount() {
@@ -2016,6 +2082,17 @@ export class FailsNotes extends FailsBasis {
         polldata: data.result
       })
     })
+  }
+
+  informDraw() {
+    if (!this.state.scrollunlock) {
+      const curoffset = this.noteref.calcCurpos()
+      this.setState((state) => {
+        if (!state.scrollunlock) {
+          return { scrollunlock: !state.scrollunlock, pageoffset: curoffset }
+        }
+      })
+    }
   }
 
   toggleScrollUnlock() {
@@ -2245,8 +2322,11 @@ export class FailsNotes extends FailsBasis {
         />
         {notesmode && (
           <NoteTools
+            ref={this.notetools}
             getnotepad={() => this.noteref}
             addclass='p-m-2 fadeMenu'
+            bbwidth={window.innerWidth}
+            devicePixelRatio={window.devicePixelRatio}
           />
         )}
 
@@ -2345,7 +2425,10 @@ export class FailsNotes extends FailsBasis {
         >
           <div className='p-grid'>
             <div className='p-col-3'>
-              <img src={failsLogo} alt='FAILS logo' />
+              <img
+                src={this.experimental() ? failsLogoExp : failsLogo}
+                alt='FAILS logo'
+              />
             </div>
             <div className='p-col-9'>
               <h4>
@@ -2373,6 +2456,7 @@ export class FailsNotes extends FailsBasis {
         <NoteScreenBase
           isnotepad={false}
           notesmode={this.state.notesmode}
+          notetools={this.notetools}
           pageoffset={this.state.pageoffset}
           pageoffsetabsolute={this.state.scrollunlock}
           bbchannel={this.bbchannel}
@@ -2401,6 +2485,8 @@ export class FailsNotes extends FailsBasis {
           noteref={this.getNoteRef}
           updateSizes={this.updateSizes}
           hidden={!this.state.casttoscreens}
+          informDraw={this.informDraw}
+          experimental={this.experimental()}
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div
