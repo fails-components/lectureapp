@@ -41,7 +41,9 @@ export class AVVideoRender extends Component {
     window.addEventListener('resize', this.resizeeventlistener)
     this.updateOffscreen()
     this.resizeeventlistener()
-    this.outputStart()
+    this.outputStart().catch((error) => {
+      console.log('Problem in outputStart', error)
+    })
   }
 
   componentWillUnmount() {
@@ -50,6 +52,7 @@ export class AVVideoRender extends Component {
       task: 'close',
       webworkid: this.webworkid
     })
+    if (this.state.output) this.state.output.close()
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
@@ -91,7 +94,7 @@ export class AVVideoRender extends Component {
       let output = outputobj
       output = await output
       output.buildIncomingPipeline()
-      if (this.props.videoid) outputobj.setSrcId(this.props.videoid)
+      if (this.props.videoid) output.setSrcId(this.props.videoid)
       output.setOutputRender(this)
       this.updateOffscreen()
       this.setState({ output })
@@ -403,11 +406,19 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
 }
 
 export class AVInputStream extends AVStream {
+  constructor(args) {
+    super(args)
+    this.wasclosed = false
+  }
+
   close() {
-    AVInterface.worker.postMessage({
-      task: 'close',
-      webworkid: this.webworkid
-    })
+    if (!this.wasclosed) {
+      AVInterface.worker.postMessage({
+        task: 'close',
+        webworkid: this.webworkid
+      })
+      this.wasclosed = true
+    }
   }
 
   setSrcId(id) {

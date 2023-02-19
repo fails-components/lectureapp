@@ -1377,7 +1377,7 @@ class AVProcessor {
           return 'bw'
         }
         ls.pos = 4
-        while (pumping) {
+        while (pumping && running()) {
           ls.run++
           if (!work[0]) work[0] = bread()
           if (!work[1]) work[1] = bwrit()
@@ -1731,6 +1731,7 @@ class AVInputProcessor extends AVProcessor {
     this.lastoffersend = 0
 
     this.qcs = {}
+    this.running = true
   }
 
   initPipeline() {
@@ -1742,6 +1743,7 @@ class AVInputProcessor extends AVProcessor {
   }
 
   close() {
+    this.running = false
     for (const qual in this.qualities) {
       const codec = this.encoder[qual]
       if (codec) {
@@ -1787,6 +1789,8 @@ class AVInputProcessor extends AVProcessor {
   // should go to seperate object for audio and video
   handleQualityControl(qualinfo) {
     console.log(
+      'wwid',
+      this.webworkid,
       'type',
       this.datatype,
       'out quality ',
@@ -2003,7 +2007,7 @@ class AVInputProcessor extends AVProcessor {
             inputStream: () => this.framer[quality],
             outputStream: () => this.outputctrldeframer[quality],
             tag: quality + ' outgoing ' + this.datatype,
-            running: () => true
+            running: () => this.running
           }).catch((error) => {
             console.log('AVIP ', qual, 'Bidi prob:', error)
           })
@@ -2307,9 +2311,14 @@ class AVOutputProcessor extends AVProcessor {
     }
 
     this.scmqueue = []
+    this.running = true
   }
 
   close() {
+    this.running = false
+    this.sendControlMessage({
+      task: 'close'
+    })
     const codec = this.decoder
     if (codec) {
       codec.close()
@@ -2391,6 +2400,8 @@ class AVOutputProcessor extends AVProcessor {
 
   handleQualityControl(qualinfo) {
     console.log(
+      'wwid',
+      this.webworkid,
       'type',
       this.datatype,
       'in quality ',
@@ -2466,6 +2477,7 @@ class AVOutputProcessor extends AVProcessor {
         this.bidiStreamToLoop({
           bidiStream: async () => {
             /* function for getting the input Stream */
+            if (!this.running) return
             const avtransport = AVTransport.getInterface()
             let newstream
             while (!newstream) {
@@ -2529,7 +2541,7 @@ class AVOutputProcessor extends AVProcessor {
           inputStream: () => this.inputctrlframer,
           outputStream: () => this.deframer,
           tag: 'incoming ' + this.datatype,
-          running: () => true
+          running: () => this.running
         })
         /* this.pipeToLoop({
           deststream: () => this.deframer,

@@ -22,6 +22,8 @@ import { OverlayPanel } from 'primereact/overlaypanel'
 import React, { Component } from 'react'
 import { AVVideoRender, AVInterface } from './avinterface'
 import { Dropdown } from 'primereact/dropdown'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTv } from '@fortawesome/free-solid-svg-icons'
 
 export class SpeakerSet {
   constructor(args) {
@@ -217,7 +219,8 @@ export class VideoControl extends Component {
       spkmuted: false,
       micmuted: true,
       videomuted: true,
-      cameramuted: true
+      cameramuted: true,
+      tvoff: true
     }
     this.devicesChanged = this.devicesChanged.bind(this)
     this.vophid = true
@@ -263,6 +266,11 @@ export class VideoControl extends Component {
       else this.state.camera.camOn()
       this.setState({ cameramuted: !cammuted })
     }
+  }
+
+  tvToggle() {
+    const tvoff = this.state.tvoff
+    this.setState({ tvoff: !tvoff })
   }
 
   componentDidMount() {
@@ -405,6 +413,56 @@ export class VideoControl extends Component {
 
     const selbuttonCls = 'p-button-primary p-button-rounded p-m-2'
     const deselbuttonCls = 'p-button-secondary p-button-rounded p-m-2'
+    const buttonbar = (
+      <React.Fragment>
+        <Button
+          icon='pi pi-video'
+          id='bt-video'
+          className={this.state.cameramuted ? deselbuttonCls : selbuttonCls}
+          onClick={(e) => {
+            if (this.vophid) {
+              this.videoop.show(e)
+              if (this.videoopclean) clearTimeout(this.videoopclean)
+              this.videoopclean = setTimeout(() => {
+                clearTimeout(this.videoopclean)
+                if (!this.vophid) this.videoop.hide(e)
+              }, 5000)
+            }
+            if (!this.vophid || this.state.cameramuted) this.camToggle()
+          }}
+        ></Button>
+        <Button
+          icon={<FontAwesomeIcon icon={faTv} />}
+          id='bt-tv'
+          className={this.state.tvoff ? deselbuttonCls : selbuttonCls}
+          onClick={(e) => {
+            this.tvToggle()
+          }}
+        ></Button>
+        <Button
+          icon='pi pi-phone'
+          id='bt-audio'
+          className={this.state.micmuted ? deselbuttonCls : selbuttonCls}
+          onClick={(e) => {
+            if (this.aophid) {
+              this.audioop.show(e)
+              if (this.audioopclean) clearTimeout(this.audioopclean)
+              this.audioopclean = setTimeout(() => {
+                clearTimeout(this.audioopclean)
+                if (!this.aophid) this.audioop.hide(e)
+              }, 5000)
+            }
+            if (!this.aophid || this.state.micmuted) this.micToggle()
+          }}
+        ></Button>
+        <Button
+          icon='pi pi-volume-off'
+          id='bt-audio'
+          className={this.state.spkmuted ? deselbuttonCls : selbuttonCls}
+          onClick={(e) => this.speakerToggle()}
+        ></Button>
+      </React.Fragment>
+    )
     return (
       <React.Fragment>
         <div className='p-d-flex'>
@@ -412,52 +470,16 @@ export class VideoControl extends Component {
             <DbMeter microphone={this.state.microphone} />
           </div>
           <div className='p-mr-0'>
-            <AVVideoRender
-              videoid={this.props.videoid}
-              width={16}
-            ></AVVideoRender>
+            {(!this.state.tvoff && (
+              <AVVideoRender
+                videoid={this.props.videoid}
+                width={16}
+              ></AVVideoRender>
+            )) ||
+              buttonbar}
           </div>
         </div>
-        <div className='buttonbar'>
-          <Button
-            icon='pi pi-video'
-            id='bt-video'
-            className={this.state.cameramuted ? deselbuttonCls : selbuttonCls}
-            onClick={(e) => {
-              if (this.vophid) {
-                this.videoop.show(e)
-                if (this.videoopclean) clearTimeout(this.videoopclean)
-                this.videoopclean = setTimeout(() => {
-                  clearTimeout(this.videoopclean)
-                  if (!this.vophid) this.videoop.hide(e)
-                }, 5000)
-              }
-              if (!this.vophid || this.state.cameramuted) this.camToggle()
-            }}
-          ></Button>
-          <Button
-            icon='pi pi-phone'
-            id='bt-audio'
-            className={this.state.micmuted ? deselbuttonCls : selbuttonCls}
-            onClick={(e) => {
-              if (this.aophid) {
-                this.audioop.show(e)
-                if (this.audioopclean) clearTimeout(this.audioopclean)
-                this.audioopclean = setTimeout(() => {
-                  clearTimeout(this.audioopclean)
-                  if (!this.aophid) this.audioop.hide(e)
-                }, 5000)
-              }
-              if (!this.aophid || this.state.micmuted) this.micToggle()
-            }}
-          ></Button>
-          <Button
-            icon='pi pi-volume-off'
-            id='bt-audio'
-            className={this.state.spkmuted ? deselbuttonCls : selbuttonCls}
-            onClick={(e) => this.speakerToggle()}
-          ></Button>
-        </div>
+        {!this.state.tvoff && <div className='buttonbar'>{buttonbar}</div>}
         <OverlayPanel
           ref={(el) => (this.videoop = el)}
           onShow={() => (this.vophid = false)}
