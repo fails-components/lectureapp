@@ -215,9 +215,13 @@ export class VideoControl extends Component {
       camera: undefined,
       microphone: undefined,
       spkmuted: false,
-      micmuted: true
+      micmuted: true,
+      videomuted: true,
+      cameramuted: true
     }
     this.devicesChanged = this.devicesChanged.bind(this)
+    this.vophid = true
+    this.aophid = true
   }
 
   syncSpkMuted() {
@@ -249,6 +253,15 @@ export class VideoControl extends Component {
       if (micmuted) this.state.microphone.muteOff()
       else this.state.microphone.muteOn()
       this.setState({ micmuted: !micmuted })
+    }
+  }
+
+  camToggle() {
+    if (this.state.camera) {
+      const cammuted = this.state.cameramuted
+      if (cammuted) this.state.camera.camOff()
+      else this.state.camera.camOn()
+      this.setState({ cameramuted: !cammuted })
     }
   }
 
@@ -409,16 +422,33 @@ export class VideoControl extends Component {
           <Button
             icon='pi pi-video'
             id='bt-video'
-            className={selbuttonCls}
-            onClick={(e) => this.videoop.toggle(e)}
+            className={this.state.cameramuted ? deselbuttonCls : selbuttonCls}
+            onClick={(e) => {
+              if (this.vophid) {
+                this.videoop.show(e)
+                if (this.videoopclean) clearTimeout(this.videoopclean)
+                this.videoopclean = setTimeout(() => {
+                  clearTimeout(this.videoopclean)
+                  if (!this.vophid) this.videoop.hide(e)
+                }, 5000)
+              }
+              if (!this.vophid || this.state.cameramuted) this.camToggle()
+            }}
           ></Button>
           <Button
             icon='pi pi-phone'
             id='bt-audio'
             className={this.state.micmuted ? deselbuttonCls : selbuttonCls}
             onClick={(e) => {
-              this.audioop.toggle(e)
-              this.micToggle()
+              if (this.aophid) {
+                this.audioop.show(e)
+                if (this.audioopclean) clearTimeout(this.audioopclean)
+                this.audioopclean = setTimeout(() => {
+                  clearTimeout(this.audioopclean)
+                  if (!this.aophid) this.audioop.hide(e)
+                }, 5000)
+              }
+              if (!this.aophid || this.state.micmuted) this.micToggle()
             }}
           ></Button>
           <Button
@@ -428,7 +458,14 @@ export class VideoControl extends Component {
             onClick={(e) => this.speakerToggle()}
           ></Button>
         </div>
-        <OverlayPanel ref={(el) => (this.videoop = el)}>
+        <OverlayPanel
+          ref={(el) => (this.videoop = el)}
+          onShow={() => (this.vophid = false)}
+          onHide={() => {
+            if (this.videoopclean) clearTimeout(this.videoopclean)
+            this.vophid = true
+          }}
+        >
           Select videosource: <br />
           <Dropdown
             optionLabel='label'
@@ -439,7 +476,14 @@ export class VideoControl extends Component {
             placeholder='Select a video source'
           />
         </OverlayPanel>
-        <OverlayPanel ref={(el) => (this.audioop = el)}>
+        <OverlayPanel
+          ref={(el) => (this.audioop = el)}
+          onShow={() => (this.aophid = false)}
+          onHide={() => {
+            this.aophid = true
+            if (this.audioopclean) clearTimeout(this.audioopclean)
+          }}
+        >
           Select audiosource: <br />
           <Dropdown
             optionLabel='label'

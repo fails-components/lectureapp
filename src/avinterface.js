@@ -179,6 +179,35 @@ export class AVCameraStream extends AVDeviceInputStream {
   // eslint-disable-next-line no-useless-constructor
   constructor(args) {
     super(args)
+    this.off = true
+  }
+
+  camOn() {
+    if (this.track && !this.off) {
+      this.track.enabled = false
+      this.off = true
+      AVInterface.worker.postMessage({
+        task: 'offChangeCam',
+        webworkid: this.webworkid,
+        off: this.off
+      })
+    }
+  }
+
+  camOff() {
+    if (this.track && this.off) {
+      this.track.enabled = true
+      this.off = false
+      AVInterface.worker.postMessage({
+        task: 'offChangeCam',
+        webworkid: this.webworkid,
+        off: this.off
+      })
+    }
+  }
+
+  off() {
+    return this.off
   }
 
   async switchCamera(id, nosave) {
@@ -227,6 +256,7 @@ export class AVCameraStream extends AVDeviceInputStream {
     }
 
     this.track = track
+    if (this.off) this.track.enabled = false
   }
 }
 

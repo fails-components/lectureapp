@@ -571,6 +571,15 @@ class AVOneToMany extends AVTransformStream {
 class AVOneFrameToManyScaler extends AVOneToMany {
   static levelwidth = [160, 320, 640, 848, 848, 1280, 1280, 1920]
 
+  constructor(args) {
+    super(args)
+    this.off = true
+  }
+
+  changeOff(off) {
+    this.off = off
+  }
+
   async transform(frame) {
     // ok, we calculate aspect ratio first
     const origininvaspect = frame.displayHeight / frame.displayWidth
@@ -586,6 +595,10 @@ class AVOneFrameToManyScaler extends AVOneToMany {
       }
     }
     const resframe = {}
+    if (this.off) {
+      frame.close()
+      return resframe
+    }
     for (const out in this.outputlevel) {
       if (out > this.outputlevelmax) continue // outlevel seems to be suspended
       // ok now we do the math and scale the frame
@@ -2171,6 +2184,11 @@ class AVVideoInputProcessor extends AVInputProcessor {
     this.initPipeline()
   }
 
+  changeOff(off) {
+    console.log('multscaler peak', this.multscaler, this.multscaler.changeOff)
+    this.multscaler.changeOff(off)
+  }
+
   switchVideoCamera(args) {
     this.inputstream
       .cancel()
@@ -2925,6 +2943,12 @@ class AVWorker {
         {
           const object = this.objects[event.data.webworkid]
           object.changeMute(event.data.muted)
+        }
+        break
+      case 'offChangeCam':
+        {
+          const object = this.objects[event.data.webworkid]
+          object.changeOff(event.data.off)
         }
         break
       case 'close':
