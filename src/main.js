@@ -1033,7 +1033,7 @@ export class FailsBoard extends FailsBasis {
 
     notepadsocket.on('chatquestion', (data) => {
       console.log('Incoming chat', data)
-      const retobj =  (
+      const retobj = (
         <ChatMessage
           data={data}
           blockChat={() => this.blockChat(data.userhash)}
