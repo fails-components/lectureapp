@@ -885,14 +885,19 @@ class ChatMessage extends React.Component {
             onClick={(event) => {
               confirmPopup({
                 target: event.currentTarget,
-                message:
-                  'Forensic report: userhash: ' +
-                  data.userhash +
-                  '  Displayname: ' +
-                  data.displayname +
-                  '  Message: "' +
-                  data.text +
-                  '" You can copy and paste this and send it to your admin as evidence!',
+                message: (
+                  <div style={{ width: '30vw' }}>
+                    {'Forensic report: userhash: ' +
+                      data.userhash +
+                      'Displayname: ' +
+                      data.displayname +
+                      ' Message: "' +
+                      data.text +
+                      '" You can copy and paste this and send it to your admin as evidence!'}
+                  </div>
+                ),
+                acceptLabel: 'Ok',
+                rejectClassName: 'hiddenButton',
                 icon: 'pi pi-exclamation-triangle'
               })
             }}
