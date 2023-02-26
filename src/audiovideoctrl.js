@@ -358,7 +358,9 @@ export class VideoControl extends Component {
     try {
       const avinterf = AVInterface.getInterface()
       console.log('before openVideoCamera')
-      avinterf.queryMediaSupported()
+      if (!avinterf.queryMediaSupported()) {
+        return null
+      }
       const cameraobj = avinterf.openVideoCamera()
 
       cam = cameraobj
@@ -381,7 +383,9 @@ export class VideoControl extends Component {
     try {
       const avinterf = AVInterface.getInterface()
       console.log('before openAudioMicrophone')
-      avinterf.queryMediaSupported()
+      if (!avinterf.queryMediaSupported()) {
+        return null
+      }
       const microphoneobj = avinterf.openAudioMicrophone()
 
       mic = microphoneobj

@@ -564,7 +564,9 @@ export class AVInterface {
       !('MediaStreamTrackProcessor' in window) ||
       !('MediaStreamTrackGenerator' in window)
     ) {
-      console.log('MediaStreamTrackProcessor')
+      console.log(
+        'MediaStreamTrackProcessor or MediaStreamTracGenerator unsupported!'
+      )
       return false
     }
     this.mediadevicesupported = true
