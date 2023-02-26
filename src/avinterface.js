@@ -185,7 +185,7 @@ export class AVCameraStream extends AVDeviceInputStream {
     this.off = true
   }
 
-  camOn() {
+  camOff() {
     if (this.track && !this.off) {
       this.track.enabled = false
       this.off = true
@@ -197,7 +197,7 @@ export class AVCameraStream extends AVDeviceInputStream {
     }
   }
 
-  camOff() {
+  camOn() {
     if (this.track && this.off) {
       this.track.enabled = true
       this.off = false

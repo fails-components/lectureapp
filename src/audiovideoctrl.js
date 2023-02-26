@@ -23,7 +23,15 @@ import React, { Component } from 'react'
 import { AVVideoRender, AVInterface } from './avinterface'
 import { Dropdown } from 'primereact/dropdown'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTv } from '@fortawesome/free-solid-svg-icons'
+import {
+  faTv,
+  faMicrophoneAlt,
+  faMicrophoneAltSlash,
+  faVolumeXmark,
+  faVolumeHigh,
+  faVideo,
+  faVideoSlash
+} from '@fortawesome/free-solid-svg-icons'
 
 export class SpeakerSet {
   constructor(args) {
@@ -256,15 +264,29 @@ export class VideoControl extends Component {
       if (micmuted) this.state.microphone.muteOff()
       else this.state.microphone.muteOn()
       this.setState({ micmuted: !micmuted })
+    } else if (this.state.micmuted) {
+      this.microphoneStart()
+        .then((mic) => {
+          mic.muteOff()
+          this.setState({ micamuted: false })
+        })
+        .catch((error) => console.log('Problem with microphone start', error))
     }
   }
 
   camToggle() {
     if (this.state.camera) {
       const cammuted = this.state.cameramuted
-      if (cammuted) this.state.camera.camOff()
-      else this.state.camera.camOn()
+      if (cammuted) this.state.camera.camOn()
+      else this.state.camera.camOff()
       this.setState({ cameramuted: !cammuted })
+    } else if (this.state.cameramuted) {
+      this.cameraStart()
+        .then((camera) => {
+          camera.camOn()
+          this.setState({ cameramuted: false })
+        })
+        .catch((error) => console.log('Problem with camera start', error))
     }
   }
 
@@ -274,8 +296,6 @@ export class VideoControl extends Component {
   }
 
   componentDidMount() {
-    this.cameraStart()
-    this.microphoneStart()
     navigator.mediaDevices.ondevicechange = this.devicesChanged
     this.syncSpkMuted()
   }
@@ -334,13 +354,14 @@ export class VideoControl extends Component {
   }
 
   async cameraStart() {
+    let cam
     try {
       const avinterf = AVInterface.getInterface()
       console.log('before openVideoCamera')
       avinterf.queryMediaSupported()
       const cameraobj = avinterf.openVideoCamera()
 
-      let cam = cameraobj
+      cam = cameraobj
       cam = await cam
       cam.buildOutgoingPipeline()
 
@@ -352,16 +373,18 @@ export class VideoControl extends Component {
     } catch (error) {
       console.log('cameraStart failed', error)
     }
+    return cam
   }
 
   async microphoneStart() {
+    let mic
     try {
       const avinterf = AVInterface.getInterface()
       console.log('before openAudioMicrophone')
       avinterf.queryMediaSupported()
       const microphoneobj = avinterf.openAudioMicrophone()
 
-      let mic = microphoneobj
+      mic = microphoneobj
       mic = await mic
       mic.buildOutgoingPipeline()
 
@@ -373,6 +396,7 @@ export class VideoControl extends Component {
     } catch (error) {
       console.log('microphoneStart failed', error)
     }
+    return mic
   }
 
   setVideoSrc(id, nosave) {
@@ -416,7 +440,11 @@ export class VideoControl extends Component {
     const buttonbar = (
       <React.Fragment>
         <Button
-          icon='pi pi-video'
+          icon={
+            <FontAwesomeIcon
+              icon={this.state.cameramuted ? faVideoSlash : faVideo}
+            />
+          }
           id='bt-video'
           className={this.state.cameramuted ? deselbuttonCls : selbuttonCls}
           onClick={(e) => {
@@ -440,7 +468,13 @@ export class VideoControl extends Component {
           }}
         ></Button>
         <Button
-          icon='pi pi-phone'
+          icon={
+            <FontAwesomeIcon
+              icon={
+                this.state.micmuted ? faMicrophoneAltSlash : faMicrophoneAlt
+              }
+            />
+          }
           id='bt-audio'
           className={this.state.micmuted ? deselbuttonCls : selbuttonCls}
           onClick={(e) => {
@@ -456,7 +490,11 @@ export class VideoControl extends Component {
           }}
         ></Button>
         <Button
-          icon='pi pi-volume-off'
+          icon={
+            <FontAwesomeIcon
+              icon={this.state.spkmuted ? faVolumeXmark : faVolumeHigh}
+            />
+          }
           id='bt-audio'
           className={this.state.spkmuted ? deselbuttonCls : selbuttonCls}
           onClick={(e) => this.speakerToggle()}
