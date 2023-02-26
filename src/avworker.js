@@ -535,7 +535,7 @@ class AVInputProcessor extends AVProcessor {
 
   initPipeline() {
     for (const qual in this.qualities) {
-      this.encrypt[qual] = new AVEncrypt()
+      this.encrypt[qual] = new AVEncrypt({ keyStore: AVKeyStore.getKeyStore() })
       this.framer[qual] = new AVFramer({ type: this.datatype })
       this.outputctrldeframer[qual] = new BsonDeFramer()
     }
@@ -1484,7 +1484,8 @@ class AVAudioOutputProcessor extends AVOutputProcessor {
 
     this.decrypt = new AVDecrypt({
       // eslint-disable-next-line no-undef
-      chunkMaker: (arg) => new EncodedAudioChunk(arg)
+      chunkMaker: (arg) => new EncodedAudioChunk(arg),
+      keyStore: AVKeyStore.getKeyStore()
     })
 
     this.decoder = new AVAudioDecoder()
@@ -1505,7 +1506,8 @@ class AVVideoOutputProcessor extends AVOutputProcessor {
 
     this.decrypt = new AVDecrypt({
       // eslint-disable-next-line no-undef
-      chunkMaker: (arg) => new EncodedVideoChunk(arg)
+      chunkMaker: (arg) => new EncodedVideoChunk(arg),
+      keyStore: AVKeyStore.getKeyStore()
     })
 
     this.decoder = new AVVideoDecoder()

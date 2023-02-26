@@ -619,7 +619,7 @@ export class AVOneToManyCopy extends AVOneToMany {
   }
 }
 
-class AVKeyStore {
+export class AVKeyStore {
   static instance = null
   constructor(args) {
     this.keys = {}
@@ -698,6 +698,7 @@ export class AVEncrypt extends AVTransformStream {
     super(args)
     this.key = null
     this.keyindex = null
+    this.keyStore = args.keyStore
   }
 
   async transform(chunk) {
@@ -710,7 +711,7 @@ export class AVEncrypt extends AVTransformStream {
     const plaindata = new ArrayBuffer(chunk.frame.byteLength)
     chunk.frame.copyTo(plaindata)
 
-    const keystore = AVKeyStore.getKeyStore()
+    const keystore = this.keyStore
 
     const curkeyid = await keystore.getCurKeyId()
     if (curkeyid !== this.keyindex && chunk.frame.type === 'key') {
@@ -772,6 +773,7 @@ export class AVDecrypt extends AVTransformStream {
     this.key = null
     this.keyindex = null
     this.chunkMaker = args.chunkMaker
+    this.keyStore = args.keyStore
   }
 
   async transform(chunk) {
@@ -783,7 +785,7 @@ export class AVDecrypt extends AVTransformStream {
           return null
         } else this.skipToKeyFrame = false
       }
-      const keystore = AVKeyStore.getKeyStore()
+      const keystore = this.keyStore
 
       if (chunk.keyindex !== this.keyindex) {
         console.log('AVDecrypt getKey', chunk.keyindex, this.keyindex)
