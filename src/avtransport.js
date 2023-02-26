@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-// import { WebTransport as WebTransportWS } from '@fails-components/webtransport-ponyfill-websocket'
+import { WebTransport as WebTransportWS } from '@fails-components/webtransport-ponyfill-websocket'
 import { serialize as BSONserialize } from 'bson'
 
 export class AVTransport {
@@ -115,8 +115,9 @@ export class AVTransport {
           }
         }
         if (!webtransport) {
-          this.connectedrej('no websocket' + wsurl) // fall back
-          /*
+          if (!forcewebsocket)
+            console.log('Fallback to websocket due to webtransport failure')
+          // this.connectedrej('no websocket' + wsurl) // fall back
           try {
             this.transport = new WebTransportWS(wsurl)
             this.transport.closed
@@ -146,7 +147,7 @@ export class AVTransport {
             )
             // also the fallback did not work
             this.connectedrej(error)
-          } */
+          }
         }
 
         if (webtransport) {
