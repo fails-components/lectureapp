@@ -2499,16 +2499,12 @@ class AVOutputProcessor extends AVProcessor {
           },
           reset: async () => {
             try {
-              console.log('DEBUG INPUT RESET 0')
               this.deframer.reset()
-              console.log('DEBUG INPUT RESET 1')
               await initialconnect
-              console.log('DEBUG INPUT RESET 2')
               const tickets = await this.getTickets({
                 id: this.srcid,
                 dir: 'in'
               })
-              console.log('DEBUG INPUT RESET 3')
               if (!tickets) {
                 await new Promise((resolve) => {
                   // take a break
@@ -2522,17 +2518,14 @@ class AVOutputProcessor extends AVProcessor {
                   this.srcid
                 )
               }
-              console.log('DEBUG INPUT RESET 4')
               this.scmqueue.length = 0
               this.inputctrlframer.reset()
-              console.log('DEBUG INPUT RESET 5')
               this.sendControlMessage({
                 command: 'configure',
                 dir: 'outgoing', // routers perspective
                 tickets,
                 type: this.datatype
               })
-              console.log('DEBUG INPUT RESET 6')
             } catch (error) {
               console.log('problem reset output', error)
               throw new Error('Resetoutput failed')
