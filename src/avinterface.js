@@ -236,7 +236,10 @@ export class AVCameraStream extends AVDeviceInputStream {
     console.log('track settings after', track.getSettings())
 
     // eslint-disable-next-line no-undef
-    const trackprocessor = new MediaStreamTrackProcessor({ track })
+    const trackprocessor = new MediaStreamTrackProcessor({
+      track,
+      maxBufferSize: 10
+    })
     if (!this.track) {
       // now we will drop the track to the worker
       AVInterface.worker.postMessage(
@@ -361,7 +364,10 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
     console.log('audio track settings after', track.getSettings())
 
     // eslint-disable-next-line no-undef
-    const trackprocessor = new MediaStreamTrackProcessor({ track })
+    const trackprocessor = new MediaStreamTrackProcessor({
+      track,
+      maxBufferSize: 10
+    })
     if (!this.track) {
       // now we will drop the track to the worker
       AVInterface.worker.postMessage(
