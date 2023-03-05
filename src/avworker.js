@@ -34,44 +34,47 @@ import {
 
 class ReadableToWorkerInt {
   constructor(args) {
-    this.readable = new ReadableStream({
-      start: async (controller) => {
-        this._controller = controller
-        this.queue = []
-      },
-      pull: async (controller) => {
-        if (this._blocked) {
-          this._blocked = false
-          avworker.sendMessage({
-            task: 'readableBlock',
-            webworkid: this.webworkid,
-            block: false
-          })
-        }
-        if (this.queue.length === 0) {
-          await new Promise((resolve, reject) => {
-            this._dataWaitRes = resolve
-            this._dataWaitRej = reject
-          })
-        }
-        controller.enqueue(this.queue.shift())
-      },
-      cancel: async (reason) => {
-        if (this._dataWaitRej) {
-          const rej = this._dataWaitRej
-          delete this._dataWaitRes
-          delete this._dataWaitRej
-          rej(reason)
-        }
+    this.readable = new ReadableStream(
+      {
+        start: async (controller) => {
+          this._controller = controller
+          this.queue = []
+        },
+        pull: async (controller) => {
+          if (this._blocked) {
+            this._blocked = false
+            avworker.sendMessage({
+              task: 'readableBlock',
+              webworkid: this.webworkid,
+              block: false
+            })
+          }
+          if (this.queue.length === 0) {
+            await new Promise((resolve, reject) => {
+              this._dataWaitRes = resolve
+              this._dataWaitRej = reject
+            })
+          }
+          controller.enqueue(this.queue.shift())
+        },
+        cancel: async (reason) => {
+          if (this._dataWaitRej) {
+            const rej = this._dataWaitRej
+            delete this._dataWaitRes
+            delete this._dataWaitRej
+            rej(reason)
+          }
 
-        avworker.sendMessage({
-          task: 'readableCancel',
-          webworkid: this.webworkid,
-          reason
-        })
-        // TODO send cancel upstream
-      }
-    })
+          avworker.sendMessage({
+            task: 'readableCancel',
+            webworkid: this.webworkid,
+            reason
+          })
+          // TODO send cancel upstream
+        }
+      },
+      { highWaterMark: 2 }
+    )
     this.webworkid = args.webworkid
   }
 
@@ -83,7 +86,7 @@ class ReadableToWorkerInt {
       res()
     }
     this.queue.push(chunk)
-    if (this._controller.desiredSize < 0) {
+    if (this._controller.desiredSize <= 0) {
       avworker.sendMessage({
         task: 'readableBlock',
         webworkid: this.webworkid,

@@ -18,36 +18,60 @@
 */
 
 export class BufferGrabber extends AudioWorkletProcessor {
+  static framelength = 480
+
   process(inputs, outputs, parameters) {
     // if (!this.startnow) this.startnow = now
     // now -= this.startnow
-    const out = new Float32Array(inputs[0].length * inputs[0][0].length)
-    const input = inputs[0]
+    let srcoffset = 0
+    while (srcoffset !== inputs[0][0].length) {
+      const numberOfChannels = inputs.length
+      if (!this.curout) {
+        this.curout = new Float32Array(
+          inputs[0].length * BufferGrabber.framelength
+        )
+        this.curoutoffset = 0
+        this.curoutobj = {
+          format: 'f32-planar',
+          // eslint-disable-next-line no-undef
+          sampleRate,
+          numberOfFrames: BufferGrabber.framelength,
+          numberOfChannels,
+          // eslint-disable-next-line no-undef
+          timestamp: Math.floor(currentTime * 1000 * 1000), // should be adjusted?
+          data: this.curout
+        }
+      }
+      const input = inputs[0]
 
-    let offset = 0
-    const numberOfFrames = input[0].length
-    const numberOfChannels = input.length
+      let offset = this.curoutoffset
 
-    for (let channels = 0; channels < input.length; channels++) {
-      const src = input[channels]
-      const arrview = new Float32Array(out.buffer, offset, src.length)
-      offset += src.byteLength
-      arrview.set(src)
+      const copylength = Math.min(
+        input[0].length - srcoffset,
+        BufferGrabber.framelength - this.curoutoffset
+      )
+
+      for (let channels = 0; channels < input.length; channels++) {
+        const src = input[channels]
+        const arrview = new Float32Array(
+          this.curout.buffer,
+          offset * 4,
+          copylength
+        )
+        const srcview = new Float32Array(src.buffer, srcoffset * 4, copylength)
+        offset += BufferGrabber.framelength
+        arrview.set(srcview)
+      }
+      srcoffset += copylength
+      this.curoutoffset += copylength
+
+      if (BufferGrabber.framelength === this.curoutoffset) {
+        this.port.postMessage(this.curoutobj, [this.curout.buffer])
+        delete this.curoutobj
+        delete this.curout
+        delete this.curoutoffset
+      }
     }
-
-    this.port.postMessage(
-      {
-        format: 'f32-planar',
-        // eslint-disable-next-line no-undef
-        sampleRate,
-        numberOfFrames,
-        numberOfChannels,
-        // eslint-disable-next-line no-undef
-        timestamp: Math.floor(currentTime * 1000 * 1000),
-        data: out
-      },
-      [out.buffer]
-    )
     return true
   }
 }
