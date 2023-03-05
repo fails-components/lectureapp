@@ -17,6 +17,16 @@
 */
 
 import React, { Component } from 'react'
+import { MediaStreamTrackProcessor as MediaStreamTrackProcessorPolyfill } from './webcodecs-ponyfills.js'
+
+// install polyfills, if required
+let MediaStreamTrackProcessor
+// eslint-disable-next-line no-constant-condition
+if (!('MediaStreamTrackProcessor' in window)) {
+  MediaStreamTrackProcessor = MediaStreamTrackProcessorPolyfill
+} else {
+  MediaStreamTrackProcessor = window.MediaStreamTrackProcessor
+}
 
 // in this file we will provide the interface for the avworker
 
@@ -140,6 +150,83 @@ export class AVStream {
   }
 }
 
+// for non-chromium platforms
+class ReadableToWorker {
+  constructor() {
+    this.writable = new WritableStream({
+      start: async (controller) => {
+        this._controller = controller
+        this.webworkid = AVInterface.interf.getNewId()
+        AVInterface.interf.registerForFinal(this, this.webworkid)
+        AVInterface.worker.postMessage({
+          task: 'ReadableToWorkerCreate',
+          webworkid: this.webworkid
+        })
+      },
+      write: async (chunk, controller) => {
+        // TODO block writing
+        AVInterface.worker.postMessage(
+          {
+            task: 'ReadableToWorkerWrite',
+            webworkid: this.webworkid,
+            chunk
+          },
+          [chunk]
+        )
+        if (this._blocked) {
+          await new Promise((resolve) => {
+            this._blockedres = resolve
+          })
+        }
+      },
+      close: async (controller) => {
+        AVInterface.worker.postMessage({
+          task: 'ReadableToWorkerClose',
+          webworkid: this.webworkid
+        })
+      },
+      abort: async (reason) => {
+        AVInterface.worker.postMessage({
+          task: 'ReadableToWorkerAbort',
+          webworkid: this.webworkid,
+          reason
+        })
+      }
+    })
+  }
+
+  close() {
+    AVInterface.worker.postMessage({
+      task: 'close',
+      webworkid: this.webworkid
+    })
+    if (this._blockedres) {
+      this._blockedres()
+      delete this._blockedres
+    }
+  }
+
+  extCancel({ reason }) {
+    this._controller.error(reason)
+    if (this._blockedres) {
+      this._blockedres()
+      delete this._blockedres
+    }
+  }
+
+  extBlocked(blocked) {
+    if (blocked) {
+      this._blocked = true
+    } else {
+      this._blocked = false
+      if (this._blockedres) {
+        this._blockedres()
+        delete this._blockedres
+      }
+    }
+  }
+}
+
 export class AVDeviceInputStream extends AVStream {
   constructor(args) {
     super(args)
@@ -240,24 +327,34 @@ export class AVCameraStream extends AVDeviceInputStream {
       track,
       maxBufferSize: 10
     })
+    let readable = trackprocessor.readable
+    let transfer = [trackprocessor.readable]
+    if (trackprocessor.isPolyfill) {
+      const readableToW = new ReadableToWorker()
+      trackprocessor.readable.pipeTo(readableToW.writable).catch((error) => {
+        console.log('Readable to worker error:', error)
+      })
+      readable = { webworkid: readableToW.webworkid }
+      transfer = []
+    }
     if (!this.track) {
       // now we will drop the track to the worker
       AVInterface.worker.postMessage(
         {
           task: 'openVideoCamera',
           webworkid: this.webworkid,
-          readable: trackprocessor.readable
+          readable
         },
-        [trackprocessor.readable]
+        transfer
       )
     } else {
       AVInterface.worker.postMessage(
         {
           task: 'switchVideoCamera',
           webworkid: this.webworkid,
-          readable: trackprocessor.readable
+          readable
         },
-        [trackprocessor.readable]
+        transfer
       )
     }
 
@@ -368,15 +465,26 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
       track,
       maxBufferSize: 10
     })
+    let readable = trackprocessor.readable
+    let transfer = [trackprocessor.readable]
+    if (trackprocessor.isPolyfill) {
+      const readableToW = new ReadableToWorker()
+      console.log('trackprocessor', trackprocessor.readable)
+      trackprocessor.readable.pipeTo(readableToW.writable).catch((error) => {
+        console.log('Readable to worker error:', error)
+      })
+      readable = { webworkid: readableToW.webworkid }
+      transfer = []
+    }
     if (!this.track) {
       // now we will drop the track to the worker
       AVInterface.worker.postMessage(
         {
           task: 'openAudioMicrophone',
           webworkid: this.webworkid,
-          readable: trackprocessor.readable
+          readable
         },
-        [trackprocessor.readable]
+        transfer
       )
     } else {
       AVInterface.worker.postMessage(
@@ -385,7 +493,7 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
           webworkid: this.webworkid,
           readable: trackprocessor.readable
         },
-        [trackprocessor.readable]
+        transfer
       )
     }
     const ac = AVInterface.getInterface().getAudioContext()
@@ -603,6 +711,28 @@ export class AVInterface {
           })
         }
         break
+      case 'readableCancel':
+        {
+          const id = event.data.webworkid
+          if (!id) {
+            console.log('readableCancel', event.data)
+            throw new Error('readableCancel, no id passed')
+          }
+          const obj = this.objects[event.data.webworkid].deref()
+          obj.extCancel({ reason: event.data.reason })
+        }
+        break
+      case 'readableBlock':
+        {
+          const id = event.data.webworkid
+          if (!id) {
+            console.log('readableBlock', event.data)
+            throw new Error('readableBlock, no id passed')
+          }
+          const obj = this.objects[event.data.webworkid].deref()
+          obj.extBlocked({ reason: event.data.block })
+        }
+        break
       default:
         console.log('unhandled onMessage', event)
         break
@@ -619,15 +749,17 @@ export class AVInterface {
     return newid
   }
 
-  async finalizeCallback(webworkid) {
+  finalizeCallback(webworkid) {
     AVInterface.worker.postMessage({
       task: 'cleanUpObject',
       webworkid
     })
     delete this.objects[webworkid]
     if (this.audiocontext) {
-      this.audiocontext.close()
-      await delete this.audiocontext
+      this.audiocontext
+        .close()
+        .catch((error) => console.log('error close audiocontext', error))
+      delete this.audiocontext
     }
   }
 

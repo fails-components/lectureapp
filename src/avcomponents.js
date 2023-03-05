@@ -187,6 +187,7 @@ export class AVVideoEncoder extends AVEncoder {
       chunk.codedHeight !== this.cur.height ||
       chunk.codedWidth !== this.cur.width
     ) {
+      console.log('DEBUG codecOnwrite', chunk)
       this.curcodec = 'avc1.42402A'
       this.codec.configure({
         codec: this.curcodec /* 'avc1.420034' */, // aka h264, maybe add profile
@@ -284,7 +285,7 @@ export class AVDecoder extends AVCodec {
   }
 
   codecOnWrite(chunk) {
-    if (!chunk) console.log('no chunk to codecOnWrite Videodecoder')
+    if (!chunk) console.log('no chunk to codecOnWrite Decoder')
     if (!chunk.metadata) console.log('debug metadata', chunk)
     if (
       !this.configured &&
