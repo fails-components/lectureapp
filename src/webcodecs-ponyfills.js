@@ -72,6 +72,32 @@ export class MediaStreamTrackProcessor {
     })
   }
 
+  _requestVideoCallback(videoCallback) {
+    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+      this.rvfcHandle = this.videoele.requestVideoFrameCallback(videoCallback)
+    } else {
+      // assumes getVideoPlaybackquality
+      const oldqual = this.videoele.getVideoPlaybackQuality()
+      const animHelper = (now) => {
+        const newqual = this.videoele.getVideoPlaybackQuality()
+        if (
+          newqual.totalVideoFrames - newqual.droppedVideoFrames >
+          oldqual.totalVideoFrames - oldqual.droppedVideoFrames
+        ) {
+          // done submit
+          videoCallback(now, {
+            presentationTime: now,
+            width: this.videoele.videoWidth,
+            height: this.videoele.videoHeight
+          })
+        } else {
+          this.rvfcHandle = requestAnimationFrame(animHelper)
+        }
+      }
+      this.rvfcHandle = requestAnimationFrame(animHelper)
+    }
+  }
+
   _setupVideo() {
     const videoCallback = (now, metadata) => {
       if (
@@ -79,12 +105,7 @@ export class MediaStreamTrackProcessor {
         this.streamController.desiredSize >= 0
       ) {
         this._enqueueVideo({ now, metadata })
-        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-          this.rvfcHandle =
-            this.videoele.requestVideoFrameCallback(videoCallback)
-        } else {
-          throw new Error('Unsupported no requestVideoFrameCallback')
-        }
+        this._requestVideoCallback(videoCallback)
       } else delete this.rvfcHandle
     }
     this.readable = new ReadableStream({
@@ -94,19 +115,11 @@ export class MediaStreamTrackProcessor {
         this.videoele.srcObject = new MediaStream([this._track]) // actually this shold be a stream not a track
         // TODO Capturing from video element, with requestVideoFrame or similar or polyfill
 
-        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-          // The API is supported!
-          this.rvfcHandle =
-            this.videoele.requestVideoFrameCallback(videoCallback)
-        } else {
-          // TODO implement polyfill
-          throw new Error('Unsupported no requestVideoFrameCallback')
-        }
+        this._requestVideoCallback(videoCallback)
         await this.videoele.play()
       },
       pull: async (controller) => {
-        if (!this.rvfcHandle)
-          this.videoele.requestVideoFrameCallback(videoCallback)
+        if (!this.rvfcHandle) this._requestVideoCallback(videoCallback)
       },
       cancel: async (reason) => {
         await this.videoele.pause()
