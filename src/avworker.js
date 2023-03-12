@@ -31,80 +31,7 @@ import {
   AVOneToManyCopy,
   AVOneFrameToManyScaler
 } from './avcomponents'
-
-class ReadableToWorkerInt {
-  constructor(args) {
-    this.readable = new ReadableStream(
-      {
-        start: async (controller) => {
-          this._controller = controller
-          this.queue = []
-        },
-        pull: async (controller) => {
-          if (this._blocked) {
-            this._blocked = false
-            avworker.sendMessage({
-              task: 'readableBlock',
-              webworkid: this.webworkid,
-              block: false
-            })
-          }
-          if (this.queue.length === 0) {
-            await new Promise((resolve, reject) => {
-              this._dataWaitRes = resolve
-              this._dataWaitRej = reject
-            })
-          }
-          controller.enqueue(this.queue.shift())
-        },
-        cancel: async (reason) => {
-          if (this._dataWaitRej) {
-            const rej = this._dataWaitRej
-            delete this._dataWaitRes
-            delete this._dataWaitRej
-            rej(reason)
-          }
-
-          avworker.sendMessage({
-            task: 'readableCancel',
-            webworkid: this.webworkid,
-            reason
-          })
-          // TODO send cancel upstream
-        }
-      },
-      { highWaterMark: 2 }
-    )
-    this.webworkid = args.webworkid
-  }
-
-  streamWrite(chunk) {
-    if (this._dataWaitRes) {
-      const res = this._dataWaitRes
-      delete this._dataWaitRes
-      delete this._dataWaitRej
-      res()
-    }
-    this.queue.push(chunk)
-    if (this._controller.desiredSize <= 0) {
-      avworker.sendMessage({
-        task: 'readableBlock',
-        webworkid: this.webworkid,
-        block: true
-      })
-      this._blocked = true
-    }
-    // TODO signal if stream is full?, or will the limited resources help
-  }
-
-  streamClose() {
-    this._controller.close()
-  }
-
-  streamAbort(reason) {
-    this._controller.error(new Error(reason))
-  }
-}
+import { receiveReadableStream } from './transferable-stream-of-transferables'
 
 class AVVideoRenderInt {
   constructor(args) {
@@ -1696,26 +1623,18 @@ class AVWorker {
     switch (task) {
       case 'openVideoCamera':
         {
-          let inputstream = event.data.readable
-          if (inputstream.webworkid) {
-            inputstream = this.objects[inputstream.webworkid].readable
-          }
           const newobj = new AVVideoInputProcessor({
             webworkid: event.data.webworkid,
-            inputstream
+            inputstream: receiveReadableStream(event.data.readable)
           })
           this.objects[event.data.webworkid] = newobj
         }
         break
       case 'openAudioMicrophone':
         {
-          let inputstream = event.data.readable
-          if (inputstream.webworkid) {
-            inputstream = this.objects[inputstream.webworkid].readable
-          }
           const newobj = new AVAudioInputProcessor({
             webworkid: event.data.webworkid,
-            inputstream
+            inputstream: receiveReadableStream(event.data.readable)
           })
           this.objects[event.data.webworkid] = newobj
         }
@@ -1737,37 +1656,11 @@ class AVWorker {
           this.objects[event.data.webworkid] = newobj
         }
         break
-      case 'ReadableToWorkerCreate':
-        {
-          const newobj = new ReadableToWorkerInt({
-            webworkid: event.data.webworkid
-          })
-          this.objects[event.data.webworkid] = newobj
-        }
-        break
-      case 'ReadableToWorkerWrite':
-        {
-          const object = this.objects[event.data.webworkid]
-          object.streamWrite(event.data.chunk)
-        }
-        break
-      case 'ReadableToWorkerClose':
-        {
-          const object = this.objects[event.data.webworkid]
-          object.streamClose()
-        }
-        break
-      case 'ReadableToWorkerAbort':
-        {
-          const object = this.objects[event.data.webworkid]
-          object.streamAbort(event.data.reason)
-        }
-        break
       case 'switchVideoCamera':
         {
           const object = this.objects[event.data.webworkid]
           object.switchVideoCamera({
-            inputstream: event.data.readable
+            inputstream: receiveReadableStream(event.data.readable)
           })
         }
         break
@@ -1775,7 +1668,7 @@ class AVWorker {
         {
           const object = this.objects[event.data.webworkid]
           object.switchAudioMicrophone({
-            inputstream: event.data.readable
+            inputstream: receiveReadableStream(event.data.readable)
           })
         }
         break
