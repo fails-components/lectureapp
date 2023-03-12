@@ -548,6 +548,7 @@ export class AVRenderStream extends AVInputStream {
 export class AVInterface {
   static worker = new Worker(new URL('./avworker.js', import.meta.url))
   static interf = null
+  static mediadevicesupported = false
 
   constructor(
     args // do not call directly
@@ -561,8 +562,6 @@ export class AVInterface {
 
     this.finalizeCallback = this.finalizeCallback.bind(this)
     this.finalization = new FinalizationRegistry(this.finalizeCallback)
-
-    this.mediadevicesupported = false
   }
 
   static createAVInterface(args) {
@@ -599,27 +598,48 @@ export class AVInterface {
     return this.audiocontext
   }
 
-  queryMediaSupported() {
+  static queryMediaSupported() {
+    const supported = {
+      videoin: true,
+      videoout: true,
+      audioin: true,
+      audioout: true
+    }
+    AVInterface.mediadevicesupported = true
     // here we check if media capabilites are here
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
       console.log('enumerateDevices() not supported.')
-      return false
+      supported.audioin = false
+      supported.videoin = false
+      AVInterface.mediadevicesupported = false
     }
     if (!navigator.mediaDevices.getUserMedia) {
       console.log('getUserMedia() not supported.')
-      return false
+      supported.audioin = false
+      supported.videoin = false
+      AVInterface.mediadevicesupported = false
     }
-    if (
-      !('MediaStreamTrackProcessor' in window) ||
-      !('MediaStreamTrackGenerator' in window)
-    ) {
-      console.log(
-        'MediaStreamTrackProcessor or MediaStreamTracGenerator unsupported!'
-      )
-      return false
+    if (!('MediaStreamTrackGenerator' in globalThis)) {
+      console.log('MediaStreamTrackGenerator unsupported!')
+      supported.audioout = false
     }
-    this.mediadevicesupported = true
-    return true
+    if (!('AudioDecoder' in globalThis)) {
+      console.log('AudioDecoder unsupported!')
+      supported.audioout = false
+    }
+    if (!('VideoDecoder' in globalThis)) {
+      console.log('VideoDecoder unsupported!')
+      supported.videoout = false
+    }
+    if (!('AudioEncoder' in globalThis)) {
+      console.log('AudioEncoder unsupported!')
+      supported.audioin = false
+    }
+    if (!('VideoEncoder' in globalThis)) {
+      console.log('VideoEncoder unsupported!')
+      supported.videoin = false
+    }
+    return supported
   }
 
   onMessage(event) {
@@ -704,7 +724,7 @@ export class AVInterface {
   }
 
   async getAVDevices() {
-    if (!this.mediadevicesupported) return null
+    if (!AVInterface.mediadevicesupported) return null
     if (!this.devices) {
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
@@ -717,7 +737,7 @@ export class AVInterface {
   }
 
   async openVideoCamera(args) {
-    if (!this.mediadevicesupported) return
+    if (!AVInterface.mediadevicesupported) return
     try {
       if (!this.devices) await this.getAVDevices()
       const oldid = localStorage.getItem('failsvideodeviceid')
@@ -744,7 +764,7 @@ export class AVInterface {
   }
 
   async openAudioMicrophone(args) {
-    if (!this.mediadevicesupported) return
+    if (!AVInterface.mediadevicesupported) return
     try {
       if (!this.devices) await this.getAVDevices()
       const oldid = localStorage.getItem('failsaduiodeviceid')

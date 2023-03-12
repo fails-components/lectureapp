@@ -228,7 +228,13 @@ export class VideoControl extends Component {
       micmuted: true,
       videomuted: true,
       cameramuted: true,
-      tvoff: true
+      tvoff: true,
+      supportedMedia: {
+        videoin: false,
+        videoout: false,
+        audioin: false,
+        audioout: false
+      }
     }
     this.devicesChanged = this.devicesChanged.bind(this)
     this.vophid = true
@@ -298,6 +304,7 @@ export class VideoControl extends Component {
   componentDidMount() {
     navigator.mediaDevices.ondevicechange = this.devicesChanged
     this.syncSpkMuted()
+    this.setState({ supportedMedia: AVInterface.queryMediaSupported() })
   }
 
   componentWillUnmount() {
@@ -358,7 +365,8 @@ export class VideoControl extends Component {
     try {
       const avinterf = AVInterface.getInterface()
       console.log('before openVideoCamera')
-      if (!avinterf.queryMediaSupported()) {
+      const supported = AVInterface.queryMediaSupported()
+      if (!supported.videoin) {
         return null
       }
       const cameraobj = avinterf.openVideoCamera()
@@ -383,7 +391,8 @@ export class VideoControl extends Component {
     try {
       const avinterf = AVInterface.getInterface()
       console.log('before openAudioMicrophone')
-      if (!avinterf.queryMediaSupported()) {
+      const supported = AVInterface.queryMediaSupported()
+      if (!supported.audioin) {
         return null
       }
       const microphoneobj = avinterf.openAudioMicrophone()
@@ -441,68 +450,77 @@ export class VideoControl extends Component {
 
     const selbuttonCls = 'p-button-primary p-button-rounded p-m-2'
     const deselbuttonCls = 'p-button-secondary p-button-rounded p-m-2'
+    const suppMedia = this.state.supportedMedia
     const buttonbar = (
       <React.Fragment>
-        <Button
-          icon={
-            <FontAwesomeIcon
-              icon={this.state.cameramuted ? faVideoSlash : faVideo}
-            />
-          }
-          id='bt-video'
-          className={this.state.cameramuted ? deselbuttonCls : selbuttonCls}
-          onClick={(e) => {
-            if (this.vophid) {
-              this.videoop.show(e)
-              if (this.videoopclean) clearTimeout(this.videoopclean)
-              this.videoopclean = setTimeout(() => {
-                clearTimeout(this.videoopclean)
-                if (!this.vophid) this.videoop.hide(e)
-              }, 5000)
+        {suppMedia.videoin && (
+          <Button
+            icon={
+              <FontAwesomeIcon
+                icon={this.state.cameramuted ? faVideoSlash : faVideo}
+              />
             }
-            if (!this.vophid || this.state.cameramuted) this.camToggle()
-          }}
-        ></Button>
-        <Button
-          icon={<FontAwesomeIcon icon={faTv} />}
-          id='bt-tv'
-          className={this.state.tvoff ? deselbuttonCls : selbuttonCls}
-          onClick={(e) => {
-            this.tvToggle()
-          }}
-        ></Button>
-        <Button
-          icon={
-            <FontAwesomeIcon
-              icon={
-                this.state.micmuted ? faMicrophoneAltSlash : faMicrophoneAlt
+            id='bt-video'
+            className={this.state.cameramuted ? deselbuttonCls : selbuttonCls}
+            onClick={(e) => {
+              if (this.vophid) {
+                this.videoop.show(e)
+                if (this.videoopclean) clearTimeout(this.videoopclean)
+                this.videoopclean = setTimeout(() => {
+                  clearTimeout(this.videoopclean)
+                  if (!this.vophid) this.videoop.hide(e)
+                }, 5000)
               }
-            />
-          }
-          id='bt-audio'
-          className={this.state.micmuted ? deselbuttonCls : selbuttonCls}
-          onClick={(e) => {
-            if (this.aophid) {
-              this.audioop.show(e)
-              if (this.audioopclean) clearTimeout(this.audioopclean)
-              this.audioopclean = setTimeout(() => {
-                clearTimeout(this.audioopclean)
-                if (!this.aophid) this.audioop.hide(e)
-              }, 5000)
+              if (!this.vophid || this.state.cameramuted) this.camToggle()
+            }}
+          ></Button>
+        )}
+        {suppMedia.videoout && (
+          <Button
+            icon={<FontAwesomeIcon icon={faTv} />}
+            id='bt-tv'
+            className={this.state.tvoff ? deselbuttonCls : selbuttonCls}
+            onClick={(e) => {
+              this.tvToggle()
+            }}
+          ></Button>
+        )}
+        {suppMedia.audioin && (
+          <Button
+            icon={
+              <FontAwesomeIcon
+                icon={
+                  this.state.micmuted ? faMicrophoneAltSlash : faMicrophoneAlt
+                }
+              />
             }
-            if (!this.aophid || this.state.micmuted) this.micToggle()
-          }}
-        ></Button>
-        <Button
-          icon={
-            <FontAwesomeIcon
-              icon={this.state.spkmuted ? faVolumeXmark : faVolumeHigh}
-            />
-          }
-          id='bt-audio'
-          className={this.state.spkmuted ? deselbuttonCls : selbuttonCls}
-          onClick={(e) => this.speakerToggle()}
-        ></Button>
+            id='bt-audio'
+            className={this.state.micmuted ? deselbuttonCls : selbuttonCls}
+            onClick={(e) => {
+              if (this.aophid) {
+                this.audioop.show(e)
+                if (this.audioopclean) clearTimeout(this.audioopclean)
+                this.audioopclean = setTimeout(() => {
+                  clearTimeout(this.audioopclean)
+                  if (!this.aophid) this.audioop.hide(e)
+                }, 5000)
+              }
+              if (!this.aophid || this.state.micmuted) this.micToggle()
+            }}
+          ></Button>
+        )}
+        {suppMedia.audioout && (
+          <Button
+            icon={
+              <FontAwesomeIcon
+                icon={this.state.spkmuted ? faVolumeXmark : faVolumeHigh}
+              />
+            }
+            id='bt-audio'
+            className={this.state.spkmuted ? deselbuttonCls : selbuttonCls}
+            onClick={(e) => this.speakerToggle()}
+          ></Button>
+        )}
       </React.Fragment>
     )
     return (
@@ -518,10 +536,20 @@ export class VideoControl extends Component {
                 width={16}
               ></AVVideoRender>
             )) ||
-              buttonbar}
+              ((suppMedia.videoout ||
+                suppMedia.videoin ||
+                suppMedia.audioin ||
+                suppMedia.audioout) &&
+                buttonbar) || (
+                <React.Fragment> Unsupported Browser! </React.Fragment>
+              )}
           </div>
         </div>
-        {!this.state.tvoff && <div className='buttonbar'>{buttonbar}</div>}
+        {!this.state.tvoff &&
+          (suppMedia.videoout ||
+            suppMedia.videoin ||
+            suppMedia.audioin ||
+            suppMedia.audioout) && <div className='buttonbar'>{buttonbar}</div>}
         <OverlayPanel
           ref={(el) => (this.videoop = el)}
           onShow={() => (this.vophid = false)}
