@@ -1453,9 +1453,12 @@ export class FailsBoard extends FailsBasis {
   pollTemplate(item) {
     console.log('itemlog', item)
     let childlist = []
-    if (item.children) childlist = item.children.map((el) => <li>{el.name}</li>)
+    if (item.children)
+      childlist = item.children.map((el, ind) => (
+        <li key={item.id + ind}>{el.name}</li>
+      ))
     return (
-      <div>
+      <div key={item.id}>
         <h3> {item.name + (item.multi ? ' (multi)' : ' (single)')} </h3>
         <ol>{childlist}</ol>
       </div>
