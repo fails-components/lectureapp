@@ -2165,10 +2165,7 @@ export class FailsNotes extends FailsBasis {
 
     notessocket.on('connect', (data) => {
       // todo imform size
-
       console.log('notessocket connect', data)
-
-      this.scheduleReauthor()
     })
 
     notessocket.on('disconnect', (data) => {
@@ -2422,6 +2419,18 @@ export class FailsNotes extends FailsBasis {
           aria-haspopup
           aria-controls='overlay_panel'
         />
+        {!this.state.avinterfaceStarted && (
+          <Button
+            icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+            tooltip='Startup audio/video broadcast'
+            key={17}
+            tooltipOptions={ttopts}
+            onClick={(e) => {
+              this.startUpAVinterface()
+            }}
+            className='p-button-raised p-button-rounded p-m-2'
+          />
+        )}
         <Button
           icon={<FontAwesomeIcon icon={faFilePen} />}
           className={
@@ -2574,9 +2583,37 @@ export class FailsNotes extends FailsBasis {
           </a>{' '}
           <br /> <br />
           Build upon the shoulders of giants, see{' '}
-          <a href='/static/oss'> OSS attribution and licensing.</a>
-        </OverlayPanel>
+          <a href='/static/oss'> OSS attribution and licensing.</a> <br />
+          {this.state.identobj?.masterdigest && (
+            <React.Fragment>
+              <h4> Masterkey for E2E encryption:</h4>
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontVariantNumeric: 'slashed-zero',
 
+                  maxWidth: '20vw',
+                  display: 'block'
+                }}
+              >
+                {this.state.identobj?.masterdigest}
+              </span>
+              <br />
+              Compare these numbers to verify E2E encryption.
+            </React.Fragment>
+          )}
+        </OverlayPanel>
+        {this.state.avinterfaceStarted && (
+          <FloatingVideo ref={this.floatvideo}>
+            <VideoControl
+              videoid={this.state.dispvideo}
+              audioids={this.state.listaudios}
+              id={this.state.id}
+              speakerset={this.speakerset}
+              receiveOnly={true}
+            ></VideoControl>
+          </FloatingVideo>
+        )}
         <NoteScreenBase
           isnotepad={false}
           notesmode={this.state.notesmode}
