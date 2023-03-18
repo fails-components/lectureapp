@@ -274,7 +274,7 @@ export class VideoControl extends Component {
       this.microphoneStart()
         .then((mic) => {
           mic.muteOff()
-          this.setState({ micamuted: false })
+          this.setState({ micmuted: false })
         })
         .catch((error) => console.log('Problem with microphone start', error))
     }
