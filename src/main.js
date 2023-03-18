@@ -37,7 +37,12 @@ import { Chart } from 'primereact/chart'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faDesktop, faBars, faFilePen } from '@fortawesome/free-solid-svg-icons'
+import {
+  faDesktop,
+  faBars,
+  faFilePen,
+  faTowerBroadcast
+} from '@fortawesome/free-solid-svg-icons'
 import failsLogo from './logo/logo2.svg'
 import failsLogoLong from './logo/logo1.svg'
 import failsLogoExp from './logo/logo2exp.svg'
@@ -60,7 +65,6 @@ import {
 } from './icons/icons.js'
 import { NoteScreenBase } from './notepad.js'
 import { NoteTools } from './toolbox'
-// eslint-disable-next-line camelcase
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
@@ -69,7 +73,6 @@ import { ScreenManager } from './screenmanager'
 import { VideoControl, FloatingVideo, SpeakerSet } from './audiovideoctrl'
 import { SocketInterface } from './socketinterface'
 import { AVInterface } from './avinterface'
-// import screenfull from 'screenfull'
 
 class ChannelEdit extends Component {
   constructor(props) {
@@ -270,6 +273,8 @@ export class FailsBasis extends Component {
     this.state.screensToSel = []
     this.state.reloading = true
     this.state.identobj = { idents: [], masterdigest: 'no masterdigest' }
+    this.state.avinterfaceStarted = false
+    this.state.supportedMedia = {}
 
     this.screenm = new ScreenManager()
 
@@ -286,7 +291,6 @@ export class FailsBasis extends Component {
     const avchannel = new MessageChannel()
     this.socket.setAVChannel(avchannel.port1)
     this.avchannel = avchannel.port2
-    AVInterface.setNetworkControl(this.avchannel)
 
     this.avoffers = {
       video: {},
@@ -295,6 +299,14 @@ export class FailsBasis extends Component {
     }
 
     // TODO add purpose stuff
+  }
+
+  startUpAVinterface() {
+    if (!AVInterface.getInterface()) {
+      AVInterface.createAVInterface()
+      AVInterface.setNetworkControl(this.avchannel)
+      this.setState({ avinterfaceStarted: true })
+    }
   }
 
   setReloading(reloading) {
@@ -499,7 +511,7 @@ export class FailsBasis extends Component {
   experimental() {
     const exp = window.location.pathname.includes('experimental')
     const token = this.decodedToken()
-    console.log('token', token)
+    // console.log('token', token)
 
     if (exp && token && token.appversion === 'stable') {
       console.log(
@@ -611,6 +623,13 @@ export class FailsBasis extends Component {
         rejectClassName: 'hiddenButton'
       })
     }
+    const supportedMedia = AVInterface.queryMediaSupported()
+    this.setState({ supportedMedia })
+    this.hasMedia =
+      supportedMedia.videoin ||
+      supportedMedia.videoout ||
+      supportedMedia.audioin ||
+      supportedMedia.audioout
   }
 
   commonUnmount() {
@@ -708,7 +727,7 @@ export class FailsBasis extends Component {
 class ShortcutsMessage extends React.Component {
   constructor(args) {
     super(args)
-    this.state = {}
+    this.state = { avinterfaceStarted: false }
   }
 
   render() {
@@ -760,6 +779,26 @@ class ShortcutsMessage extends React.Component {
               ></Button>
             </div>
           </div>
+          {!(
+            this.props.parent?.state?.avinterfaceStarted ||
+            this.state.avinterfaceStarted
+          ) &&
+            this.props.hasMedia && (
+              <div className='p-grid p-align-center'>
+                <div className='p-col-9'>Start up Audio/Video broadcast:</div>
+                <div className='p-col-3'>
+                  <Button
+                    icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+                    id='bt-broadcast'
+                    className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                    onClick={(event) => {
+                      this.props.parent.startUpAVinterface()
+                      this.setState({ avinterfaceStarted: true })
+                    }}
+                  ></Button>
+                </div>
+              </div>
+            )}
           <div className='p-grid p-align-center'>
             <div className='p-col-12'>Select your wrist position:</div>
             <div className='p-col-2'>
@@ -986,16 +1025,15 @@ export class FailsBoard extends FailsBasis {
     this.initializeNotepadSocket(this.socket)
     // this.updateSizes() // no argument no effect
 
+    this.commonMount()
     if (!this.welcomeMessageSend) {
       this.toast.show({
         severity: 'info',
         sticky: true,
-        content: <ShortcutsMessage parent={this} />
+        content: <ShortcutsMessage parent={this} hasMedia={this.hasMedia} />
       })
       this.welcomeMessageSend = 1
     }
-
-    this.commonMount()
   }
 
   componentWillUnmount() {
@@ -1545,6 +1583,13 @@ export class FailsBoard extends FailsBasis {
           showscreennumber={this.state.showscreennumber}
           identobj={this.state.identobj}
           experimental={this.experimental()}
+          startUpAVBroadcast={
+            this.state.avinterfaceStarted || !this.hasMedia
+              ? undefined
+              : () => {
+                  this.startUpAVinterface()
+                }
+          }
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div
@@ -1568,14 +1613,16 @@ export class FailsBoard extends FailsBasis {
             />
           </div>
         )}
-        <FloatingVideo ref={this.floatvideo}>
-          <VideoControl
-            videoid={this.state.dispvideo}
-            audioids={this.state.listaudios}
-            id={this.state.id}
-            speakerset={this.speakerset}
-          ></VideoControl>
-        </FloatingVideo>
+        {this.state.avinterfaceStarted && (
+          <FloatingVideo ref={this.floatvideo}>
+            <VideoControl
+              videoid={this.state.dispvideo}
+              audioids={this.state.listaudios}
+              id={this.state.id}
+              speakerset={this.speakerset}
+            ></VideoControl>
+          </FloatingVideo>
+        )}
 
         <Dialog
           header='Select picture'

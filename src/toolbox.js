@@ -35,7 +35,8 @@ import {
   faLongArrowAltUp as faArrowUpLong,
   faBars,
   faAdjust,
-  faUndoAlt
+  faUndoAlt,
+  faTowerBroadcast
 } from '@fortawesome/free-solid-svg-icons'
 import {
   fiLaserpointer,
@@ -1191,6 +1192,21 @@ export class ToolBox extends ToolHandling {
     const idents = this.props.identobj.idents
     const digest = this.props.identobj.masterdigest
 
+    let avstartupbutton
+    if (this.props.startUpAVBroadcast)
+      avstartupbutton = (
+        <Button
+          icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+          tooltip='Startup audio/video broadcast'
+          tooltipOptions={ttopts}
+          key={17}
+          onClick={(e) => {
+            if (this.props.startUpAVBroadcast) this.props.startUpAVBroadcast()
+          }}
+          className={setclass}
+        />
+      )
+
     const identbutton = (
       <Button
         icon={
@@ -1393,6 +1409,7 @@ export class ToolBox extends ToolHandling {
       }
     }
     if (idents.length > 0) settingswheel.push(identbutton)
+    if (this.props.startUpAVBroadcast) settingswheel.push(avstartupbutton)
     settingswheel.push(infobutton)
 
     let setwheelpcpos = false

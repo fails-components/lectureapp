@@ -567,6 +567,7 @@ export class NoteScreenBase extends Component {
             dispres={this.dispres}
             identobj={this.props.identobj}
             experimental={this.props.experimental}
+            startUpAVBroadcast={this.props.startUpAVBroadcast}
           />
         )}
         {this.props.isnotepad && (

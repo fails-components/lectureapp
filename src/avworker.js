@@ -466,6 +466,9 @@ class AVProcessor {
   } */
 
   async getTickets({ id, dir }) {
+    if (!AVWorker.isNetworkOn()) {
+      await AVWorker.waitForNetwork()
+    }
     const queryid = this.queryid
     this.queryid++
     this.ticketProm[queryid] = new Promise((resolve, reject) => {
@@ -868,6 +871,9 @@ class AVInputProcessor extends AVProcessor {
       }
 
       const avoffersend = async () => {
+        if (!AVWorker.isNetworkOn()) {
+          await AVWorker.waitForNetwork()
+        }
         let ostatus = {}
         if (this.offerStatus) ostatus = await this.offerStatus() // a callback, that may add more infos about incoming data
         // in this way we can remove an offer
@@ -1549,12 +1555,25 @@ class AVVideoOutputProcessor extends AVOutputProcessor {
 
 class AVWorker {
   static ncPipe = null
+  static networkRes = null
+  static networkProm = new Promise((resolve, reject) => {
+    AVWorker.networkRes = resolve
+  })
+
   constructor(args) {
     this.onMessage = this.onMessage.bind(this)
     this.objects = {}
 
     this.handleNetworkControl = this.handleNetworkControl.bind(this)
     this.transportInfoProm = Promise.resolve()
+  }
+
+  static isNetworkOn() {
+    return !!AVWorker.ncPipe
+  }
+
+  static async waitForNetwork() {
+    await AVWorker.networkProm
   }
 
   handleNetworkControl(message) {
@@ -1597,6 +1616,9 @@ class AVWorker {
   }
 
   async getTransportInfo() {
+    if (!AVWorker.isNetworkOn()) {
+      await AVWorker.waitForNetwork()
+    }
     try {
       await this.transportInfoProm
     } catch (error) {
@@ -1767,6 +1789,8 @@ class AVWorker {
         if (event.data.pipe) {
           AVWorker.ncPipe = event.data.pipe
           AVWorker.ncPipe.onmessage = this.handleNetworkControl
+          if (AVWorker.networkRes) AVWorker.networkRes()
+          AVWorker.networkRes = undefined
         }
         break
       default:

@@ -27,7 +27,6 @@ import './index.css'
 
 import { FailsConfig } from '@fails-components/config'
 import { Welcome } from './welcome.js'
-import { AVInterface } from './avinterface'
 import { SocketInterface } from './socketinterface'
 
 const cfg = new FailsConfig({ react: true })
@@ -37,11 +36,6 @@ let purposesetter = (purpose) => {
 }
 
 let gotmessage = false
-
-/* debug stuff */
-
-AVInterface.createAVInterface()
-/* debug stuff end */
 
 // start the network stuff
 SocketInterface.createSocketInterface()
