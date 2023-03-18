@@ -278,6 +278,9 @@ export class FailsBasis extends Component {
 
     this.screenm = new ScreenManager()
 
+    this.floatvideo = React.createRef()
+    this.speakerset = new SpeakerSet()
+
     this.socket = SocketInterface.getInterface()
     this.socket.setServerErrorHandler(this.servererrorhandler)
     this.socket.setReloadingHandler(this.setReloading)
@@ -498,6 +501,80 @@ export class FailsBasis extends Component {
     })
   }
 
+  processAVoffers() {
+    // avoffers have updated, now we may change everything
+
+    const audio = this.avoffers.audio
+    const video = this.avoffers.video
+    const selaudio = new Set()
+
+    let selaid
+    let seldb = -70
+
+    const la = this.speakerset.getListAudio() || new Set()
+
+    for (const aid in audio) {
+      const el = audio[aid]
+      if (el.time > Date.now() - 1 * 1000 && aid !== this.state.id) {
+        if (el.db > -70 || (el.db > -80 && la.has(this.aid))) selaudio.add(aid)
+      }
+      if (el.db > seldb && aid in video && el.time > Date.now() - 10 * 1000) {
+        seldb = el.db
+        selaid = aid
+      }
+    }
+    const dp = this.state.dispvideo
+    if (dp && audio[dp] && seldb - audio[dp].db < 10) selaid = dp
+
+    if (!selaid) {
+      // no audio
+      let newvideo = false
+      if (dp) {
+        if (
+          !this.avoffers.video[dp] ||
+          this.avoffers.video[dp].time < Date.now() - 30 * 1000 ||
+          dp === this.state.id
+        ) {
+          // we need a new one this
+          newvideo = true
+        }
+      } else newvideo = true
+      if (newvideo) {
+        // select the most recent
+        let curtime = 0
+        let curid = null
+        const video = this.avoffers.video
+        for (const id in video) {
+          if (
+            video[id].time > Date.now() - 30 * 1000 &&
+            (video[id].time > curtime ||
+              (curid === this.state.id && video[id].time > curtime - 5 * 1000))
+          ) {
+            curtime = video[id].time
+            curid = id
+          }
+        }
+        if (curid) {
+          selaid = curid
+        }
+      }
+    }
+    if (selaid && selaid !== dp) {
+      console.log('change video to', selaid)
+      this.setState({ dispvideo: selaid })
+    }
+    // now figure out if the audio has changed
+    if (
+      !this.state.listaudio ||
+      selaudio.size !== la.size ||
+      [...selaudio].some((i) => !la.has(i))
+    ) {
+      this.speakerset.setAudioIds(selaudio).catch((error) => {
+        console.log('problem speakerset', error)
+      })
+    }
+  }
+
   servererrorhandler(code, message, type) {
     console.log('server error', code, message, type)
     this.toast.show({
@@ -637,6 +714,7 @@ export class FailsBasis extends Component {
       clearTimeout(this.reauthorizeTimeout)
       this.reauthorizeTime = null
     }
+    this.speakerset.close()
   }
 
   getNoteRef(ref) {
@@ -966,8 +1044,6 @@ export class FailsBoard extends FailsBasis {
     this.state.welcomeMessageSend = 0
 
     this.availscreensmenu = React.createRef()
-    this.floatvideo = React.createRef()
-    this.speakerset = new SpeakerSet()
 
     this.blockchathash = []
 
@@ -1040,7 +1116,6 @@ export class FailsBoard extends FailsBasis {
     console.log('Component unmount Failsboard')
     this.socket.disconnect()
     this.commonUnmount()
-    this.speakerset.close()
   }
 
   initializeNotepadSocket(notepadsocket) {
@@ -1127,80 +1202,6 @@ export class FailsBoard extends FailsBasis {
 
       // this.setState({ polltask: 2,  pollsel: undefined} );
     })
-  }
-
-  processAVoffers() {
-    // avoffers have updated, now we may change everything
-
-    const audio = this.avoffers.audio
-    const video = this.avoffers.video
-    const selaudio = new Set()
-
-    let selaid
-    let seldb = -70
-
-    const la = this.speakerset.getListAudio() || new Set()
-
-    for (const aid in audio) {
-      const el = audio[aid]
-      if (el.time > Date.now() - 1 * 1000 && aid !== this.state.id) {
-        if (el.db > -70 || (el.db > -80 && la.has(this.aid))) selaudio.add(aid)
-      }
-      if (el.db > seldb && aid in video && el.time > Date.now() - 10 * 1000) {
-        seldb = el.db
-        selaid = aid
-      }
-    }
-    const dp = this.state.dispvideo
-    if (dp && audio[dp] && seldb - audio[dp].db < 10) selaid = dp
-
-    if (!selaid) {
-      // no audio
-      let newvideo = false
-      if (dp) {
-        if (
-          !this.avoffers.video[dp] ||
-          this.avoffers.video[dp].time < Date.now() - 30 * 1000 ||
-          dp === this.state.id
-        ) {
-          // we need a new one this
-          newvideo = true
-        }
-      } else newvideo = true
-      if (newvideo) {
-        // select the most recent
-        let curtime = 0
-        let curid = null
-        const video = this.avoffers.video
-        for (const id in video) {
-          if (
-            video[id].time > Date.now() - 30 * 1000 &&
-            (video[id].time > curtime ||
-              (curid === this.state.id && video[id].time > curtime - 5 * 1000))
-          ) {
-            curtime = video[id].time
-            curid = id
-          }
-        }
-        if (curid) {
-          selaid = curid
-        }
-      }
-    }
-    if (selaid && selaid !== dp) {
-      console.log('change video to', selaid)
-      this.setState({ dispvideo: selaid })
-    }
-    // now figure out if the audio has changed
-    if (
-      !this.state.listaudio ||
-      selaudio.size !== la.size ||
-      [...selaudio].some((i) => !la.has(i))
-    ) {
-      this.speakerset.setAudioIds(selaudio).catch((error) => {
-        console.log('problem speakerset', error)
-      })
-    }
   }
 
   blockChat(userhash) {
@@ -1980,11 +1981,47 @@ export class FailsScreen extends FailsBasis {
         lastpointermove: Date.now()
       })
     }
+    const buttonstyle = {
+      position: 'absolute',
+      bottom: '2vh',
+      right: '2vw',
+      zIndex: 101
+    }
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top',
+      showDelay: 1000
+    }
     return (
       <div onPointerMove={pointermove}>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
         {this.screenOverlay()}
         {this.expiredTokenDialog()}
+        <OverlayPanel
+          className='tbChild'
+          ref={(el) => {
+            this.keyinfo = el
+          }}
+          style={{ maxWidth: '40vw', maxHeight: '50vh' }}
+          showCloseIcon
+        >
+          {this.state.identobj?.masterdigest && (
+            <React.Fragment>
+              <h4> Masterkey:</h4>
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontVariantNumeric: 'slashed-zero'
+                }}
+              >
+                {this.state.identobj?.masterdigest}
+              </span>
+              <br></br>
+              <br></br>
+              Compare these numbers to verify E2E encryption.
+            </React.Fragment>
+          )}
+        </OverlayPanel>
         <NoteScreenBase
           isnotepad={false}
           showscreennumber={this.state.showscreennumber}
@@ -2024,19 +2061,51 @@ export class FailsScreen extends FailsBasis {
         >
           {this.state.screenmode && this.renderScreenText()}
         </Sidebar>
+        {this.state.avinterfaceStarted && (
+          <FloatingVideo ref={this.floatvideo}>
+            <VideoControl
+              videoid={this.state.dispvideo}
+              audioids={this.state.listaudios}
+              id={this.state.id}
+              speakerset={this.speakerset}
+              receiveOnly={true}
+            ></VideoControl>
+          </FloatingVideo>
+        )}
         {this.state.lastpointermove !== 0 && (
-          <Button
-            icon='pi pi-window-maximize'
-            style={{
-              position: 'absolute',
-              top: '90vh',
-              left: '90vw',
-              zIndex: 101
-            }}
-            key={1}
-            onClick={this.toggleFullscreen}
-            className='p-button-primary p-button-raised p-button-rounded fadeMenu'
-          />
+          <div style={buttonstyle}>
+            {!this.state.avinterfaceStarted && (
+              <Button
+                icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+                tooltip='Startup audio/video broadcast'
+                key={17}
+                tooltipOptions={ttopts}
+                onClick={(e) => {
+                  this.startUpAVinterface()
+                }}
+                className='p-button-primary p-button-raised p-button-rounded fadeMenu p-m-2'
+              />
+            )}
+
+            <Button
+              icon='pi pi-key'
+              tooltip='Encryption key'
+              tooltipOptions={ttopts}
+              onClick={(e) => {
+                if (this.keyinfo) this.keyinfo.toggle(e)
+              }}
+              className='p-button-primary p-button-raised p-button-rounded fadeMenu p-m-2'
+            ></Button>
+
+            <Button
+              icon='pi pi-window-maximize'
+              key={1}
+              tooltip='Toggle fullscreen'
+              tooltipOptions={ttopts}
+              onClick={this.toggleFullscreen}
+              className='p-button-primary p-button-raised p-button-rounded fadeMenu p-m-2'
+            />
+          </div>
         )}
       </div>
     )

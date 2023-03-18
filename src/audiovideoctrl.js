@@ -453,7 +453,7 @@ export class VideoControl extends Component {
     const suppMedia = this.state.supportedMedia
     const buttonbar = (
       <React.Fragment>
-        {suppMedia.videoin && (
+        {suppMedia.videoin && !this.props.receiveOnly && (
           <Button
             icon={
               <FontAwesomeIcon
@@ -485,7 +485,7 @@ export class VideoControl extends Component {
             }}
           ></Button>
         )}
-        {suppMedia.audioin && (
+        {suppMedia.audioin && !this.props.receiveOnly && (
           <Button
             icon={
               <FontAwesomeIcon
@@ -526,9 +526,11 @@ export class VideoControl extends Component {
     return (
       <React.Fragment>
         <div className='p-d-flex'>
-          <div className='p-mr-0'>
-            <DbMeter microphone={this.state.microphone} />
-          </div>
+          {!this.props.receiveOnly && (
+            <div className='p-mr-0'>
+              <DbMeter microphone={this.state.microphone} />
+            </div>
+          )}
           <div className='p-mr-0'>
             {(!this.state.tvoff && (
               <AVVideoRender
