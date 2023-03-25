@@ -136,6 +136,10 @@ class SocketWorker {
       task: 'keychange',
       keyobject: this.keyobject
     })
+    globalThis.postMessage({
+      task: 'keychange',
+      keyobject: this.keyobject
+    })
     this.informIdentities()
   }
 

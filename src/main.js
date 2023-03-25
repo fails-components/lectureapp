@@ -41,6 +41,7 @@ import {
   faDesktop,
   faBars,
   faFilePen,
+  faLock,
   faTowerBroadcast
 } from '@fortawesome/free-solid-svg-icons'
 import failsLogo from './logo/logo2.svg'
@@ -73,6 +74,7 @@ import { ScreenManager } from './screenmanager'
 import { VideoControl, FloatingVideo, SpeakerSet } from './audiovideoctrl'
 import { SocketInterface } from './socketinterface'
 import { AVInterface } from './avinterface'
+import { KeyStore } from './keystore'
 
 class ChannelEdit extends Component {
   constructor(props) {
@@ -300,6 +302,8 @@ export class FailsBasis extends Component {
       audio: {},
       screen: {}
     }
+
+    this.keystore = KeyStore.getKeyStore()
 
     // TODO add purpose stuff
   }
@@ -963,6 +967,11 @@ class ChatMessage extends React.Component {
         displayname = data.displayname
       }
     }
+    const isEncrypted = this.props.isEncrypted
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top'
+    }
 
     const retobj = (
       <React.Fragment>
@@ -980,7 +989,8 @@ class ChatMessage extends React.Component {
               />
             </div>
           )}
-          {this.props.latex} <br></br>
+          {this.props.latex}
+          <br></br>
           <Button
             icon='pi pi-ban'
             className='p-button-danger p-button-outlined p-button-rounded p-m-2'
@@ -1019,6 +1029,14 @@ class ChatMessage extends React.Component {
               })
             }}
           />
+          {isEncrypted && (
+            <Button
+              icon={<FontAwesomeIcon icon={faLock} />}
+              className='p-button-message p-button-outlined p-button-rounded p-m-2'
+              tooltip='Message was E2E encrypted!'
+              tooltipOptions={ttopts}
+            />
+          )}
         </div>
       </React.Fragment>
     )
@@ -1149,18 +1167,40 @@ export class FailsBoard extends FailsBasis {
       this.setState({ id: this.socket.id })
     })
 
-    notepadsocket.on('chatquestion', (data) => {
-      console.log('Incoming chat', data)
-      const retobj = (
-        <ChatMessage
-          data={data}
-          blockChat={() => this.blockChat(data.userhash)}
-          latex={this.convertToLatex(data.text)}
-        />
-      )
-      if (this.blockchathash.indexOf(data.userhash) === -1) {
-        this.toast.show({ severity: 'info', content: retobj, sticky: true })
-      } else console.log('chat had been blocked')
+    notepadsocket.on('chatquestion', async (data) => {
+      try {
+        console.log('Incoming chat', data)
+        let { text, userhash, encData, iv, keyindex } = data
+        let isEncrypted = false
+
+        if (this.blockchathash.indexOf(userhash) === -1) {
+          if ((text === 'Encrypted' && encData, iv, keyindex)) {
+            const decoder = new TextDecoder()
+            const key = await this.keystore.getKey(keyindex)
+            const decdata = await globalThis.crypto.subtle.decrypt(
+              {
+                name: 'AES-GCM',
+                iv
+              },
+              key.e2e,
+              encData
+            )
+            text = decoder.decode(decdata)
+            isEncrypted = true
+          }
+          const retobj = (
+            <ChatMessage
+              data={data}
+              blockChat={() => this.blockChat(userhash)}
+              latex={this.convertToLatex(text)}
+              isEncrypted={isEncrypted}
+            />
+          )
+          this.toast.show({ severity: 'info', content: retobj, sticky: true })
+        } else console.log('chat had been blocked')
+      } catch (error) {
+        console.log('Error in chatquestion', error)
+      }
     })
 
     notepadsocket.on('startPoll', (data) => {
@@ -2229,8 +2269,32 @@ export class FailsNotes extends FailsBasis {
   }
 
   sendChatMessage() {
-    console.log('Send chat message', this.state.chattext)
-    this.netSendSocket('chatquestion', { text: this.state.chattext })
+    const chattext = this.state.chattext
+    const encoder = new TextEncoder()
+    const afunc = async () => {
+      console.log('Send chat message', chattext)
+      const iv = globalThis.crypto.getRandomValues(new Uint8Array(12))
+      const keyindex = await this.keystore.getCurKeyId()
+      const key = await this.keystore.getKey(keyindex)
+      const encData = await globalThis.crypto.subtle.encrypt(
+        {
+          name: 'AES-GCM',
+          iv
+        },
+        key.e2e,
+        encoder.encode(chattext)
+      )
+
+      this.netSendSocket('chatquestion', {
+        text: 'Encrypted',
+        encData,
+        keyindex,
+        iv
+      })
+    }
+    afunc().catch((error) => {
+      console.log('Problem in sendChatMessage', error)
+    })
 
     this.setState({ chattext: '' })
     this.chatop.hide()

@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+import { KeyStore } from './keystore'
 export class SocketInterface {
   static worker = new Worker(new URL('./socketworker.js', import.meta.url))
   static interf = null
@@ -121,6 +122,12 @@ export class SocketInterface {
       case 'informIdentities':
         if (event.data.idents && this.informIdentshandler)
           this.informIdentshandler(event.data)
+        break
+      case 'keychange':
+        {
+          const keyobj = event.data.keyobject
+          KeyStore.getKeyStore().incomingKey(keyobj)
+        }
         break
       default:
         console.log('unhandled onMessage', event)
