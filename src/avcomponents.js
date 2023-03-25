@@ -631,8 +631,8 @@ export class AVEncrypt extends AVTransformStream {
     // ok chunk is a video frame
 
     // 96 bits iv as recommend by specification
-    // eslint-disable-next-line no-restricted-globals
-    const iv = self.crypto.getRandomValues(new Uint8Array(12))
+
+    const iv = globalThis.crypto.getRandomValues(new Uint8Array(12))
 
     const plaindata = new ArrayBuffer(chunk.frame.byteLength)
     chunk.frame.copyTo(plaindata)
@@ -648,8 +648,7 @@ export class AVEncrypt extends AVTransformStream {
 
     const rec = false // fix e2e to true for now
 
-    // eslint-disable-next-line no-restricted-globals
-    const encdata = self.crypto.subtle.encrypt(
+    const encdata = globalThis.crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
         iv
@@ -681,8 +680,7 @@ export class AVEncrypt extends AVTransformStream {
   }
 
   static generateKey() {
-    // eslint-disable-next-line no-restricted-globals
-    return self.crypto.subtle.generateKey(
+    return globalThis.crypto.subtle.generateKey(
       {
         name: 'AES-GCM',
         length: 256
@@ -719,8 +717,8 @@ export class AVDecrypt extends AVTransformStream {
         console.log('AVDecrypt getKey after', chunk.keyindex, this.keyindex)
         this.keyindex = chunk.keyindex
       }
-      // eslint-disable-next-line no-restricted-globals
-      const decdata = self.crypto.subtle.decrypt(
+
+      const decdata = globalThis.crypto.subtle.decrypt(
         {
           name: 'AES-GCM',
           iv: chunk.iv

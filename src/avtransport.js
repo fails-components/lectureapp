@@ -55,8 +55,7 @@ export class AVTransport {
     try {
       console.log('startconnection')
       let forcewebsocket = false // for debugging set to true
-      // eslint-disable-next-line no-restricted-globals
-      if (typeof self.WebTransport === 'undefined') {
+      if (typeof globalThis.WebTransport === 'undefined') {
         console.log('Browser has no WebTransport support fall back to ponyfill')
         forcewebsocket = true
       }

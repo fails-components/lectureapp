@@ -1611,8 +1611,7 @@ class AVWorker {
   }
 
   sendMessage(message) {
-    // eslint-disable-next-line no-restricted-globals
-    self.postMessage(message)
+    globalThis.postMessage(message)
   }
 
   async getTransportInfo() {
@@ -1810,6 +1809,6 @@ new AVTransport({
 }).startConnection()
 
 avworker = new AVWorker()
-// eslint-disable-next-line no-restricted-globals
-self.addEventListener('message', avworker.onMessage)
+
+globalThis.addEventListener('message', avworker.onMessage)
 console.log('AVWorker started')

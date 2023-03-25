@@ -40,7 +40,7 @@ class SocketWorker {
     this.periodicStatusCheck = this.periodicStatusCheck.bind(this)
 
     // key generation
-    // eslint-disable-next-line no-restricted-globals
+
     this.cryptKeyPair = crypto.subtle.generateKey(
       {
         name: 'RSA-OAEP',
@@ -52,7 +52,6 @@ class SocketWorker {
       ['encrypt', 'decrypt']
     )
 
-    // eslint-disable-next-line no-restricted-globals
     this.signKeyPair = crypto.subtle.generateKey(
       {
         name: 'ECDSA',
@@ -160,8 +159,7 @@ class SocketWorker {
         .map((el) => String(el).padStart(6, '0'))
         .join(' ')
 
-    // eslint-disable-next-line no-restricted-globals
-    self.postMessage({
+    globalThis.postMessage({
       task: 'informIdentities',
       idents,
       masterdigest
@@ -180,8 +178,7 @@ class SocketWorker {
         tosend = { ...this.keyobject.sendKO }
 
       if (tosend.keyRec) {
-        // eslint-disable-next-line no-restricted-globals
-        tosend.keyRec = self.crypto.subtle.encrypt(
+        tosend.keyRec = globalThis.crypto.subtle.encrypt(
           {
             name: 'RSA-OAEP'
           },
@@ -190,8 +187,7 @@ class SocketWorker {
         )
       }
       if (tosend.keyE2E) {
-        // eslint-disable-next-line no-restricted-globals
-        tosend.keyE2E = self.crypto.subtle.encrypt(
+        tosend.keyE2E = globalThis.crypto.subtle.encrypt(
           {
             name: 'RSA-OAEP'
           },
@@ -344,14 +340,14 @@ class SocketWorker {
     console.log('socket connect notepad')
     if (this.decodedToken().notepadhandler) {
       let notepadhandler = this.decodedToken().notepadhandler
-      // eslint-disable-next-line no-restricted-globals
-      const myself = self
       if (notepadhandler === '/')
         notepadhandler =
-          myself.location.protocol +
+          globalThis.location.protocol +
           '//' +
-          myself.location.hostname +
-          (myself.location.port !== '' ? ':' + myself.location.port : '')
+          globalThis.location.hostname +
+          (globalThis.location.port !== ''
+            ? ':' + globalThis.location.port
+            : '')
 
       this.socket = io(notepadhandler + '/notepads', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
@@ -369,14 +365,14 @@ class SocketWorker {
     console.log('socket connect screen')
     if (this.decodedToken().notepadhandler) {
       let notepadhandler = this.decodedToken().notepadhandler
-      // eslint-disable-next-line no-restricted-globals
-      const myself = self
       if (notepadhandler === '/')
         notepadhandler =
-          myself.location.protocol +
+          globalThis.location.protocol +
           '//' +
-          myself.location.hostname +
-          (myself.location.port !== '' ? ':' + myself.location.port : '')
+          globalThis.location.hostname +
+          (globalThis.location.port !== ''
+            ? ':' + globalThis.location.port
+            : '')
 
       this.socket = io(notepadhandler + '/screens', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
@@ -394,14 +390,14 @@ class SocketWorker {
     console.log('socket connect notes')
     if (this.decodedToken().noteshandler) {
       let noteshandler = this.decodedToken().noteshandler
-      // eslint-disable-next-line no-restricted-globals
-      const myself = self
       if (noteshandler === '/')
         noteshandler =
-          myself.location.protocol +
+          globalThis.location.protocol +
           '//' +
-          myself.location.hostname +
-          (myself.location.port !== '' ? ':' + myself.location.port : '')
+          globalThis.location.hostname +
+          (globalThis.location.port !== ''
+            ? ':' + globalThis.location.port
+            : '')
 
       this.socket = io(noteshandler + '/notes', {
         auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
@@ -422,8 +418,7 @@ class SocketWorker {
       // console.log('authtoken renewed', data)
       // console.log('oldauthtoken' /* , this.myauthtoken */)
       this.myauthtoken = data.token
-      // eslint-disable-next-line no-restricted-globals
-      self.postMessage({
+      globalThis.postMessage({
         task: 'setToken',
         token: data.token,
         decodedToken: this.decodedToken()
@@ -750,8 +745,7 @@ class SocketWorker {
   }
 
   sendId() {
-    // eslint-disable-next-line no-restricted-globals
-    self.postMessage({ task: 'idinform', id: this.socket.id })
+    globalThis.postMessage({ task: 'idinform', id: this.socket.id })
     this.av.postMessage({
       task: 'idchange'
     })
@@ -811,18 +805,15 @@ class SocketWorker {
   }
 
   servererrorhandler(code, message, type) {
-    // eslint-disable-next-line no-restricted-globals
-    self.postMessage({ task: 'servererror', code, message, type })
+    globalThis.postMessage({ task: 'servererror', code, message, type })
   }
 
   setReloading(reloading) {
-    // eslint-disable-next-line no-restricted-globals
-    self.postMessage({ task: 'setReloading', reloading })
+    globalThis.postMessage({ task: 'setReloading', reloading })
   }
 
   setExpiredToken(expiredToken) {
-    // eslint-disable-next-line no-restricted-globals
-    self.postMessage({ task: 'setExpiredToken', expiredToken })
+    globalThis.postMessage({ task: 'setExpiredToken', expiredToken })
   }
 
   getToken() {
@@ -915,8 +906,11 @@ class SocketWorker {
           if (!prot.includes(event.data.command))
             this.socket.removeAllListeners(event.data.command)
           this.socket.on(event.data.command, (data) => {
-            // eslint-disable-next-line no-restricted-globals
-            self.postMessage({ task: 'on', command: event.data.command, data })
+            globalThis.postMessage({
+              task: 'on',
+              command: event.data.command,
+              data
+            })
           })
         }
         break
@@ -950,32 +944,27 @@ class SocketWorker {
         break
       case 'createScreen':
         this.socket.emit('createscreen', (ret) => {
-          // eslint-disable-next-line no-restricted-globals
-          self.postMessage({ task: 'createScreen', data: ret })
+          globalThis.postMessage({ task: 'createScreen', data: ret })
         })
         break
       case 'createNotepad':
         this.socket.emit('createnotepad', (ret) => {
-          // eslint-disable-next-line no-restricted-globals
-          self.postMessage({ task: 'createNotepad', data: ret })
+          globalThis.postMessage({ task: 'createNotepad', data: ret })
         })
         break
       case 'getAvailablePicts':
         this.socket.emit('getAvailablePicts', (ret) => {
-          // eslint-disable-next-line no-restricted-globals
-          self.postMessage({ task: 'getAvailablePicts', data: ret })
+          globalThis.postMessage({ task: 'getAvailablePicts', data: ret })
         })
         break
       case 'getPolls':
         this.socket.emit('getPolls', (ret) => {
-          // eslint-disable-next-line no-restricted-globals
-          self.postMessage({ task: 'getPolls', data: ret })
+          globalThis.postMessage({ task: 'getPolls', data: ret })
         })
         break
       case 'castVote':
         this.socket.emit('castvote', event.data.data, (ret) => {
-          // eslint-disable-next-line no-restricted-globals
-          self.postMessage({ task: 'castVote', data: ret })
+          globalThis.postMessage({ task: 'castVote', data: ret })
         })
         break
       case 'simpleEmit':
@@ -997,6 +986,6 @@ class SocketWorker {
 
 const socketworker = new SocketWorker()
 console.log('SocketWorker addEventListener')
-// eslint-disable-next-line no-restricted-globals
-self.addEventListener('message', socketworker.onMessage)
+
+globalThis.addEventListener('message', socketworker.onMessage)
 console.log('SocketWorker started')
