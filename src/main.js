@@ -277,6 +277,7 @@ export class FailsBasis extends Component {
     this.state.identobj = { idents: [], masterdigest: 'no masterdigest' }
     this.state.avinterfaceStarted = false
     this.state.supportedMedia = {}
+    this.state.gotavstuff = false
 
     this.screenm = new ScreenManager()
 
@@ -373,6 +374,7 @@ export class FailsBasis extends Component {
         this.avoffers[data.type][data.id] = { time: Date.now(), db: data.db }
       }
       if (this.processAVoffers) this.processAVoffers()
+      if (!this.state.gotavstuff) this.setState({ gotavstuff: true })
     })
 
     commonsocket.on('avofferList', (data) => {
@@ -391,6 +393,7 @@ export class FailsBasis extends Component {
         })
         this.avoffers = newoffers
         if (this.processAVoffers) this.processAVoffers()
+        if (!this.state.gotavstuff) this.setState({ gotavstuff: true })
       }
     })
     // commonsocket.removeAllListeners('availscreens')
@@ -2483,18 +2486,20 @@ export class FailsNotes extends FailsBasis {
           aria-haspopup
           aria-controls='overlay_panel'
         />
-        {!this.state.avinterfaceStarted && (
-          <Button
-            icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
-            tooltip='Startup audio/video broadcast'
-            key={17}
-            tooltipOptions={ttopts}
-            onClick={(e) => {
-              this.startUpAVinterface()
-            }}
-            className='p-button-raised p-button-rounded p-m-2'
-          />
-        )}
+        {!this.state.avinterfaceStarted &&
+          this.state.gotavstuff &&
+          this.state.casttoscreens && (
+            <Button
+              icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+              tooltip='Startup audio/video broadcast'
+              key={17}
+              tooltipOptions={ttopts}
+              onClick={(e) => {
+                this.startUpAVinterface()
+              }}
+              className='p-button-raised p-button-rounded p-m-2'
+            />
+          )}
         <Button
           icon={<FontAwesomeIcon icon={faFilePen} />}
           className={
