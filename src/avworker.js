@@ -1079,7 +1079,7 @@ class AVAudioInputProcessor extends AVInputProcessor {
     const prom = new Promise((resolve) => {
       this.dbPromsRes.push(resolve)
     })
-    avworker.sendMessage({ task: 'getDb', webworkid: this.webworkid })
+    avworker.sendMessage({ task: 'getDbMax', webworkid: this.webworkid })
 
     const db = await prom
 
@@ -1637,7 +1637,11 @@ class AVWorker {
     const task = event.data.task
     if (!event.data.webworkid && task !== 'networkControl')
       throw new Error('no webworkid specified')
-    if (task !== 'getDb' && task !== 'ReadableToWorkerWrite') {
+    if (
+      task !== 'getDb' &&
+      task !== 'getDbMax' &&
+      task !== 'ReadableToWorkerWrite'
+    ) {
       console.log('AVWorker onMessage', event)
       console.log('got event with task', task)
     }
@@ -1780,6 +1784,11 @@ class AVWorker {
         )
         break
       case 'getDb':
+        if (this.objects[event.data.webworkid]) {
+          this.objects[event.data.webworkid].reportDb(event.data.db)
+        }
+        break
+      case 'getDbMax':
         if (this.objects[event.data.webworkid]) {
           this.objects[event.data.webworkid].reportDb(event.data.db)
         }

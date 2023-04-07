@@ -301,6 +301,7 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
     this.dbupdate = setInterval(this.dbUpdate, 100)
     this.dbCbs = new Set()
     this.mute = true
+    this.dbHistory = Array(50).fill(-10000)
   }
 
   close() {
@@ -321,6 +322,8 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
     const db = this.getDB()
     const now = Date.now()
     this.lastdbtime = now
+    this.dbHistory.push(db)
+    this.dbHistory.shift()
     this.dbCbs.forEach((el) => el(db))
   }
 
@@ -335,6 +338,10 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
       }
       return dbout
     } else return -10000
+  }
+
+  getDBMax() {
+    return Math.max(...this.dbHistory)
   }
 
   muteOn() {
@@ -661,6 +668,28 @@ export class AVInterface {
           }
           AVInterface.worker.postMessage({
             task: 'getDb',
+            webworkid: id,
+            db: ret
+          })
+        }
+        break
+      // getDBMax()
+      case 'getDbMax':
+        {
+          const id = event.data.webworkid
+          if (!id) {
+            console.log('getDbMax', event.data)
+            throw new Error('getDb, no id passed')
+          }
+          const obj = this.objects[event.data.webworkid].deref()
+          let ret
+          if (obj) {
+            ret = obj.getDBMax()
+          } else {
+            ret = -100
+          }
+          AVInterface.worker.postMessage({
+            task: 'getDbMax',
             webworkid: id,
             db: ret
           })
