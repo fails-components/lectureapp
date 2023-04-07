@@ -568,6 +568,7 @@ export class VideoControl extends Component {
             options={videosrc}
             onChange={(e) => this.setVideoSrc(e.value)}
             placeholder='Select a video source'
+            style={{ maxWidth: '10vw' }}
           />
         </OverlayPanel>
         <OverlayPanel
@@ -586,6 +587,7 @@ export class VideoControl extends Component {
             options={audiosrc}
             onChange={(e) => this.setAudioSrc(e.value)}
             placeholder='Select an audio source'
+            style={{ maxWidth: '10vw' }}
           />
         </OverlayPanel>
       </React.Fragment>
