@@ -28,6 +28,9 @@ class AVCodec {
     this.closeWritable = this.closeWritable.bind(this)
     this.newPendingWrit = this.newPendingWrit.bind(this)
 
+    this.highWaterMarkReadable = args?.highWaterMarkReadable || 2
+    this.highWaterMarkWritable = args?.highWaterMarkWritable || 2
+
     this.writable = new WritableStream(
       {
         start(controller) {},
@@ -35,14 +38,14 @@ class AVCodec {
         close: this.closeWritable,
         abort(reason) {}
       },
-      { highWaterMark: 2 }
+      { highWaterMark: this.highWaterMarkWritable }
     )
     this.readable = new ReadableStream(
       {
         start: this.startReadable,
         pull: this.pullReadable
       },
-      { highWaterMark: 2 }
+      { highWaterMark: this.highWaterMarkReadable }
     )
   }
 
@@ -380,6 +383,9 @@ export class AVTransformStream {
     this.pullReadable = this.pullReadable.bind(this)
     this.newPendingWrit = this.newPendingWrit.bind(this)
 
+    this.highWaterMarkReadable = args?.highWaterMarkReadable || 2
+    this.highWaterMarkWritable = args?.highWaterMarkWritable || 2
+
     this.resetOutput()
 
     this.writable = new WritableStream(
@@ -389,7 +395,7 @@ export class AVTransformStream {
         close(controller) {},
         abort(reason) {}
       },
-      { highWaterMark: 2 }
+      { highWaterMark: this.highWaterMarkWritable }
     )
   }
 
@@ -416,7 +422,7 @@ export class AVTransformStream {
             start: (controller) => this.startReadable(controller, out),
             pull: (controller) => this.pullReadable(controller, out)
           },
-          { highWaterMark: 2 }
+          { highWaterMark: this.highWaterMarkReadable }
         )
       }
       for (const out in this.outputs) {
@@ -435,7 +441,7 @@ export class AVTransformStream {
           start: this.startReadable,
           pull: this.pullReadable
         },
-        { highWaterMark: 2 }
+        { highWaterMark: this.highWaterMarkReadable }
       )
       if (oldreadableController)
         try {
@@ -1059,7 +1065,7 @@ export class BsonDeFramer extends BasicDeframer {
 
 export class AVDeFramer extends BasicDeframer {
   constructor(args) {
-    super(args)
+    super({ ...args, highWaterMarkWritable: 10 })
     // this.type = args.type
 
     this.reset()
