@@ -666,42 +666,44 @@ class AVInputProcessor extends AVProcessor {
           break
         }
         if (value) {
-          const qcl = value
-          if (qcl.timestamp) qcl.timestamp = BigInt(qcl.timestamp.toString())
-          if (qcl.task === 'start') {
-            const deltatime = qcl.time - lasttime
-            if (!lasttime || deltatime > 1000) {
-              const qualinfo = {
-                quality,
-                bytesPerSecond: (senddata / deltatime) * 1000,
-                framesPerSecond: (frames / deltatime) * 1000,
-                frameJitter: Math.sqrt(jitter) / frames,
-                timePerFrame: framedelta / frames,
-                skipedFrames: (this.skipedFrames[quality] / deltatime) * 1000
+          for (const i in value) {
+            const qcl = value[i]
+            if (qcl.timestamp) qcl.timestamp = BigInt(qcl.timestamp.toString())
+            if (qcl.task === 'start') {
+              const deltatime = qcl.time - lasttime
+              if (!lasttime || deltatime > 1000) {
+                const qualinfo = {
+                  quality,
+                  bytesPerSecond: (senddata / deltatime) * 1000,
+                  framesPerSecond: (frames / deltatime) * 1000,
+                  frameJitter: Math.sqrt(jitter) / frames,
+                  timePerFrame: framedelta / frames,
+                  skipedFrames: (this.skipedFrames[quality] / deltatime) * 1000
+                }
+                this.handleQualityControl(qualinfo)
+                lasttime = qcl.time
+                senddata = 0
+                frames = 0
+                jitter = 0
+                framedelta = 0
+                this.skipedFrames[quality] = 0
               }
-              this.handleQualityControl(qualinfo)
-              lasttime = qcl.time
-              senddata = 0
-              frames = 0
-              jitter = 0
-              framedelta = 0
-              this.skipedFrames[quality] = 0
-            }
-            frames++
-            const senderdelta = Number(
-              (qcl.timestamp - lastframetimeSender) / 1000n
-            )
+              frames++
+              const senderdelta = Number(
+                (qcl.timestamp - lastframetimeSender) / 1000n
+              )
 
-            const receiverdelta = qcl.time - lastframetimeReceiver
-            jitter +=
-              (senderdelta - receiverdelta) * (senderdelta - receiverdelta)
-            framedelta += senderdelta
-            lastframetimeSender = qcl.timestamp
-            lastframetimeReceiver = qcl.time
-          } else if (qcl.task === 'end') {
-            senddata += qcl.size
+              const receiverdelta = qcl.time - lastframetimeReceiver
+              jitter +=
+                (senderdelta - receiverdelta) * (senderdelta - receiverdelta)
+              framedelta += senderdelta
+              lastframetimeSender = qcl.timestamp
+              lastframetimeReceiver = qcl.time
+            } else if (qcl.task === 'end') {
+              senddata += qcl.size
+            }
+            // console.log('qcl message', qcl)
           }
-          // console.log('qcl message', qcl)
         }
       }
     } catch (error) {
