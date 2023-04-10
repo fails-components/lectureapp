@@ -531,7 +531,13 @@ export class FailsBasis extends Component {
       }
     }
     const dp = this.state.dispvideo
-    if (dp && audio[dp] && seldb - audio[dp].db < 10) selaid = dp
+    if (
+      dp &&
+      audio[dp] &&
+      seldb - audio[dp].db < 10 &&
+      audio[dp].time > Date.now() - 15 * 1000 // discard audio after 15 seconds, otherwise even if the other client is long gone we are stuck
+    )
+      selaid = dp
 
     if (!selaid) {
       // no audio
