@@ -115,6 +115,17 @@ export class SpeakerSet {
   getListAudio() {
     return this.audioids
   }
+
+  close() {
+    this.speakerStr.forEach((speaker) => {
+      speaker.close()
+    })
+    this.speakerStr.clear()
+    this.recycle.forEach((speaker) => {
+      speaker.close()
+    })
+    this.recycle = []
+  }
 }
 
 export class FloatingVideo extends Component {
@@ -226,7 +237,6 @@ export class VideoControl extends Component {
       microphone: undefined,
       spkmuted: false,
       micmuted: true,
-      videomuted: true,
       cameramuted: true,
       tvoff: true,
       supportedMedia: {
@@ -304,6 +314,32 @@ export class VideoControl extends Component {
   componentDidMount() {
     navigator.mediaDevices.ondevicechange = this.devicesChanged
     this.syncSpkMuted()
+    if (this.props.avstate) {
+      if (
+        this.props.avstate?.playback?.audio !== undefined &&
+        !this.props.avstate?.playback?.audio !== this.state.spkmuted
+      ) {
+        this.speakerToggle()
+      }
+      if (
+        this.props.avstate?.playback?.video !== undefined &&
+        !this.props.avstate?.playback?.video !== this.state.tvoff
+      ) {
+        this.tvToggle()
+      }
+      if (
+        this.props.avstate?.recording?.video !== undefined &&
+        !this.props.avstate?.recording?.video !== this.state.cameramuted
+      ) {
+        this.camToggle()
+      }
+      if (
+        this.props.avstate?.recording?.audio !== undefined &&
+        !this.props.avstate?.recording?.audio !== this.state.micmuted
+      ) {
+        this.micToggle()
+      }
+    }
     this.setState({ supportedMedia: AVInterface.queryMediaSupported() })
   }
 
@@ -327,6 +363,71 @@ export class VideoControl extends Component {
       if (this.props.id) this.state.microphone.setDestId(this.props.id)
     }
     this.syncSpkMuted()
+    if (
+      this.props.avstate?.playback?.audio !==
+        prevProps.avstate?.playback?.audio ||
+      this.props.avstate?.playback?.video !==
+        prevProps.avstate?.playback?.video ||
+      this.props.avstate?.recording?.audio !==
+        prevProps.avstate?.recording?.audio ||
+      this.props.avstate?.recording?.video !==
+        prevProps.avstate?.recording?.video
+    ) {
+      console.log('AV state change')
+      if (
+        this.props.avstate?.playback?.audio !== undefined &&
+        !this.props.avstate?.playback?.audio !== this.state.spkmuted
+      ) {
+        console.log(
+          'AV state change speaker toggle',
+          !this.props.avstate?.playback?.audio,
+          this.state.spkmuted
+        )
+        this.speakerToggle()
+      }
+      if (
+        this.props.avstate?.playback?.video !== undefined &&
+        !this.props.avstate?.playback?.video !== this.state.tvoff
+      ) {
+        console.log(
+          'AV state change tv toggle',
+          !this.props.avstate?.playback?.video,
+          this.state.tvoff
+        )
+        this.tvToggle()
+      }
+      if (
+        this.props.avstate?.recording?.video !== undefined &&
+        !this.props.avstate?.recording?.video !== this.state.cameramuted
+      ) {
+        console.log('AV state change cam toggle')
+        this.camToggle()
+      }
+      if (
+        this.props.avstate?.recording?.audio !== undefined &&
+        !this.props.avstate?.recording?.audio !== this.state.micmuted
+      ) {
+        console.log('AV state change mic toggle')
+        this.micToggle()
+      }
+    }
+    if (
+      prevState.micmuted !== this.state.micmuted ||
+      prevState.cameramuted !== this.state.cameramuted ||
+      prevState.tvoff !== this.state.tvoff ||
+      prevState.spkmuted !== this.state.spkmuted
+    ) {
+      if (this.props.avStateHook) {
+        this.avstate = {
+          playback: { audio: !this.state.spkmuted, video: !this.state.tvoff },
+          recording: {
+            audio: !this.state.micmuted,
+            video: !this.state.cameramuted
+          }
+        }
+        if (this.props.avStateHook) this.props.avStateHook(this.avstate)
+      }
+    }
   }
 
   async devicesChanged(event) {
@@ -509,7 +610,7 @@ export class VideoControl extends Component {
             }}
           ></Button>
         )}
-        {suppMedia.audioout && (
+        {suppMedia.audioout && !this.props.sendOnly && (
           <Button
             icon={
               <FontAwesomeIcon
@@ -542,16 +643,21 @@ export class VideoControl extends Component {
                 suppMedia.videoin ||
                 suppMedia.audioin ||
                 suppMedia.audioout) &&
-                buttonbar) || (
+                !this.props.nobuttonbar &&
+                buttonbar) ||
+              (!this.props.nobuttonbar && (
                 <React.Fragment> Unsupported Browser! </React.Fragment>
-              )}
+              ))}
           </div>
         </div>
         {!this.state.tvoff &&
           (suppMedia.videoout ||
             suppMedia.videoin ||
             suppMedia.audioin ||
-            suppMedia.audioout) && <div className='buttonbar'>{buttonbar}</div>}
+            suppMedia.audioout) &&
+          !this.props.nobuttonbar && (
+            <div className='buttonbar'>{buttonbar}</div>
+          )}
         <OverlayPanel
           ref={(el) => (this.videoop = el)}
           onShow={() => (this.vophid = false)}

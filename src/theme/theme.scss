@@ -7941,7 +7941,6 @@ $font_0: "PrimeIcons" !important;
 	}
 }
 .p-toast {
-	opacity: 0.9;
 	.p-toast-message {
 		margin: 0 0 1rem 0;
 		//Instead of the line below you could use @include box-shadow($shadow-1, $shadow-2, $shadow-3, $shadow-4, $shadow-5, $shadow-6, $shadow-7, $shadow-8, $shadow-9, $shadow-10)
@@ -7983,10 +7982,10 @@ $font_0: "PrimeIcons" !important;
 			}
 		}
 		&.p-toast-message-info {
-			background: $message_info;
-			border: solid $message_info_dark;
+			background: color.adjust($message_info, $alpha: -0.1);
+			border: solid color.adjust($message_info_dark, $alpha: -0.1);
 			border-width: 0 0 0 6px;
-			color: $message_info_darker;
+			color: color.adjust($message_info_darker, $alpha: -0.1);
 			.p-toast-message-icon {
 				color: $message_info_darker;
 			}
@@ -7995,10 +7994,10 @@ $font_0: "PrimeIcons" !important;
 			}
 		}
 		&.p-toast-message-success {
-			background: $message_success;
-			border: solid $message_success_dark;
+			background: color.adjust($message_success, $alpha: -0.1);
+			border: solid color.adjust($message_success_dark, $alpha: -0.1);
 			border-width: 0 0 0 6px;
-			color: $message_success_darker;
+			color: color.adjust($message_success_darker, $alpha: -0.1);
 			.p-toast-message-icon {
 				color: $message_success_darker;
 			}
@@ -8007,10 +8006,10 @@ $font_0: "PrimeIcons" !important;
 			}
 		}
 		&.p-toast-message-warn {
-			background: $message_warning;
-			border: solid $message_warning_dark;
+			background: color.adjust($message_warning, $alpha: -0.1);
+			border: solid color.adjust($message_warning_dark, $alpha: -0.1);
 			border-width: 0 0 0 6px;
-			color: $message_warning_darker;
+			color: color.adjust($message_warning_darker, $alpha: -0.1);
 			.p-toast-message-icon {
 				color: $message_warning_darker;
 			}
@@ -8019,10 +8018,10 @@ $font_0: "PrimeIcons" !important;
 			}
 		}
 		&.p-toast-message-error {
-			background: $message_error;
-			border: solid $message_error_dark;
+			background: color.adjust($message_error, $alpha: -0.1);
+			border: solid color.adjust($message_error_dark, $alpha: -0.1);
 			border-width: 0 0 0 6px;
-			color: $message_error_darker;
+			color: color.adjust($message_error_darker, $alpha: -0.1);
 			.p-toast-message-icon {
 				color: $message_error_darker;
 			}

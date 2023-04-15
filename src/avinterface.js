@@ -315,7 +315,7 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
   }
 
   unregisterDB(cb) {
-    this.dbCbs.remove(cb)
+    this.dbCbs.delete(cb)
   }
 
   dbUpdate() {
