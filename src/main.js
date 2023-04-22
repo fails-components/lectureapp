@@ -273,6 +273,7 @@ export class FailsBasis extends Component {
     this.setReloading = this.setReloading.bind(this)
     this.setExpiredToken = this.setExpiredToken.bind(this)
     this.setIdentities = this.setIdentities.bind(this)
+    this.processAVoffers = this.processAVoffers.bind(this)
 
     this.state = {}
     this.state.screensToSel = []
@@ -420,8 +421,6 @@ export class FailsBasis extends Component {
           this.videoquestions.panels[data.id].turnVideoOn(true)
         else if (data.type === 'audio')
           this.videoquestions.panels[data.id].turnAudioOn(true)
-
-        this.avoffers[data.type][data.id] = { time: Date.now(), db: data.db }
       }
     })
 
@@ -611,6 +610,7 @@ export class FailsBasis extends Component {
                 onClose={args.onClose}
                 initialAvstate={this.state.avstate}
                 speakerset={this.speakerset}
+                processAV={this.processAVoffers}
                 closeHook={
                   !this.sendCloseVideoQuestion
                     ? undefined
@@ -664,6 +664,14 @@ export class FailsBasis extends Component {
         selaid = aid
       }
     }
+    // now we ask the video question folks
+    Object.keys(this.videoquestions.authorized).forEach((id) => {
+      if (this.videoquestions.panels[id]) {
+        const vqla = this.videoquestions.panels[id].getListAudio()
+        if (vqla) vqla.forEach((el) => selaudio.add(el))
+      }
+    })
+    //
     const dp = this.state.dispvideo
     if (
       dp &&
@@ -711,11 +719,8 @@ export class FailsBasis extends Component {
       this.setState({ dispvideo: selaid })
     }
     // now figure out if the audio has changed
-    if (
-      !this.state.listaudio ||
-      selaudio.size !== la.size ||
-      [...selaudio].some((i) => !la.has(i))
-    ) {
+    if (selaudio.size !== la.size || [...selaudio].some((i) => !la.has(i))) {
+      console.log('set Audio IDS', la, selaudio)
       this.speakerset.setAudioIds(selaudio).catch((error) => {
         console.log('problem speakerset', error)
       })
@@ -869,7 +874,8 @@ export class FailsBasis extends Component {
         this.updateVideoquestions()
       }
       Object.values(this.videoquestions.panels).forEach((panel) => {
-        panel.informAvstate(this.state.avstate)
+        if (panel) panel.informAvstate(this.state.avstate)
+        else console.log('WEIRD panel', this.videoquestions.panels, panel)
       })
     }
   }
@@ -1144,6 +1150,20 @@ class VideoChat extends React.Component {
       })
   }
 
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    if (
+      prevState.audioids &&
+      this.state.audioids &&
+      prevState.audioids.some((ele, ind) => ele !== this.state.audioids[ind])
+    ) {
+      if (this.props.processAV) this.props.processAV()
+    }
+  }
+
+  getListAudio() {
+    return this.state.audioids
+  }
+
   render() {
     const ttopts = {
       className: 'teal-tooltip',
@@ -1166,7 +1186,6 @@ class VideoChat extends React.Component {
             <VideoControl
               id={this.props.id}
               videoid={this.state.videoid}
-              audioids={this.state.audioids}
               receiveOnly={true}
               nobuttonbar={true}
               speakerset={this.props.speakerset}
@@ -2064,7 +2083,6 @@ export class FailsBoard extends FailsBasis {
           <FloatingVideo ref={this.floatvideo}>
             <VideoControl
               videoid={this.state.dispvideo}
-              audioids={this.state.listaudios}
               id={this.state.id}
               speakerset={this.speakerset}
               avStateHook={(avstate) => {
@@ -2516,7 +2534,6 @@ export class FailsScreen extends FailsBasis {
           <FloatingVideo ref={this.floatvideo}>
             <VideoControl
               videoid={this.state.dispvideo}
-              audioids={this.state.listaudios}
               id={this.state.id}
               speakerset={this.speakerset}
               receiveOnly={true}
@@ -3166,7 +3183,6 @@ export class FailsNotes extends FailsBasis {
           <FloatingVideo ref={this.floatvideo}>
             <VideoControl
               videoid={this.state.dispvideo}
-              audioids={this.state.listaudios}
               id={this.state.id}
               speakerset={this.speakerset}
               receiveOnly={true}
