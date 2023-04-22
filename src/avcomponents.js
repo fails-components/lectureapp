@@ -86,6 +86,7 @@ class AVCodec {
 
   async write(chunk) {
     if (!chunk) return
+    if (!this.codec) return
     if (this.codec.state === 'closed') {
       this.recreateCodec()
     }
