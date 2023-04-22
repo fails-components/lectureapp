@@ -1152,8 +1152,8 @@ class VideoChat extends React.Component {
 
   componentDidUpdate(prevProps, prevState, snapshot) {
     if (
-      prevState.audioids &&
-      this.state.audioids &&
+      !prevState.audioids ||
+      !this.state.audioids ||
       prevState.audioids.some((ele, ind) => ele !== this.state.audioids[ind])
     ) {
       if (this.props.processAV) this.props.processAV()
