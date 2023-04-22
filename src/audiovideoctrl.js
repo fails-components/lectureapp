@@ -281,12 +281,17 @@ export class VideoControl extends Component {
       else this.state.microphone.muteOn()
       this.setState({ micmuted: !micmuted })
     } else if (this.state.micmuted) {
-      this.microphoneStart()
-        .then((mic) => {
-          mic.muteOff()
-          this.setState({ micmuted: false })
-        })
-        .catch((error) => console.log('Problem with microphone start', error))
+      if (!this.props.receiveOnly) {
+        this.microphoneStart()
+          .then((mic) => {
+            mic.muteOff()
+            this.setState({ micmuted: false })
+          })
+          .catch((error) => console.log('Problem with microphone start', error))
+      } else {
+        // no settings in receive only mode
+        this.setState({ micmuted: false })
+      }
     }
   }
 
@@ -297,12 +302,17 @@ export class VideoControl extends Component {
       else this.state.camera.camOff()
       this.setState({ cameramuted: !cammuted })
     } else if (this.state.cameramuted) {
-      this.cameraStart()
-        .then((camera) => {
-          camera.camOn()
-          this.setState({ cameramuted: false })
-        })
-        .catch((error) => console.log('Problem with camera start', error))
+      if (!this.props.receiveOnly) {
+        this.cameraStart()
+          .then((camera) => {
+            camera.camOn()
+            this.setState({ cameramuted: false })
+          })
+          .catch((error) => console.log('Problem with camera start', error))
+      } else {
+        // no settings in receive only mode
+        this.setState({ cameramuted: false })
+      }
     }
   }
 
