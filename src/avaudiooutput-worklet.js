@@ -25,7 +25,7 @@ export class AVAudioOutput extends AudioWorkletProcessor {
     this.nextframes = []
     this.port.onmessage = (e) => {
       if (e.data?.frame) {
-        if (this.nextframes.length > 5)
+        if (this.nextframes.length > 3)
           console.log('audio overflow', this.nextframes.length)
         else this.nextframes.push(e.data.frame)
       }
