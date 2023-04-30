@@ -482,7 +482,9 @@ class SocketWorker {
     this.socket.on('identValidity', (data) => {
       console.log('identValidity', data)
       if (data.id && data.lastaccess) {
-        this.idents[data.id].lastaccess = Number(data.lastaccess)
+        if (this.idents[data.id])
+          this.idents[data.id].lastaccess = Number(data.lastaccess)
+        else console.log('identValidity for unknown', data.id)
         this.informIdentities()
       }
     })

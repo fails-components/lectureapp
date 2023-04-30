@@ -77,7 +77,9 @@ export class SpeakerSet {
       if (nids) this.audioidsmuted = nids
       newids = new Set()
     }
-    const avinterf = AVInterface.getInterface()
+    // we need to hold a reference otherwise the garbage collector will clean it up
+    const avinterf =
+      this.avinterf || (this.avinterf = AVInterface.getInterface())
     // we have to figure out
     // (1) which ids are not speakerStr but in newids
     const newstreams = []
@@ -441,7 +443,8 @@ export class VideoControl extends Component {
   }
 
   async devicesChanged(event) {
-    const avinterf = AVInterface.getInterface()
+    const avinterf =
+      this.avinterf || (this.avinterf = AVInterface.getInterface())
     console.log('devicechanged')
     try {
       const devices = await avinterf.getAVDevices()
@@ -474,7 +477,8 @@ export class VideoControl extends Component {
   async cameraStart() {
     let cam
     try {
-      const avinterf = AVInterface.getInterface()
+      const avinterf =
+        this.avinterf || (this.avinterf = AVInterface.getInterface())
       console.log('before openVideoCamera')
       const supported = AVInterface.queryMediaSupported()
       if (!supported.videoin) {
@@ -500,7 +504,8 @@ export class VideoControl extends Component {
   async microphoneStart() {
     let mic
     try {
-      const avinterf = AVInterface.getInterface()
+      const avinterf =
+        this.avinterf || (this.avinterf = AVInterface.getInterface())
       console.log('before openAudioMicrophone')
       const supported = AVInterface.queryMediaSupported()
       if (!supported.audioin) {

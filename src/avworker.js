@@ -52,12 +52,6 @@ class AVVideoRenderInt {
   }
 }
 
-class AVVideoOutStream {
-  constructor(args) {
-    this.webworkid = args.webworkid
-  }
-}
-
 class AVProcessor {
   constructor(args) {
     this.webworkid = args.webworkid
@@ -546,6 +540,7 @@ class AVInputProcessor extends AVProcessor {
   }
 
   close() {
+    if (this.adOutgoing) clearInterval(this.adOutgoing)
     this.running = false
     for (const qual in this.qualities) {
       const codec = this.encoder[qual]
@@ -1447,7 +1442,7 @@ class AVOutputProcessor extends AVProcessor {
     // dest is our id
     const changed = this.srcid !== id
     this.srcid = id
-    console.log('srcId', id, this.datatype)
+    console.log('srcId', id, this.datatype, changed)
     if (changed) {
       if (this.initialresolve) {
         const res = this.initialresolve
@@ -1489,7 +1484,19 @@ class AVAudioOutputProcessor extends AVOutputProcessor {
     super(args)
     this.datatype = 'audio'
 
-    this.outputwritable = args.writable
+    this.writeframe = this.writeframe.bind(this)
+
+    if (args.writable) {
+      this.outputwritable = args.writable
+    } else if (args.port) {
+      this.audioport = args.port
+      this.audioport.postMessage({ message: 'Test message constrcutor' })
+      this.outputwritable = new WritableStream({
+        write: this.writeframe
+      })
+    } else {
+      throw new Error('Neither port or writable specified')
+    }
 
     this.decrypt = new AVDecrypt({
       // eslint-disable-next-line no-undef
@@ -1498,6 +1505,42 @@ class AVAudioOutputProcessor extends AVOutputProcessor {
     })
 
     this.decoder = new AVAudioDecoder()
+  }
+
+  writeframe(frame, controller) {
+    if (this.audioport) {
+      // an AudioData Object seems to be not transferable to an AudioWorklet
+      const {
+        duration,
+        // format,
+        numberOfChannels,
+        numberOfFrames,
+        sampleRate,
+        timestamp
+      } = frame
+      const data = Array.from(
+        { length: numberOfChannels },
+        () => new Float32Array(numberOfFrames)
+      )
+      data.forEach((value, index) =>
+        frame.copyTo(value, { planeIndex: index, format: 'f32-planar' })
+      )
+      this.audioport.postMessage(
+        {
+          frame: {
+            data,
+            duration,
+            format: 'f32-planar',
+            numberOfChannels,
+            numberOfFrames,
+            sampleRate,
+            timestamp
+          }
+        },
+        data.map((x) => x.buffer)
+      )
+    }
+    frame.close()
   }
 }
 
@@ -1678,7 +1721,8 @@ class AVWorker {
         {
           const newobj = new AVAudioOutputProcessor({
             webworkid: event.data.webworkid,
-            writable: event.data.writable
+            writable: event.data.writable,
+            port: event.data.port
           })
           this.objects[event.data.webworkid] = newobj
         }
@@ -1724,15 +1768,6 @@ class AVWorker {
             if (object.finalize) object.finalize()
             delete this.objects[event.data.webworkid]
           }
-        }
-        break
-      case 'openVideoOutStream':
-        {
-          const newobj = new AVVideoOutStream({
-            webworkid: event.data.webworkid,
-            outputstream: event.data.writable
-          })
-          this.objects[event.data.webworkid] = newobj
         }
         break
       case 'setOutputRender':

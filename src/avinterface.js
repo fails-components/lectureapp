@@ -44,6 +44,7 @@ export class AVVideoRender extends Component {
       task: 'newAVVideoRender',
       webworkid: this.webworkid
     })
+    this.avinterf = AVInterface.interf // hold interface
 
     this.resizeeventlistener = this.resizeeventlistener.bind(this)
   }
@@ -148,6 +149,7 @@ export class AVVideoRender extends Component {
 export class AVStream {
   constructor(args) {
     this.webworkid = args.webworkid
+    this.avinterf = AVInterface.interf // hold interface
   }
 }
 
@@ -498,37 +500,38 @@ export class AVInputStream extends AVStream {
 }
 
 export class AVSpeakerStream extends AVInputStream {
-  constructor(args) {
-    super(args)
-    this.initalizeAudio()
-  }
-
   close() {
+    console.log('Audio AVSpeakerstream close called')
     this.audiosrc.disconnect()
     super.close()
   }
 
-  initalizeAudio() {
+  async initalizeAudio() {
     const avinterf = AVInterface.getInterface()
     const ac = avinterf.getAudioContext()
+    try {
+      await avinterf.audioOutputLoaded
+      this.audiosrc = new AudioWorkletNode(ac, 'AVAudioOutput', {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        processorOptions: {
+          /* pass this to the worklet */
+        }
+      })
 
-    // eslint-disable-next-line no-undef
-    this.track = new MediaStreamTrackGenerator({ kind: 'audio' })
+      this.audiosrc.connect(ac.destination)
 
-    const mstream = new MediaStream([this.track])
-
-    this.audiosrc = ac.createMediaStreamSource(mstream)
-
-    this.audiosrc.connect(ac.destination)
-
-    AVInterface.worker.postMessage(
-      {
-        task: 'openAudioSpeaker',
-        webworkid: this.webworkid,
-        writable: this.track.writable
-      },
-      [this.track.writable]
-    )
+      AVInterface.worker.postMessage(
+        {
+          task: 'openAudioSpeaker',
+          webworkid: this.webworkid,
+          port: this.audiosrc.port
+        },
+        [this.audiosrc.port]
+      )
+    } catch (error) {
+      console.log('Initialize audio', error)
+    }
   }
 }
 
@@ -569,6 +572,11 @@ export class AVInterface {
 
     this.finalizeCallback = this.finalizeCallback.bind(this)
     this.finalization = new FinalizationRegistry(this.finalizeCallback)
+
+    this.audioOutputLoaded = new Promise((resolve, reject) => {
+      this.audioOutputLoadedRes = resolve
+      this.audioOutputLoadedRej = reject
+    })
   }
 
   static createAVInterface(args) {
@@ -597,11 +605,22 @@ export class AVInterface {
   }
 
   getAudioContext() {
-    if (!this.audiocontext)
+    if (!this.audiocontext) {
       this.audiocontext = new AudioContext({
         sampleRate: 48000,
         latencyHint: 'interactive'
       })
+      this.audiocontext.audioWorklet
+        .addModule(new URL('./avaudiooutput-worklet.js', import.meta.url))
+        .then(() => {
+          console.log('AVAudioOutputWorklet loaded')
+          this.audioOutputLoadedRes()
+        })
+        .catch((error) => {
+          this.audioOutputLoadedRej(error)
+          console.log('Problem loading audio output', error)
+        })
+    }
     return this.audiocontext
   }
 
@@ -659,12 +678,14 @@ export class AVInterface {
             console.log('getDb', event.data)
             throw new Error('getDb, no id passed')
           }
-          const obj = this.objects[event.data.webworkid].deref()
-          let ret
-          if (obj) {
-            ret = obj.getDB()
-          } else {
-            ret = -100
+          let ret = 'failed'
+          if (this.objects[event.data.webworkid]) {
+            const obj = this.objects[event.data.webworkid].deref()
+            if (obj) {
+              ret = obj.getDB()
+            } else {
+              ret = -100
+            }
           }
           AVInterface.worker.postMessage({
             task: 'getDb',
@@ -734,6 +755,8 @@ export class AVInterface {
   }
 
   finalizeCallback(webworkid) {
+    console.log('AVInterface finalize')
+    console.trace()
     AVInterface.worker.postMessage({
       task: 'cleanUpObject',
       webworkid
@@ -843,6 +866,7 @@ export class AVInterface {
       const avobj = new AVSpeakerStream({
         webworkid
       })
+      await avobj.initalizeAudio()
       this.registerForFinal(avobj, webworkid)
 
       return avobj

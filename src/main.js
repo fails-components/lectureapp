@@ -329,6 +329,7 @@ export class FailsBasis extends Component {
   startUpAVinterface() {
     if (!AVInterface.getInterface()) {
       AVInterface.createAVInterface()
+      this.avinterf = AVInterface.getInterface() // please hold a reference for the gargabe collector
       AVInterface.setNetworkControl(this.avchannel)
       this.setState({ avinterfaceStarted: true })
     }
