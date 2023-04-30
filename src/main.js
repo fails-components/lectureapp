@@ -3052,15 +3052,17 @@ export class FailsNotes extends FailsBasis {
                     ></Button>
                   </div>
                 )}
-                {this.state.chattext !== '' && (
-                  <div className='p-m-1' key='sendmessage'>
-                    <Button
-                      icon={'pi pi-send'}
-                      className='p-button-raised p-button-rounded p-m-2'
-                      onClick={this.sendChatMessage}
-                    />
-                  </div>
-                )}
+                <div className='p-m-1' key='sendmessage'>
+                  <Button
+                    icon={'pi pi-send'}
+                    className={
+                      this.state.chattext !== ''
+                        ? 'p-button-raised p-button-rounded p-m-2'
+                        : 'p-button-raised p-button-rounded p-m-2 hiddenElement'
+                    }
+                    onClick={this.sendChatMessage}
+                  />
+                </div>
               </div>
             </div>
           </div>

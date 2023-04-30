@@ -166,3 +166,7 @@ code {
   display: flex;
   align-items: center;
 }
+
+.hiddenElement {
+  visibility: hidden;
+}
