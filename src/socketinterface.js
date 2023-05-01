@@ -18,7 +18,10 @@
 */
 import { KeyStore } from './keystore'
 export class SocketInterface {
-  static worker = new Worker(new URL('./socketworker.js', import.meta.url))
+  static worker = new Worker(new URL('./socketworker.js', import.meta.url), {
+    type: 'module'
+  })
+
   static interf = null
 
   constructor(
@@ -45,8 +48,7 @@ export class SocketInterface {
   }
 
   static createSocketInterface(args) {
-    if (SocketInterface.interf !== null)
-      throw new Error('Socket Interface already created')
+    if (SocketInterface.interf !== null) return SocketInterface.interf
     const interf = (SocketInterface.interf = new SocketInterface(args))
     SocketInterface.worker.addEventListener('message', interf.onMessage)
     SocketInterface.worker.addEventListener('error', interf.onError)

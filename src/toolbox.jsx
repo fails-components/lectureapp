@@ -57,7 +57,7 @@ import {
   fiTouchOn,
   fiTouchOff,
   fiFailsLogo
-} from './icons/icons.js'
+} from './icons/icons.jsx'
 import { UAParser } from 'ua-parser-js'
 
 class ColorPickerButton2 extends Component {

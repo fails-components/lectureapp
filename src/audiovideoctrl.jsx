@@ -20,7 +20,8 @@
 import { Button } from 'primereact/button'
 import { OverlayPanel } from 'primereact/overlaypanel'
 import React, { Component } from 'react'
-import { AVVideoRender, AVInterface } from './avinterface'
+import { AVInterface } from './avinterface'
+import { AVVideoRender } from './avvideorender.jsx'
 import { Dropdown } from 'primereact/dropdown'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {

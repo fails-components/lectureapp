@@ -22,11 +22,11 @@ import React, { useState } from 'react'
 import './theme/theme.scss' // fails theme based on saga blue
 import 'primereact/resources/primereact.min.css'
 
-import { FailsBoard, FailsScreen, FailsNotes } from './main.js'
+import { FailsBoard, FailsScreen, FailsNotes } from './main.jsx'
 import './index.css'
 
 import { FailsConfig } from '@fails-components/config'
-import { Welcome } from './welcome.js'
+import { Welcome } from './welcome.jsx'
 import { SocketInterface } from './socketinterface'
 
 const cfg = new FailsConfig({ react: true })

@@ -66,8 +66,8 @@ import {
   fiWristMiddleRight,
   fiWristTopLeft,
   fiWristTopRight
-} from './icons/icons.js'
-import { NoteScreenBase } from './notepad.js'
+} from './icons/icons.jsx'
+import { NoteScreenBase } from './notepad.jsx'
 import { NoteTools } from './toolbox'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'

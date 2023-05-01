@@ -22,12 +22,10 @@ import { DrawObjectGlyph, DrawObjectPicture } from '@fails-components/data'
 import { SHA1 } from 'jshashes'
 import Color from 'color'
 
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.js'
-// eslint-disable-next-line import/no-webpack-loader-syntax
-// import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry'
+import * as pdfjs from 'pdfjs-dist'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/legacy/build/pdf.worker',
+  '../node_modules/pdfjs-dist/build/pdf.worker.min.js',
   import.meta.url
 )
 

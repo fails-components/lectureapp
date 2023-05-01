@@ -3,6 +3,7 @@ import './index.css'
 import React from 'react'
 import ReactDOM from 'react-dom'
 import * as serviceWorkerRegistration from './serviceWorkerRegistration'
+
 import App from './app'
 
 // taken from the CRA pwa template by google
@@ -10,5 +11,6 @@ import App from './app'
 // unregister() to register() below. Note this comes with some pitfalls.
 // Learn more about service workers: https://cra.link/PWA
 serviceWorkerRegistration.register()
+
 
 ReactDOM.render(<App />, document.getElementById('root'))
