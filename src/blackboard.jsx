@@ -689,7 +689,7 @@ export class BackgroundPDFPage extends Component {
       console.log('Render pdf page ', page.pagenum)
       this.inrendering = false
 
-      this.setState({ page, bbwidth })
+      // this.setState({ page, bbwidth })
     } catch (error) {
       console.log('problem pdf page render', error)
       this.inrendering = false
