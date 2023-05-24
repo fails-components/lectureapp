@@ -25,4 +25,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: git diff --quiet || (git add package-lock.json && git commit -m "update browserslist")
       - run: npm version patch
+      - run: git push --tags
       - run: git push
