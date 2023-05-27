@@ -19,6 +19,79 @@ import {
   serialize as BSONserialize,
   deserialize as BSONdeserialize
 } from 'bson'
+// import * as LibAVWebCodecs from 'libavjs-webcodecs-polyfill'
+
+let AudioDecoder
+let AudioEncoder
+let EncodedAudioChunk
+let AudioData
+
+let LibAVlib
+
+const loadPolyfills = async () => {
+  let decoderPoly = false
+  let encoderPoly = false
+
+  // eslint-disable-next-line no-constant-condition
+  if (!('AudioDecoder' in globalThis)) {
+    decoderPoly = true
+  } else {
+    decoderPoly = false
+    AudioDecoder = globalThis.AudioDecoder
+    EncodedAudioChunk = globalThis.EncodedAudioChunk
+  }
+
+  // eslint-disable-next-line no-constant-condition
+  if (!('AudioEncoder' in globalThis)) {
+    encoderPoly = true
+  } else {
+    encoderPoly = false
+    AudioEncoder = globalThis.AudioEncoder
+    AudioData = globalThis.AudioData
+  }
+  if (decoderPoly || encoderPoly) {
+    if (!globalThis.LibAV)
+      globalThis.LibAV = { /* getFiles, */ nolibavworker: true } // the imported lib needs this
+    LibAVlib = await import('../node_modules/libav.js/libav-3.11.6.0-opus.js')
+    console.log('LibAV loaded', LibAVlib, globalThis.LibAV)
+    const target = globalThis.LibAV.target()
+    globalThis.LibAV.wasmurl = new URL(
+      `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.wasm`,
+      import.meta.url
+    ).href
+    globalThis.LibAV.toImport = new URL(
+      `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
+      import.meta.url
+    ).href
+    globalThis.LibAV.importedjs = await import(
+      `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.js`
+    )
+
+    const LibAVWebCodecs = await import('libavjs-webcodecs-polyfill')
+    console.log('Ponyfill loaded' /* , LibAVWebCodecs */)
+    await LibAVWebCodecs.load({ polyfill: false })
+    if (decoderPoly) {
+      AudioDecoder = LibAVWebCodecs.AudioDecoder
+      EncodedAudioChunk = LibAVWebCodecs.EncodedAudioChunk
+    }
+    if (encoderPoly) {
+      AudioEncoder = LibAVWebCodecs.AudioEncoder
+      AudioData = globalThis.AudioData
+    }
+  }
+}
+
+const AVComponentsLoaded = loadPolyfills().catch((error) => {
+  console.log('Problem loading AV polyfills', error)
+})
+
+export const createEncodedAudioChunk = (input) => {
+  return new EncodedAudioChunk(input)
+}
+
+export const createAudioData = (input) => {
+  return new AudioData(input)
+}
 
 class AVCodec {
   constructor(args) {
@@ -88,7 +161,7 @@ class AVCodec {
     if (!chunk) return
     if (!this.codec) return
     if (this.codec.state === 'closed') {
-      this.recreateCodec()
+      await this.recreateCodec()
     }
     if (this.codecOnWrite) this.codecOnWrite(chunk)
 
@@ -121,17 +194,67 @@ class AVEncoder extends AVCodec {
   constructor(args) {
     super(args)
     this.curcodec = null
+    this.lastDecConf = null
   }
 
-  recreateCodec() {
+  async recreateCodec() {
     this.cur = {}
   }
 
   codecFull() {
-    return this.codec.encodeQueueSize > 2
+    return this.codec?.encodeQueueSize > 2
   }
 
-  async output(frame, metadata) {
+  async output(frame, mdata) {
+    const metadata = mdata
+    if (metadata.decoderConfig) {
+      // check if we should remove the decoderConfig
+      if (!this.lastDecConf) {
+        this.lastDecConf = metadata.decoderConfig
+      } else {
+        const kold = Object.keys(this.lastDecConf)
+        const knew = Object.keys(metadata.decoderConfig)
+        let unequal = false
+
+        if (kold.length !== knew.length) {
+          unequal = true
+        }
+
+        for (const key of kold) {
+          if (key !== 'description') {
+            if (this.lastDecConf[key] !== metadata.decoderConfig[key]) {
+              unequal = true
+              break
+            }
+          } else {
+            const bufferOld =
+              this.lastDecConf[key].buffer || this.lastDecConf[key]
+            const bufferNew =
+              metadata.decoderConfig[key].buffer || metadata.decoderConfig[key]
+            if (!bufferOld !== !bufferNew) {
+              unequal = true
+              break
+            }
+            if (bufferOld.byteLength !== bufferNew.byteLength) {
+              unequal = true
+              break
+            } else {
+              const uOld = new Uint8Array(bufferOld)
+              const uNew = new Uint8Array(bufferNew)
+              for (let i = 0; i < bufferOld.byteLength; i++) {
+                if (uOld[i] !== uNew[i]) {
+                  unequal = true
+                  break
+                }
+              }
+            }
+          }
+        }
+        if (!unequal) {
+          delete metadata.decoderConfig
+        }
+      }
+    }
     this.checkResPendingWrit()
     if (this.readableController)
       this.readableController.enqueue({ frame, metadata })
@@ -151,11 +274,14 @@ export class AVVideoEncoder extends AVEncoder {
 
     this.outputlevel = args.outputlevel
     this.output = this.output.bind(this)
-    this.recreateCodec()
+    this.recreateCodec().catch((error) => {
+      console.log('Problem loading VideoDecoder', error)
+    })
   }
 
-  recreateCodec() {
-    super.recreateCodec()
+  async recreateCodec() {
+    await super.recreateCodec()
+    await AVComponentsLoaded
     this.lastkeyframetime = 0
     // eslint-disable-next-line no-undef
     this.codec = new VideoEncoder({
@@ -205,6 +331,7 @@ export class AVVideoEncoder extends AVEncoder {
         scalabilityMode: 'L1T3',
         latencyMode: 'realtime'
       })
+      this.lastDecConf = null
       console.log('codec state', this.codec.state)
       this.cur.displayHeight = chunk.displayHeight
       this.cur.displayWidth = chunk.displayWidth
@@ -225,11 +352,15 @@ export class AVAudioEncoder extends AVEncoder {
     this.outputlevel = args.outputlevel
 
     this.output = this.output.bind(this)
-    this.recreateCodec()
+    this.recreateCodec().catch((error) => {
+      console.log('Problem creating codec', error)
+    })
   }
 
-  recreateCodec() {
-    super.recreateCodec()
+  async recreateCodec() {
+    console.log('recreateCodec Encoder')
+    await super.recreateCodec()
+    await AVComponentsLoaded
     // eslint-disable-next-line no-undef
     this.codec = new AudioEncoder({
       output: this.output,
@@ -250,6 +381,7 @@ export class AVAudioEncoder extends AVEncoder {
       chunk.numberOfChannels !== this.cur.numberOfChannels
     ) {
       this.curcodec = 'opus'
+      console.log('configure Encoder')
       this.codec.configure({
         codec: this.curcodec /* 'opus' */, // aka opus
         format: 'opus',
@@ -261,6 +393,7 @@ export class AVAudioEncoder extends AVEncoder {
       console.log('audio codec state', this.codec.state)
       this.cur.sampleRate = chunk.sampleRate
       this.cur.numberOfChannels = chunk.numberOfChannels
+      this.lastDecConf = null
       console.log('audio log chunk', chunk)
     }
   }
@@ -274,12 +407,12 @@ export class AVDecoder extends AVCodec {
     this.codecOnWrite = this.codecOnWrite.bind(this)
   }
 
-  recreateCodec() {
+  async recreateCodec() {
     this.configured = false
   }
 
   codecFull() {
-    return this.codec.decodeQueueSize > 2
+    return this.codec?.decodeQueueSize > 2
   }
 
   output(frame) {
@@ -316,11 +449,14 @@ export class AVVideoDecoder extends AVDecoder {
   constructor(args) {
     super(args)
     this.type = 'video'
-    this.recreateCodec()
+    this.recreateCodec().catch((error) => {
+      console.log('Problem loading VideoDecoder', error)
+    })
   }
 
-  recreateCodec() {
-    super.recreateCodec()
+  async recreateCodec() {
+    await super.recreateCodec()
+    await AVComponentsLoaded
     // eslint-disable-next-line no-undef
     this.codec = new VideoDecoder({
       output: this.output,
@@ -342,11 +478,14 @@ export class AVAudioDecoder extends AVDecoder {
   constructor(args) {
     super(args)
     this.type = 'audio'
-    this.recreateCodec()
+    this.recreateCodec().catch((error) => {
+      console.log('Problem loading VideoDecoder', error)
+    })
   }
 
-  recreateCodec() {
-    super.recreateCodec()
+  async recreateCodec() {
+    await super.recreateCodec()
+    await AVComponentsLoaded
     // eslint-disable-next-line no-undef
     this.codec = new AudioDecoder({
       output: this.output,
@@ -361,6 +500,7 @@ export class AVAudioDecoder extends AVDecoder {
       codec: chunk.metadata.decoderConfig.codec,
       sampleRate: chunk.metadata.decoderConfig.sampleRate, // may be move to metadata, but later
       numberOfChannels: chunk.metadata.decoderConfig.numberOfChannels
+      // do not add description as this signals ogg.
     })
   }
 }
@@ -836,7 +976,7 @@ export class AVFramer extends AVTransformStream {
       hdrflags1 |= 1 << 1
       hdrlen += 4
     }
-    if (metadata.decoderConfig && metadata.decoderConfig) {
+    if (metadata && metadata.decoderConfig) {
       console.log('deconfig', metadata.decoderConfig)
       this.sendDecoderConfig(metadata.decoderConfig)
     }

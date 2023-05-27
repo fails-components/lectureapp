@@ -22,10 +22,10 @@ import { transferReadableStream } from './transferable-stream-of-transferables'
 // install polyfills, if required
 let MediaStreamTrackProcessor
 // eslint-disable-next-line no-constant-condition
-if (!('MediaStreamTrackProcessor' in window)) {
+if (!('MediaStreamTrackProcessor' in globalThis)) {
   MediaStreamTrackProcessor = MediaStreamTrackProcessorPolyfill
 } else {
-  MediaStreamTrackProcessor = window.MediaStreamTrackProcessor
+  MediaStreamTrackProcessor = globalThis.MediaStreamTrackProcessor
 }
 
 export class AVStream {

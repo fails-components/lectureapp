@@ -1,3 +1,25 @@
+let AudioData
+let encoderPoly
+
+const loadPolyfills = async () => {
+  // eslint-disable-next-line no-constant-condition
+  if (!('AudioData' in globalThis)) {
+    encoderPoly = true
+  } else {
+    AudioData = globalThis.AudioData
+  }
+  if (encoderPoly) {
+    const LibAVWebCodecs = await import('libavjs-webcodecs-polyfill')
+    if (encoderPoly) {
+      AudioData = LibAVWebCodecs.AudioData
+    }
+  }
+}
+
+loadPolyfills().catch((error) => {
+  console.log('Problem loading AV polyfills', error)
+})
+
 class ReadableFromExternal {
   constructor(args) {
     this.port = args.port
@@ -52,6 +74,56 @@ class ReadableFromExternal {
       delete this._dataWaitRes
       delete this._dataWaitRej
       res()
+    }
+    if (chunk.numberOfChannels) {
+      if (chunk._data) {
+        const {
+          _data: data,
+          format,
+          sampleRate,
+          numberOfFrames,
+          numberOfChannels,
+          timestamp
+        } = chunk
+        // eslint-disable-next-line no-undef
+        chunk = new AudioData({
+          data,
+          format,
+          sampleRate,
+          numberOfFrames,
+          numberOfChannels,
+          timestamp
+        })
+      }
+    } else {
+      if (chunk._data) {
+        const {
+          _data: data,
+          format,
+          codedWidth,
+          codedHeight,
+          timestamp,
+          duration,
+          layout,
+          visibleRect,
+          displayWidth,
+          displayHeight,
+          colorSpace
+        } = chunk
+        // eslint-disable-next-line no-undef
+        chunk = new VideoFrame(data, {
+          format,
+          codedWidth,
+          codedHeight,
+          timestamp,
+          duration,
+          layout,
+          visibleRect,
+          displayWidth,
+          displayHeight,
+          colorSpace
+        })
+      }
     }
     this.queue.push(chunk)
     if (this._controller.desiredSize <= 0) {
@@ -108,12 +180,16 @@ class ReadableToExternal {
       },
       write: async (chunk, controller) => {
         // TODO block writing
+        let transfer
+        if (chunk._data?.buffer)
+          transfer = [chunk._data.buffer] // detect the Polyfill
+        else transfer = [chunk]
         this.port.postMessage(
           {
             task: 'ReadableToExternalWrite',
             chunk
           },
-          [chunk]
+          transfer
         )
         if (this._blocked) {
           await new Promise((resolve) => {

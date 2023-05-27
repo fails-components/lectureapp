@@ -17,6 +17,28 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+let AudioData
+let encoderPoly
+
+const loadPolyfills = async () => {
+  // eslint-disable-next-line no-constant-condition
+  if (!('AudioData' in globalThis)) {
+    encoderPoly = true
+  } else {
+    AudioData = globalThis.AudioData
+  }
+  if (encoderPoly) {
+    const LibAVWebCodecs = await import('libavjs-webcodecs-polyfill')
+    if (encoderPoly) {
+      AudioData = LibAVWebCodecs.AudioData
+    }
+  }
+}
+
+loadPolyfills().catch((error) => {
+  console.log('Problem loading AV polyfills', error)
+})
+
 export class MediaStreamTrackProcessor {
   constructor({ track, maxBufferSize, createVideoElement }) {
     // customDocument can be used in a worker, it should allow to create a video element

@@ -721,7 +721,7 @@ export class FailsBasis extends Component {
     }
     // now figure out if the audio has changed
     if (selaudio.size !== la.size || [...selaudio].some((i) => !la.has(i))) {
-      console.log('set Audio IDS', la, selaudio)
+      // console.log('set Audio IDS', la, selaudio)
       this.speakerset.setAudioIds(selaudio).catch((error) => {
         console.log('problem speakerset', error)
       })
@@ -3151,7 +3151,7 @@ export class FailsNotes extends FailsBasis {
               2021- (FAILS Components) Marten Richter
             </div>
           </div>
-          Lectureapp version {process.env.REACT_APP_VERSION} <br /> <br />
+          Lectureapp version {import.meta.env.REACT_APP_VERSION} <br /> <br />
           FAILS logo by chadkills <br />
           Custom icons by icon_xpert786 <br /> <br />
           Released under GNU Affero General Public License Version 3. <br />{' '}

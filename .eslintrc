@@ -1,10 +1,12 @@
 {
+  "parser": "@babel/eslint-parser",
   "extends": [
     "standard",
     "react-app",
     "plugin:prettier/recommended",
     "prettier"
   ],
+  "ignorePatterns": ["*/src/libav.js/*.*.js"],
   "env": {
     "jest": true
   },

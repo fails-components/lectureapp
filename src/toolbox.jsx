@@ -1512,7 +1512,7 @@ export class ToolBox extends ToolHandling {
           Build upon the shoulders of giants, see{' '}
           <a href='/static/oss'> OSS attribution and licensing.</a>
           <br /> <br />
-          Lectureapp version {process.env.REACT_APP_VERSION}{' '}
+          Lectureapp version {import.meta.env.REACT_APP_VERSION}{' '}
           {this.props.experimental && <b>(Experimental version)</b>}
           <br /> Browser: {uaparser.getBrowser().name} (Version:{' '}
           {uaparser.getBrowser().version}) with Engine:{' '}

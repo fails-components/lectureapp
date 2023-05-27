@@ -28,7 +28,8 @@ import {
   AVVideoEncoder,
   AVAudioEncoder,
   AVOneToManyCopy,
-  AVOneFrameToManyScaler
+  AVOneFrameToManyScaler,
+  createEncodedAudioChunk
 } from './avcomponents'
 import { KeyStore } from './keystore'
 import { receiveReadableStream } from './transferable-stream-of-transferables'
@@ -1499,8 +1500,7 @@ class AVAudioOutputProcessor extends AVOutputProcessor {
     }
 
     this.decrypt = new AVDecrypt({
-      // eslint-disable-next-line no-undef
-      chunkMaker: (arg) => new EncodedAudioChunk(arg),
+      chunkMaker: (arg) => createEncodedAudioChunk(arg),
       keyStore: KeyStore.getKeyStore()
     })
 
