@@ -473,7 +473,7 @@ class SocketWorker {
           }
           this.informIdentities()
         } catch (error) {
-          console.log('error identUpdate', error)
+          console.log('error identUpdate', error, this.keyobject)
         }
       }
     })

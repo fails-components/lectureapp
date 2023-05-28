@@ -90,27 +90,33 @@ export class SpeakerSet {
     }
     for (const sid of this.speakerStr.keys()) {
       if (!newids.has(sid)) {
-        const totrash = this.speakerStr.get(sid)
+        const ptotrash = this.speakerStr.get(sid)
+        const totrash = await ptotrash
         console.log('totrash', totrash, sid)
         totrash.setSrcId(undefined) // clear the old stream
-        this.recycle.push(totrash)
+        this.recycle.push(ptotrash)
         this.speakerStr.delete(sid)
       }
     }
     // now we activate the missing ids
     for (const nid of newstreams) {
-      let newspeaker = this.recycle.pop()
-      if (!newspeaker) {
+      let ns = this.recycle.pop()
+      if (!ns) {
         try {
-          newspeaker = await avinterf.openAudioOutput()
-          newspeaker.buildIncomingPipeline()
+          console.log('Openaudio stream for', nid)
+          const newspeaker = avinterf.openAudioOutput()
+          this.speakerStr.set(nid, newspeaker)
+          ns = await newspeaker
+          ns.buildIncomingPipeline()
+          ns.setSrcId(nid)
         } catch (error) {
           console.log('problem creating speaker, skip', error)
           continue
         }
+      } else {
+        ns.setSrcId(nid)
+        this.speakerStr.set(nid, Promise.resolve(ns))
       }
-      newspeaker.setSrcId(nid)
-      this.speakerStr.set(nid, newspeaker)
     }
     this.audioids = newids
   }
@@ -121,11 +127,19 @@ export class SpeakerSet {
 
   close() {
     this.speakerStr.forEach((speaker) => {
-      speaker.close()
+      speaker
+        .then((spk) => spk.close())
+        .catch((error) => {
+          console.log('Problem closing speaker', error)
+        })
     })
     this.speakerStr.clear()
     this.recycle.forEach((speaker) => {
-      speaker.close()
+      speaker
+        .then((spk) => spk.close())
+        .catch((error) => {
+          console.log('Problem closing speaker', error)
+        })
     })
     this.recycle = []
   }

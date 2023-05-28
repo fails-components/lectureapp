@@ -657,8 +657,8 @@ export class FailsBasis extends Component {
 
     for (const aid in audio) {
       const el = audio[aid]
-      if (el.time > Date.now() - 1 * 1000 && aid !== this.state.id) {
-        if (el.db > -70 || (el.db > -80 && la.has(this.aid))) selaudio.add(aid)
+      if (el.time > Date.now() - 10 * 1000 && aid !== this.state.id) {
+        if (el.db > -70 || (el.db > -75 && la.has(this.aid))) selaudio.add(aid)
       }
       if (el.db > seldb && aid in video && el.time > Date.now() - 10 * 1000) {
         seldb = el.db

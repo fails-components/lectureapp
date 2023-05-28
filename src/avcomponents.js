@@ -337,7 +337,6 @@ export class AVVideoEncoder extends AVEncoder {
       this.cur.displayWidth = chunk.displayWidth
       this.cur.height = chunk.codedHeight
       this.cur.width = chunk.codedWidth
-      console.log('log chunk', chunk)
     }
   }
 }
@@ -394,7 +393,6 @@ export class AVAudioEncoder extends AVEncoder {
       this.cur.sampleRate = chunk.sampleRate
       this.cur.numberOfChannels = chunk.numberOfChannels
       this.lastDecConf = null
-      console.log('audio log chunk', chunk)
     }
   }
 }
