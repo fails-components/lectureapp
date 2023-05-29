@@ -530,21 +530,15 @@ export class AVInterface {
       supported.videoin = false
       AVInterface.mediadevicesupported = false
     }
-    if (!('MediaStreamTrackGenerator' in globalThis)) {
-      console.log('MediaStreamTrackGenerator unsupported!')
-      supported.audioout = false
-    }
     if (!('AudioDecoder' in globalThis)) {
-      console.log('AudioDecoder unsupported!')
-      supported.audioout = false
+      console.log('AudioDecoder unsupported! We will failback to polyfill!')
     }
     if (!('VideoDecoder' in globalThis)) {
       console.log('VideoDecoder unsupported!')
       supported.videoout = false
     }
     if (!('AudioEncoder' in globalThis)) {
-      console.log('AudioEncoder unsupported!')
-      supported.audioin = false
+      console.log('AudioEncoder unsupported! We will failback to polyfill!')
     }
     if (!('VideoEncoder' in globalThis)) {
       console.log('VideoEncoder unsupported!')
