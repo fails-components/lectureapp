@@ -264,8 +264,13 @@ export class VideoControl extends Component {
       }
     }
     this.devicesChanged = this.devicesChanged.bind(this)
+    this.transportStateUpdate = this.transportStateUpdate.bind(this)
     this.vophid = true
     this.aophid = true
+  }
+
+  transportStateUpdate(state) {
+    this.setState({ transportstate: state })
   }
 
   syncSpkMuted() {
@@ -368,6 +373,9 @@ export class VideoControl extends Component {
       }
     }
     this.setState({ supportedMedia: AVInterface.queryMediaSupported() })
+    AVInterface.getInterface().addTransportStateListener(
+      this.transportStateUpdate
+    )
   }
 
   componentWillUnmount() {
@@ -380,6 +388,9 @@ export class VideoControl extends Component {
       this.state.microphone.close()
       this.setState({ microphone: undefined })
     }
+    AVInterface.getInterface().removeTransportStateListener(
+      this.transportStateUpdate
+    )
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
@@ -579,6 +590,29 @@ export class VideoControl extends Component {
     console.log('audiosrc', audiosrc)
     console.log('audioid', this.state.audioid)
 
+    let coninfo
+    if (this.state.transportstate) {
+      const ts = this.state.transportstate
+      coninfo = (
+        <React.Fragment>
+          {ts.status === 'connecting' && (
+            <i className='coninfoicon pi pi-spin pi-cog'></i>
+          )}
+          {ts.status === 'authenticating' && (
+            <i className='coninfoicon pi pi-key'></i>
+          )}
+          {ts.status === 'failed' && (
+            <i className='coninfoicon pi pi-exclamation-triangle'></i>
+          )}
+          {ts.status === 'connected' && (
+            <i className='coninfoicon pi pi-check'></i>
+          )}
+          {ts.type === 'webtransport' && <React.Fragment> WT </React.Fragment>}
+          {ts.type === 'websocket' && <React.Fragment> WS </React.Fragment>}
+        </React.Fragment>
+      )
+    }
+
     const selbuttonCls = 'p-button-primary p-button-rounded p-m-2'
     const deselbuttonCls = 'p-button-secondary p-button-rounded p-m-2'
     const suppMedia = this.state.supportedMedia
@@ -673,8 +707,14 @@ export class VideoControl extends Component {
                 suppMedia.videoin ||
                 suppMedia.audioin ||
                 suppMedia.audioout) &&
-                !this.props.nobuttonbar &&
-                buttonbar) ||
+                !this.props.nobuttonbar && (
+                  <div className='p-d-flex p-ai-center'>
+                    <div className='p-mr-2'>{buttonbar} </div>
+                    <div className='p-mr-2'>
+                      {coninfo && <div class='coninfoinline'> {coninfo} </div>}
+                    </div>
+                  </div>
+                )) ||
               (!this.props.nobuttonbar && (
                 <React.Fragment> Unsupported Browser! </React.Fragment>
               ))}
@@ -686,7 +726,10 @@ export class VideoControl extends Component {
             suppMedia.audioin ||
             suppMedia.audioout) &&
           !this.props.nobuttonbar && (
-            <div className='buttonbar'>{buttonbar}</div>
+            <React.Fragment>
+              <div className='buttonbar'>{buttonbar}</div>
+              <div class='coninfo'>{coninfo}</div>
+            </React.Fragment>
           )}
         <OverlayPanel
           ref={(el) => (this.videoop = el)}

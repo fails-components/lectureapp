@@ -28,6 +28,7 @@ export class AVTransport {
     AVTransport.interf = this
 
     this.hostinfocb = args.cb
+    this.statuscb = args.status
 
     this.connected = new Promise((resolve, reject) => {
       this.connectedres = resolve
@@ -61,6 +62,8 @@ export class AVTransport {
       }
       // WebTransportWS
       while (true) {
+        let type
+        if (this.statuscb) this.statuscb({ status: 'connecting', type })
         const hinfo = await this.hostinfocb()
         if (!hinfo) {
           await new Promise((resolve) => {
@@ -87,6 +90,8 @@ export class AVTransport {
         let webtransport = false
         if (!forcewebsocket) {
           try {
+            type = 'webtransport'
+            if (this.statuscb) this.statuscb({ status: 'connecting', type })
             // eslint-disable-next-line no-undef
             this.transport = new WebTransport(url, { serverCertificateHashes })
             this.transport.closed
@@ -117,6 +122,8 @@ export class AVTransport {
           if (!forcewebsocket)
             console.log('Fallback to websocket due to webtransport failure')
           // this.connectedrej('no websocket' + wsurl) // fall back
+          type = 'websocket'
+          if (this.statuscb) this.statuscb({ status: 'connecting', type })
           try {
             this.transport = new WebTransportWS(wsurl)
             this.transport.closed
@@ -150,6 +157,7 @@ export class AVTransport {
         }
 
         if (webtransport) {
+          if (this.statuscb) this.statuscb({ status: 'authenticating', type })
           // do authentification
           console.log('webtransport start auth')
           let authfailed = false
@@ -184,15 +192,18 @@ export class AVTransport {
           if (!authfailed) {
             console.log('webtransport auth send')
             try {
+              if (this.statuscb) this.statuscb({ status: 'connected', type })
               await this.transport.closed
               console.log('webtransport closed go to restart')
+              if (this.statuscb) this.statuscb({ status: 'closed' })
             } catch (error) {
               console.log('Webtransport was closed with', error)
             }
           } else {
+            if (this.statuscb) this.statuscb({ status: 'failed', type })
             console.log('webtransport auth failed')
           }
-        }
+        } else if (this.statuscb) this.statuscb({ status: 'failed', type })
         // if we failed wait sometime, before we renew, we should wait in any case
         await new Promise((resolve) => setTimeout(resolve, 2000))
         console.log('webtransport renew connection')

@@ -1655,6 +1655,13 @@ class AVWorker {
     }
   }
 
+  avtransportStatus(state) {
+    this.sendMessage({
+      task: 'avtransportstate',
+      state
+    })
+  }
+
   sendMessage(message) {
     globalThis.postMessage(message)
   }
@@ -1851,6 +1858,9 @@ new AVTransport({
   cb: async () => {
     if (avworker) return await avworker.getTransportInfo()
     return null
+  },
+  status: (state) => {
+    if (avworker) avworker.avtransportStatus(state)
   }
 }).startConnection()
 

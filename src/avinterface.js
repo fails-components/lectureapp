@@ -455,6 +455,8 @@ export class AVInterface {
     this.idCount = 1 // id assigned to objects, to identify them here and in the worker
     this.objects = {} // objects identifable by id, but can be garbage collected
 
+    this.avstatuscbs = new Set()
+
     this.finalizeCallback = this.finalizeCallback.bind(this)
     this.finalization = new FinalizationRegistry(this.finalizeCallback)
 
@@ -547,9 +549,20 @@ export class AVInterface {
     return supported
   }
 
+  addTransportStateListener(cb) {
+    this.avstatuscbs.add(cb)
+  }
+
+  removeTransportStateListener(cb) {
+    this.avstatuscbs.delete(cb)
+  }
+
   onMessage(event) {
     const task = event.data.task
     switch (task) {
+      case 'avtransportstate':
+        this.avstatuscbs.forEach((cb) => cb(event.data.state))
+        break
       case 'getDb':
         {
           const id = event.data.webworkid
