@@ -853,14 +853,18 @@ export class FailsBasis extends Component {
         rejectClassName: 'hiddenButton'
       })
     }
+    // we support it for a period of time only on the experimental branch
+    const expmedia = this.experimental()
     const supportedMedia = AVInterface.queryMediaSupported()
     this.setState({ supportedMedia })
     this.hasMedia =
-      supportedMedia.videoin ||
-      supportedMedia.videoout ||
-      supportedMedia.audioin ||
-      supportedMedia.audioout
-    this.hasMediaSend = supportedMedia.videoout || supportedMedia.audioout
+      (supportedMedia.videoin ||
+        supportedMedia.videoout ||
+        supportedMedia.audioin ||
+        supportedMedia.audioout) &&
+      expmedia
+    this.hasMediaSend =
+      (supportedMedia.videoout || supportedMedia.audioout) && expmedia
   }
 
   commonDidUpdate(prevProps, prevState, snapshot) {
