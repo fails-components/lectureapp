@@ -609,6 +609,7 @@ export class VideoControl extends Component {
           )}
           {ts.type === 'webtransport' && <React.Fragment> WT </React.Fragment>}
           {ts.type === 'websocket' && <React.Fragment> WS </React.Fragment>}
+          {ts.type === undefined && <React.Fragment> NO </React.Fragment>}
         </React.Fragment>
       )
     }
