@@ -232,6 +232,7 @@ class SocketWorker {
     const keyRec = this.keyobject.keyRec
     const keyE2E = this.keyobject.keyE2E
     const keynum = this.keyobject.keynum
+    if (!keyRec || !keyE2E) return // probably we did not generate our keys yet
 
     const sendKO = {
       exptime,
