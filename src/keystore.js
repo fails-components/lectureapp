@@ -52,7 +52,12 @@ export class KeyStore {
     // now we reject pending promises for other keyids
     for (const wkeyid in this.keysrej) {
       this.keysrej[wkeyid](
-        new Error('other key arrived instead ' + wkeyid + 'vs' + keyid)
+        new Error(
+          'Decryption key not arrived. Other key arrived instead key ' +
+            wkeyid +
+            ' vs key ' +
+            keyid
+        )
       ) // should prevent blocking decrypter
       delete this.keysres[wkeyid]
       delete this.keysrej[wkeyid]

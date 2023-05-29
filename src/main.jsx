@@ -1577,13 +1577,13 @@ export class FailsBoard extends FailsBasis {
     })
 
     notepadsocket.on('chatquestion', async (data) => {
+      console.log('Incoming chat', data)
+      let { text, userhash, encData, iv, keyindex } = data
+      let isEncrypted = false
       try {
-        console.log('Incoming chat', data)
-        let { text, userhash, encData, iv, keyindex } = data
-        let isEncrypted = false
-
         if (this.blockchathash.indexOf(userhash) === -1) {
           if ((text === 'Encrypted' && encData, iv, keyindex)) {
+            isEncrypted = true
             const decoder = new TextDecoder()
             const key = await this.keystore.getKey(keyindex)
             const decdata = await globalThis.crypto.subtle.decrypt(
@@ -1595,27 +1595,27 @@ export class FailsBoard extends FailsBasis {
               encData
             )
             text = decoder.decode(decdata)
-            isEncrypted = true
           }
-          const retobj = (
-            <ChatMessage
-              data={data}
-              blockChat={() => this.blockChat(userhash)}
-              latex={this.convertToLatex(text)}
-              isEncrypted={isEncrypted}
-              allowVideoquestion={this.allowVideoquestion}
-              videoQuestion={
-                this.state.avinterfaceStarted &&
-                data?.videoquestion &&
-                this.hasMediaSend
-              }
-            />
-          )
-          this.toast.show({ severity: 'info', content: retobj, sticky: true })
         } else console.log('chat had been blocked')
       } catch (error) {
         console.log('Error in chatquestion', error)
+        text = 'Error: receiving/decrypting chat: ' + error
       }
+      const retobj = (
+        <ChatMessage
+          data={data}
+          blockChat={() => this.blockChat(userhash)}
+          latex={this.convertToLatex(text)}
+          isEncrypted={isEncrypted}
+          allowVideoquestion={this.allowVideoquestion}
+          videoQuestion={
+            this.state.avinterfaceStarted &&
+            data?.videoquestion &&
+            this.hasMediaSend
+          }
+        />
+      )
+      this.toast.show({ severity: 'info', content: retobj, sticky: true })
     })
 
     notepadsocket.on('startPoll', (data) => {
@@ -2755,8 +2755,11 @@ export class FailsNotes extends FailsBasis {
         videoquestion
       )
       const iv = globalThis.crypto.getRandomValues(new Uint8Array(12))
+      console.log('Send chat message 1')
       const keyindex = await this.keystore.getCurKeyId()
+      console.log('Send chat message 2')
       const key = await this.keystore.getKey(keyindex)
+      console.log('Send chat message 3')
       const encData = await globalThis.crypto.subtle.encrypt(
         {
           name: 'AES-GCM',
@@ -2765,6 +2768,7 @@ export class FailsNotes extends FailsBasis {
         key.e2e,
         encoder.encode(chattext)
       )
+      console.log('Send chat message 4')
       this.netSendSocket('chatquestion', {
         text: 'Encrypted',
         encData,
