@@ -67,13 +67,15 @@ export class SVGWriting2 extends Component {
     }
     if (glyph.gtype === 0) {
       //  console.log('color check', glyph.color, this.props.backcolor)
-      if (
-        Color(this.props.backcolor).isLight() &&
-        Color(glyph.color).luminosity() > 0.9
-      ) {
-        stroke = 'black'
-        // console.log("stroke changed to black");
-      } /* else if (
+      if (Color(this.props.backcolor).isLight()) {
+        if (Color(glyph.color).luminosity() > 0.9) {
+          stroke = 'black'
+          // console.log("stroke changed to black");
+        } else if (Color(glyph.color).luminosity() > 0.7) {
+          scolor = Color(glyph.color).darken(0.3).hex()
+        }
+      }
+      /* else if (
         Color(this.props.backcolor).isDark() &&
         Color(glyph.color).luminosity() < 0.2
       ) {
