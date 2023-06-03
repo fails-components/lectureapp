@@ -71,7 +71,7 @@ export class SVGWriting2 extends Component {
         if (Color(glyph.color).luminosity() > 0.9) {
           stroke = 'black'
           // console.log("stroke changed to black");
-        } else if (Color(glyph.color).luminosity() > 0.7) {
+        } else if (Color(glyph.color).luminosity() > 0.5) {
           scolor = Color(glyph.color).darken(0.3).hex()
         }
       }
