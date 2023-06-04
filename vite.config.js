@@ -49,7 +49,9 @@ export default defineConfig(() => {
         host: 'localhost'
       }
     },
-    base: '/static/lecture/',
+    base: process?.env?.PUBLIC_URL
+      ? process.env.PUBLIC_URL
+      : '/static/lecture/',
     optimizeDeps: {
       include: ['pdfjs-dist']
     },
