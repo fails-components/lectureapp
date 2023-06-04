@@ -429,35 +429,43 @@ class SocketWorker {
       this.scheduleReauthor() // request renewal
     })
 
-    const toIden = async (iden, id) => ({
-      signKey: await crypto.subtle.importKey(
-        'jwk',
-        iden.signKey,
-        {
-          name: 'ECDSA',
-          namedCurve: 'P-384'
-        },
-        true,
-        ['verify']
-      ),
-      cryptKey: await crypto.subtle.importKey(
-        'jwk',
-        iden.cryptKey,
-        {
-          name: 'RSA-OAEP',
-          modulusLength: 4096,
-          publicExponent: new Uint8Array([1, 0, 1]),
-          hash: 'SHA-256'
-        },
-        true,
-        ['encrypt']
-      ),
-      purpose: iden.purpose,
-      lastaccess: Number(iden.lastaccess),
-      displayname: iden.displayname,
-      userhash: iden.userhash,
-      myself: id === this.socket.id
-    })
+    const toIden = async (iden, id) => {
+      try {
+        const toret = {
+          signKey: await crypto.subtle.importKey(
+            'jwk',
+            iden.signKey,
+            {
+              name: 'ECDSA',
+              namedCurve: 'P-384'
+            },
+            true,
+            ['verify']
+          ),
+          cryptKey: await crypto.subtle.importKey(
+            'jwk',
+            iden.cryptKey,
+            {
+              name: 'RSA-OAEP',
+              modulusLength: 4096,
+              publicExponent: new Uint8Array([1, 0, 1]),
+              hash: 'SHA-256'
+            },
+            true,
+            ['encrypt']
+          ),
+          purpose: iden.purpose,
+          lastaccess: Number(iden.lastaccess),
+          displayname: iden.displayname,
+          userhash: iden.userhash,
+          myself: id === this.socket.id
+        }
+        return toret
+      } catch (error) {
+        console.log('Problem in toIdent', iden, error)
+        throw error
+      }
+    }
 
     this.socket.removeAllListeners('identUpdate')
     this.socket.on('identUpdate', async (data) => {
