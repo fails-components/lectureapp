@@ -63,8 +63,14 @@ const loadPolyfills = async () => {
       `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
       import.meta.url
     ).href
-    globalThis.LibAV.importedjs = await import(
+    /* globalThis.LibAV.importedjs = await import(
       `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.js`
+    ) */
+    globalThis.LibAV.importedjs = await import(
+      new URL(
+        `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
+        import.meta.url
+      ).href
     )
 
     const LibAVWebCodecs = await import('libavjs-webcodecs-polyfill')
