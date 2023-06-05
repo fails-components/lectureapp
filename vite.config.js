@@ -4,7 +4,6 @@ import eslint from 'vite-plugin-eslint'
 import wasm from 'vite-plugin-wasm'
 import topLevelAwait from 'vite-plugin-top-level-await'
 import { VitePWA } from 'vite-plugin-pwa'
-import dynamicImport from 'vite-plugin-dynamic-import'
 
 const ENV_PREFIX = 'REACT_APP_'
 
@@ -23,18 +22,6 @@ export default defineConfig(() => {
         workbox: {
           sourcemap: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg}']
-        }
-      }),
-      dynamicImport({
-        filter(id) {
-          // `node_modules` is exclude by default, so we need to include it explicitly
-          // https://github.com/vite-plugin/vite-plugin-dynamic-import/blob/v1.3.0/src/index.ts#L133-L135
-          if (id.includes('/node_modules/libav.js')) {
-            return true
-          }
-          if (id.includes('/node_modules/libavjs-webcodecs-polyfill')) {
-            return true
-          }
         }
       })
     ],

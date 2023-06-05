@@ -67,6 +67,7 @@ const loadPolyfills = async () => {
       `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.js`
     ) */
     globalThis.LibAV.importedjs = await import(
+      /* @vite-ignore */
       new URL(
         `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
         import.meta.url
