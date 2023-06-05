@@ -2721,7 +2721,7 @@ export class BlackboardNotepad extends Component {
 
   deactivateLaserPointer() {
     if (this.laserpointer === true) {
-      this.props.notepadscreen.reportFoG(null, null, this.clientId)
+      this.reportFoG(null, null, this.clientId)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preReceiveFoG({
           x: null,
