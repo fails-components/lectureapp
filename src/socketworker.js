@@ -143,7 +143,7 @@ class SocketWorker {
   }
 
   informIdentities() {
-    const nowborder = Date.now() - 60 * 1000
+    const nowborder = Date.now() - 5 * 60 * 1000 - 10 * 1000
     const idents = Object.entries(this.idents)
       .map(([key, obj]) => ({ id: key, ...obj }))
       .filter((el) => nowborder - Number(el.lastaccess) < 0)
@@ -153,6 +153,7 @@ class SocketWorker {
         purpose: el.purpose,
         lastaccess: Number(el.lastaccess)
       }))
+    console.log('informIdentities peak', this.idents, idents)
     let masterdigest = null
     if (this.keyobject.digest)
       masterdigest = Array.from(new Uint16Array(this.keyobject.digest))
