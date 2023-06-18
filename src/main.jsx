@@ -43,7 +43,6 @@ import {
   faBars,
   faFilePen,
   faLock,
-  faTowerBroadcast,
   faTv,
   faVolumeXmark
 } from '@fortawesome/free-solid-svg-icons'
@@ -65,7 +64,12 @@ import {
   fiWristMiddleLeft,
   fiWristMiddleRight,
   fiWristTopLeft,
-  fiWristTopRight
+  fiWristTopRight,
+  fiBroadcastStart,
+  fiReceiveStart,
+  fiVideoQuestionPermit,
+  fiVideoQuestionOn,
+  fiVideoQuestionOff
 } from './icons/icons.jsx'
 import { NoteScreenBase } from './notepad.jsx'
 import { NoteTools } from './toolbox'
@@ -1042,7 +1046,7 @@ class ShortcutsMessage extends React.Component {
                 <div className='p-col-9'>Start up Audio/Video broadcast:</div>
                 <div className='p-col-3'>
                   <Button
-                    icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+                    icon={fiBroadcastStart}
                     id='bt-broadcast'
                     className='p-button-primary p-button-outlined p-button-rounded p-m-2'
                     onClick={(event) => {
@@ -1377,7 +1381,7 @@ class ChatMessage extends React.Component {
           <br></br>
           {this.props.videoQuestion && !this.state.videoQuestionSend && (
             <Button
-              icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+              icon={fiVideoQuestionPermit}
               key='broadcast'
               className='p-button-success p-button-outlined p-button-rounded p-m-2'
               tooltip='Allow audio/video transmission.'
@@ -2492,7 +2496,7 @@ export class FailsScreen extends FailsBasis {
               </span>
               <br></br>
               <br></br>
-              Compare these numbers to verify E2E encryption.
+              Compare the Masterkey to verify E2E encryption.
             </React.Fragment>
           )}
         </OverlayPanel>
@@ -2554,7 +2558,7 @@ export class FailsScreen extends FailsBasis {
           <div style={buttonstyle}>
             {!this.state.avinterfaceStarted && (
               <Button
-                icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+                icon={fiBroadcastStart}
                 tooltip='Startup audio/video broadcast'
                 key={17}
                 tooltipOptions={ttopts}
@@ -2976,8 +2980,8 @@ export class FailsNotes extends FailsBasis {
           this.state.gotavstuff &&
           this.state.casttoscreens && (
             <Button
-              icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
-              tooltip='Startup audio/video broadcast'
+              icon={fiReceiveStart}
+              tooltip='Startup audio/video receiving'
               key={17}
               tooltipOptions={ttopts}
               onClick={(e) => {
@@ -3045,7 +3049,11 @@ export class FailsNotes extends FailsBasis {
                 {this.state.avinterfaceStarted && (
                   <div className='p-m-1' key='audiovideo'>
                     <Button
-                      icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+                      icon={
+                        this.state.videoquestion
+                          ? fiVideoQuestionOn
+                          : fiVideoQuestionOff
+                      }
                       id='bt-broadcast'
                       className={
                         this.state.videoquestion
@@ -3161,7 +3169,8 @@ export class FailsNotes extends FailsBasis {
           </div>
           Lectureapp version {import.meta.env.REACT_APP_VERSION} <br /> <br />
           FAILS logo by chadkills <br />
-          Custom icons by icon_xpert786 <br /> <br />
+          Custom icons by icon_xpert786 and petedesignworks
+          <br /> <br />
           Released under GNU Affero General Public License Version 3. <br />{' '}
           <br />
           Download the source code from{' '}
@@ -3186,7 +3195,7 @@ export class FailsNotes extends FailsBasis {
                 {this.state.identobj?.masterdigest}
               </span>
               <br />
-              Compare these numbers to verify E2E encryption.
+              Compare the Masterkey to verify E2E encryption.
             </React.Fragment>
           )}
         </OverlayPanel>

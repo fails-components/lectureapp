@@ -36,7 +36,8 @@ import {
   faBars,
   faAdjust,
   faUndoAlt,
-  faTowerBroadcast
+  faUser,
+  faUserGroup
 } from '@fortawesome/free-solid-svg-icons'
 import {
   fiLaserpointer,
@@ -56,6 +57,8 @@ import {
   fiMagicwand,
   fiTouchOn,
   fiTouchOff,
+  fiBroadcastStart,
+  fiStudent,
   fiFailsLogo
 } from './icons/icons.jsx'
 import { UAParser } from 'ua-parser-js'
@@ -941,10 +944,11 @@ export class ToolBox extends ToolHandling {
   }
 
   identTemplate(element) {
+    let icon = <FontAwesomeIcon icon={faUser} />
+    if (element.purpose === 'notes') icon = fiStudent({ newSize: '18px' })
     return (
       <span>
-        <i className='pi pi-user mr-4'></i> {element.displayname} (
-        {element.purpose})
+        {icon} {element.displayname} ({element.purpose})
       </span>
     )
   }
@@ -1196,7 +1200,7 @@ export class ToolBox extends ToolHandling {
     if (this.props.startUpAVBroadcast)
       avstartupbutton = (
         <Button
-          icon={<FontAwesomeIcon icon={faTowerBroadcast} />}
+          icon={fiBroadcastStart}
           tooltip='Startup audio/video broadcast'
           tooltipOptions={ttopts}
           key={17}
@@ -1208,20 +1212,19 @@ export class ToolBox extends ToolHandling {
       )
 
     const identbutton = (
-      <Button
-        icon={
-          <i className='pi pi-users mr-4 p-overlay-badge'>
-            <Badge value={idents.length}></Badge>
-          </i>
-        }
-        tooltip='Participants'
-        tooltipOptions={ttopts}
-        key={16}
-        onClick={(e) => {
-          if (this.identinfo) this.identinfo.toggle(e)
-        }}
-        className={setclass}
-      ></Button>
+      <div className=' p-overlay-badge'>
+        <Button
+          icon={<FontAwesomeIcon icon={faUserGroup} />}
+          tooltip='Participants'
+          tooltipOptions={ttopts}
+          key={16}
+          onClick={(e) => {
+            if (this.identinfo) this.identinfo.toggle(e)
+          }}
+          className={setclass}
+        ></Button>
+        <Badge value={idents.length}></Badge>
+      </div>
     )
 
     const infobutton = (
@@ -1501,7 +1504,7 @@ export class ToolBox extends ToolHandling {
             </div>
           </div>
           FAILS logo by chadkills <br />
-          Custom icons by icon_xpert786 <br /> <br />
+          Custom icons by icon_xpert786 and petedesignworks <br /> <br />
           Released under GNU Affero General Public License Version 3. <br />{' '}
           <br />
           Download the source code from{' '}
