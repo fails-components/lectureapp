@@ -712,7 +712,9 @@ export class VideoControl extends Component {
                   <div className='p-d-flex p-ai-center'>
                     <div className='p-mr-2'>{buttonbar} </div>
                     <div className='p-mr-2'>
-                      {coninfo && <div class='coninfoinline'> {coninfo} </div>}
+                      {coninfo && (
+                        <div className='coninfoinline'> {coninfo} </div>
+                      )}
                     </div>
                   </div>
                 )) ||
@@ -729,7 +731,7 @@ export class VideoControl extends Component {
           !this.props.nobuttonbar && (
             <React.Fragment>
               <div className='buttonbar'>{buttonbar}</div>
-              <div class='coninfo'>{coninfo}</div>
+              <div className='coninfo'>{coninfo}</div>
             </React.Fragment>
           )}
         <OverlayPanel
