@@ -2906,13 +2906,17 @@ export class FailsNotes extends FailsBasis {
                     } else this.onNotesmodeEnterDialog({ persist: false })
                   })
                   .catch((error) => {
-                    console.log('Problim in persitentcheck:', error)
+                    console.log(
+                      'Problem in persistent check or unsupported permissions:',
+                      error
+                    )
+                    this.onNotesmodeEnterDialog({ tryPersist: true })
                   })
               else this.onNotesmodeEnterDialog({ tryPersist: true })
             }
           })
           .catch((error) => {
-            console.log('Problim in persitentcheck:', error)
+            console.log('Problem in persitentcheck', error)
           })
       } else {
         this.onNotesmodeEnterDialog({ persist: false })
