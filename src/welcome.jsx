@@ -363,6 +363,16 @@ export class Welcome extends Component {
                             Screen (shows the lecture)
                           </label>
                         </div>
+                        <div className='p-field-radiobutton'>
+                          <RadioButton
+                            inputId='notes'
+                            name='notes'
+                            value='notes'
+                            onChange={(e) => this.changePurpose(e.value)}
+                            checked={this.state.purpose === 'notes'}
+                          />
+                          <label htmlFor='notes'>Student notes</label>
+                        </div>
                       </span>
                     </div>
                     <div className='p-col-6'>
