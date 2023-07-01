@@ -671,7 +671,11 @@ export class AVInterface {
     if (!AVInterface.mediadevicesupported) return null
     if (!this.devices) {
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: true
+        })
+        stream.getTracks().forEach((track) => track.stop())
       } catch (error) {
         console.log('getAVDevices, getUserMedia...', error)
       }
@@ -711,14 +715,14 @@ export class AVInterface {
     if (!AVInterface.mediadevicesupported) return
     try {
       if (!this.devices) await this.getAVDevices()
-      const oldid = localStorage.getItem('failsaduiodeviceid')
+      const oldid = localStorage.getItem('failsaudiodeviceid')
       let devices = this.devices.filter((el) => el.kind === 'audioinput')
       if (devices.length < 1) throw new Error('no Audio devices available')
       const olddevice = devices.filter((el) => el.deviceId === oldid)
       if (olddevice.length > 0) devices = olddevice
       const device = devices[0]
       // ok now we have one we can finally open the video stuff
-      console.log('audio device', device)
+      console.log('audio input device', device)
       const webworkid = this.getNewId()
 
       const avobj = new AVMicrophoneStream({
@@ -750,9 +754,37 @@ export class AVInterface {
     }
   }
 
+  static canSwitchSpeaker() {
+    return 'setSinkId' in AudioContext.prototype
+  }
+
+  switchSpeaker(deviceId, nosave) {
+    this.speakerDeviceId = deviceId
+    if (AVInterface.canSwitchSpeaker()) {
+      if (!nosave) localStorage.setItem('failsaudiooutdeviceid', deviceId)
+      const ac = this.getAudioContext()
+      ac.setSinkId(deviceId)
+    }
+  }
+
+  getSpeakerDeviceId() {
+    return this.speakerDeviceId
+  }
+
   async openAudioOutput(args) {
     // if (!this.mediadevicesupported) return
     try {
+      if (!this.devices) await this.getAVDevices()
+      const oldid = localStorage.getItem('failsaudiooutdeviceid')
+      let devices = this.devices.filter((el) => el.kind === 'audiooutput')
+      // does not work on firefox
+      /* if (devices.length < 1)
+        throw new Error('no Audio output devices available') */
+      const olddevice = devices.filter((el) => el.deviceId === oldid)
+      if (olddevice.length > 0) devices = olddevice
+      const device = devices.length > 0 ? devices[0] : undefined
+      // ok now we have one we can finally open the video stuff
+      console.log('audio output device', device)
       const webworkid = this.getNewId()
 
       const avobj = new AVSpeakerStream({
@@ -760,6 +792,8 @@ export class AVInterface {
       })
       await avobj.initalizeAudio()
       this.registerForFinal(avobj, webworkid)
+
+      if (device) this.switchSpeaker(device.deviceId)
 
       return avobj
     } catch (error) {

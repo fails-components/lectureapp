@@ -267,6 +267,7 @@ export class VideoControl extends Component {
     this.transportStateUpdate = this.transportStateUpdate.bind(this)
     this.vophid = true
     this.aophid = true
+    this.aopohid = true
   }
 
   transportStateUpdate(state) {
@@ -292,7 +293,19 @@ export class VideoControl extends Component {
       const spkmuted = this.state.spkmuted
       if (spkmuted) this.props.speakerset.muteOff()
       else this.props.speakerset.muteOn()
-      this.setState({ spkmuted: !spkmuted })
+      const avinterf =
+        this.avinterf || (this.avinterf = AVInterface.getInterface())
+      avinterf
+        .getAVDevices()
+        .then((avdevices) => this.setState({ avdevices }))
+        .catch((error) => {
+          console.log('Avdevices error:', error)
+        })
+
+      this.setState({
+        spkmuted: !spkmuted,
+        audiooutid: avinterf.getSpeakerDeviceId()
+      })
     }
   }
 
@@ -495,6 +508,15 @@ export class VideoControl extends Component {
           this.setAudioSrc(auddev[0].deviceId, true)
         }
       }
+      const audindout = devices.findIndex(
+        (el) => this.state.audiooutid === el.deviceId
+      )
+      if (audindout === -1) {
+        const auddev = devices.filter((el) => el.kind === 'audiooutput')
+        if (auddev.length > 0) {
+          this.setAudioOut(auddev[0].deviceId, true)
+        }
+      }
     } catch (error) {
       console.log('devices change error', error)
     }
@@ -577,6 +599,19 @@ export class VideoControl extends Component {
     this.setState({ audioid: id })
   }
 
+  setAudioOut(id, nosave) {
+    console.log('setAudioOut', id)
+    if (this.audiooutop) this.audiooutop.hide()
+    try {
+      const avinterf =
+        this.avinterf || (this.avinterf = AVInterface.getInterface())
+      avinterf.switchSpeaker(id, nosave)
+    } catch (error) {
+      console.log('setAudioOut failed', error)
+    }
+    this.setState({ audiooutid: id })
+  }
+
   render() {
     const devices = this.state.avdevices || []
     const videosrc = devices
@@ -589,6 +624,11 @@ export class VideoControl extends Component {
       .map((el) => ({ label: el.label, deviceId: el.deviceId }))
     console.log('audiosrc', audiosrc)
     console.log('audioid', this.state.audioid)
+    const audioout = devices
+      .filter((el) => el.kind === 'audiooutput')
+      .map((el) => ({ label: el.label, deviceId: el.deviceId }))
+    console.log('audioout', audioout, devices)
+    console.log('audiooutid', this.state.audiooutid)
 
     let coninfo
     if (this.state.transportstate) {
@@ -682,9 +722,24 @@ export class VideoControl extends Component {
                 icon={this.state.spkmuted ? faVolumeXmark : faVolumeHigh}
               />
             }
-            id='bt-audio'
+            id='bt-audioout'
             className={this.state.spkmuted ? deselbuttonCls : selbuttonCls}
-            onClick={(e) => this.speakerToggle()}
+            onClick={(e) => {
+              if (this.aopohid && AVInterface.canSwitchSpeaker()) {
+                this.audiooutop.show(e)
+                if (this.audiooutopclean) clearTimeout(this.audiooutopclean)
+                this.audiooutopclean = setTimeout(() => {
+                  clearTimeout(this.audiooutopclean)
+                  if (!this.aopohid) this.audiooutop.hide(e)
+                }, 5000)
+              }
+              if (
+                !this.aopohid ||
+                this.state.spkmuted ||
+                !AVInterface.canSwitchSpeaker()
+              )
+                this.speakerToggle()
+            }}
           ></Button>
         )}
       </React.Fragment>
@@ -769,6 +824,25 @@ export class VideoControl extends Component {
             options={audiosrc}
             onChange={(e) => this.setAudioSrc(e.value)}
             placeholder='Select an audio source'
+            style={{ maxWidth: '10vw' }}
+          />
+        </OverlayPanel>
+        <OverlayPanel
+          ref={(el) => (this.audiooutop = el)}
+          onShow={() => (this.aopohid = false)}
+          onHide={() => {
+            this.aopohid = true
+            if (this.audiooutopclean) clearTimeout(this.audiooutopclean)
+          }}
+        >
+          Select audiooutput: <br />
+          <Dropdown
+            optionLabel='label'
+            optionValue='deviceId'
+            value={this.state.audiooutid}
+            options={audioout}
+            onChange={(e) => this.setAudioOut(e.value)}
+            placeholder='Select an audio output'
             style={{ maxWidth: '10vw' }}
           />
         </OverlayPanel>
