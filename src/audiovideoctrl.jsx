@@ -184,6 +184,7 @@ export class FloatingVideo extends Component {
 
     style.zIndex = 199
     style.position = 'absolute'
+    style.overflow = 'hidden'
     return (
       <div className='p-shadow-5 m-0 buttonbarparent' style={style}>
         {this.props.children}
