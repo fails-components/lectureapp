@@ -1897,17 +1897,30 @@ export class FailsBoard extends FailsBasis {
 
   itemGalleriaTemplate(item) {
     return (
-      <img
-        src={item.itemImageSrc}
-        alt={item.alt}
-        style={{
-          width: 'auto',
-          height: 'auto',
-          display: 'block',
-          maxHeight: '50vh',
-          maxWidth: '75vw'
-        }}
-      />
+      <div>
+        <img
+          src={item.itemImageSrc}
+          alt={item.alt}
+          style={{
+            width: 'auto',
+            height: 'auto',
+            display: 'block',
+            maxHeight: '50vh',
+            maxWidth: '75vw'
+          }}
+        />
+        <span
+          style={{
+            right: 0,
+            bottom: 0,
+            position: 'absolute',
+            color: '#2196F3'
+          }}
+        >
+          {' '}
+          {item.alt}
+        </span>
+      </div>
     )
   }
 
@@ -2013,7 +2026,7 @@ export class FailsBoard extends FailsBasis {
         ? true
         : this.state.blackbackground
 
-    // console.log("pictures",this.state.pictures);
+    // console.log('pictures', this.state.pictures)
     return (
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
