@@ -1769,7 +1769,7 @@ export class BlackboardNotepad extends Component {
     this.pointerup = this.pointerup.bind(this)
     this.wheel = this.wheel.bind(this)
     this.curPictAspect = this.curPictAspect.bind(this)
-    this.calcAddPictSize = this.calcAddPictSize.bind(this)
+    this.calcAddPictSizeAndPos = this.calcAddPictSizeAndPos.bind(this)
     this.processEvent = this.processEvent.bind(this)
     this.processPointerReject = this.processPointerReject.bind(this)
     this.recycleObjId = this.recycleObjId.bind(this)
@@ -1857,6 +1857,12 @@ export class BlackboardNotepad extends Component {
   confirmbox() {
     if (this.props.notepadscreen && this.props.notepadscreen.confirmbox)
       return this.props.notepadscreen.confirmbox.current
+    return null
+  }
+
+  originbox() {
+    if (this.props.notepadscreen && this.props.notepadscreen.originbox)
+      return this.props.notepadscreen.originbox.current
     return null
   }
 
@@ -2141,6 +2147,8 @@ export class BlackboardNotepad extends Component {
             this.setState({
               addpictposx: pos.x / this.props.bbwidth,
               addpictposy: pos.y / this.props.bbwidth + this.calcCurpos(),
+              addpictheight: 200 / this.props.bbwidth,
+              addpictwidth: 200 / this.props.bbwidth,
               // addpictmode: 3 /* for drawing */
               addpictmode: 2 /* for drawing */
             })
@@ -2150,7 +2158,16 @@ export class BlackboardNotepad extends Component {
             // case 3:
             this.addpictmode = 2
             // this.setState({ addpictmode: 2 })
-            this.addPictureMovePos({ x: pos.x + 200, y: pos.y + 200 }, true)
+            this.addPictureMovePos({
+              pos: { x: pos.x + 200, y: pos.y + 200 },
+              reactivate: true,
+              corner: 'rightBottom'
+            })
+            this.addPictureMovePos({
+              pos: { x: pos.x, y: pos.y },
+              reactivate: true,
+              corner: 'leftTop'
+            })
 
             break
           default:
@@ -2227,43 +2244,80 @@ export class BlackboardNotepad extends Component {
     this.mouseidentifier = null
   }
 
-  calcAddPictSize(state, pos) {
+  calcAddPictSizeAndPos(state, pos, corner) {
     const aspectratio = this.curPictAspect()
-    let nx = pos.x / this.props.bbwidth - state.addpictposx
-    let ny = pos.y / this.props.bbwidth + this.calcCurpos() - state.addpictposy
-    if (nx === 0) nx = 0.001
-    if (ny === 0) ny = 0.001
-    if (nx > ny) {
-      nx = ny * aspectratio
-    } else {
-      ny = nx / aspectratio
+    switch (corner) {
+      case 'rightBottom': {
+        let nx = pos.x / this.props.bbwidth - state.addpictposx
+        let ny =
+          pos.y / this.props.bbwidth + this.calcCurpos() - state.addpictposy
+        if (nx === 0) nx = 0.001
+        if (ny === 0) ny = 0.001
+        if (nx > ny) {
+          nx = ny * aspectratio
+        } else {
+          ny = nx / aspectratio
+        }
+        return { addpictwidth: nx, addpictheight: ny }
+      }
+      case 'leftTop': {
+        let npx = pos.x / this.props.bbwidth
+        let npy = pos.y / this.props.bbwidth + this.calcCurpos()
+        // old sizes
+        const ox = state.addpictposx
+        const oy = state.addpictposy
+        let nx = -npx + ox + state.addpictwidth
+        let ny = -npy + oy + state.addpictheight
+        if (nx <= 0) nx = 0.001
+        if (ny <= 0) ny = 0.001
+        if (nx > ny) {
+          nx = ny * aspectratio
+        } else {
+          ny = nx / aspectratio
+        }
+        npx = state.addpictposx + state.addpictwidth - nx
+        npy = state.addpictposy + state.addpictheight - ny
+        return {
+          addpictposx: npx,
+          addpictposy: npy,
+          addpictwidth: nx,
+          addpictheight: ny
+        }
+      }
+      default:
+        throw new Error('unknown corner')
     }
-    return { nx, ny }
   }
 
-  addPictureMovePos(pos, reactivate) {
+  addPictureMovePos({ pos, reactivate, corner }) {
     this.setState((state) => {
-      const size = this.calcAddPictSize(state, pos)
+      const retstate = this.calcAddPictSizeAndPos(state, pos, corner)
+      let task
       if (reactivate) {
-        if (this.confirmbox())
-          this.confirmbox().reactivate({
-            x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
-            y:
-              state.addpictposy +
-              /* this.state.addpictheight */ size.ny -
-              this.calcCurpos()
-          })
+        task = 'reactivate'
       } else {
-        if (this.confirmbox())
-          this.confirmbox().setPosition({
-            x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
-            y:
-              state.addpictposy +
-              /* this.state.addpictheight */ size.ny -
-              this.calcCurpos()
-          })
+        task = 'setPosition'
       }
-      return { addpictwidth: size.nx, addpictheight: size.ny }
+      const addpictposx = retstate.addpictposx || state.addpictposx
+      const addpictposy = retstate.addpictposy || state.addpictposy
+      const addpictheight = retstate.addpictheight || state.addpictheight
+      const addpictwidth = retstate.addpictwidth || state.addpictwidth
+      let box
+      box = this.confirmbox()
+      if (box)
+        box[task]({
+          x: addpictposx + addpictwidth,
+          y: addpictposy + addpictheight - this.calcCurpos()
+        })
+
+      box = this.originbox()
+      if (box)
+        box[task]({
+          x: addpictposx,
+          y: addpictposy - this.calcCurpos()
+        })
+
+      return retstate
     })
   }
 
@@ -2476,7 +2530,7 @@ export class BlackboardNotepad extends Component {
               })
               break
             case 3:
-              this.addPictureMovePos(pos)
+              this.addPictureMovePos({ pos, corner: 'rightBottom' })
               break
             default:
               break
@@ -2892,6 +2946,7 @@ export class BlackboardNotepad extends Component {
       })
       this.addpictmode = 0
       this.restoreLastCursorState()
+      this.deactivateUtilBoxes()
       this.reactivateToolBox()
     }
   }
@@ -2909,8 +2964,14 @@ export class BlackboardNotepad extends Component {
       // todo report about new picture
       this.addpictmode = 0
       this.restoreLastCursorState()
+      this.deactivateUtilBoxes()
       this.reactivateToolBox()
     }
+  }
+
+  deactivateUtilBoxes() {
+    if (this.confirmbox()) this.confirmbox().deactivate()
+    if (this.originbox()) this.originbox().deactivate()
   }
 
   reactivateToolBox() {

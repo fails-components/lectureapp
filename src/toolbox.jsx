@@ -1619,7 +1619,7 @@ export class ToolBox extends ToolHandling {
   }
 }
 
-export class ConfirmBox extends Component {
+export class UtilBox extends Component {
   constructor(props) {
     super(props)
 
@@ -1657,6 +1657,10 @@ export class ConfirmBox extends Component {
     })
   }
 
+  deactivate() {
+    this.setState({ activated: false })
+  }
+
   okButtonPressed() {
     this.blackboard().okButtonPressed()
     this.setState({ activated: false })
@@ -1690,7 +1694,7 @@ export class ConfirmBox extends Component {
       now - this.lastmovetime > 25
     ) {
       const pos = { x: event.clientX, y: event.clientY }
-      this.blackboard().addPictureMovePos(pos)
+      this.blackboard().addPictureMovePos({ pos, corner: this.props.corner })
       this.lastmovetime = now
     }
   }
@@ -1708,19 +1712,20 @@ export class ConfirmBox extends Component {
   render() {
     let okcancel = []
 
-    const okbutton = (
-      <Button
-        icon='pi pi-check'
-        key={1}
-        onClick={(e) => {
-          if (Date.now() - this.state.activationTime > 1000)
-            this.okButtonPressed()
-        }}
-        className='p-button-success p-button-raised p-button-rounded tbChild'
-      />
-    )
-
-    okcancel.push(okbutton)
+    if (this.props.utilbox) {
+      const okbutton = (
+        <Button
+          icon='pi pi-check'
+          key={1}
+          onClick={(e) => {
+            if (Date.now() - this.state.activationTime > 1000)
+              this.okButtonPressed()
+          }}
+          className='p-button-success p-button-raised p-button-rounded tbChild'
+        />
+      )
+      okcancel.push(okbutton)
+    }
 
     const movebutton = (
       <Button
@@ -1739,18 +1744,20 @@ export class ConfirmBox extends Component {
     )
     okcancel.push(movebutton)
 
-    const cancelbutton = (
-      <Button
-        icon='pi pi-times'
-        key={2}
-        onClick={(e) => {
-          if (Date.now() - this.state.activationTime > 1000)
-            this.cancelButtonPressed()
-        }}
-        className='p-button-danger p-button-raised p-button-rounded tbChild'
-      />
-    )
-    okcancel.push(cancelbutton)
+    if (this.props.utilbox) {
+      const cancelbutton = (
+        <Button
+          icon='pi pi-times'
+          key={2}
+          onClick={(e) => {
+            if (Date.now() - this.state.activationTime > 1000)
+              this.cancelButtonPressed()
+          }}
+          className='p-button-danger p-button-raised p-button-rounded tbChild'
+        />
+      )
+      okcancel.push(cancelbutton)
+    }
 
     okcancel = okcancel.map((ele, it) => (
       <div className='p-mr-2 p-mb-2' id={it} key={it}>
