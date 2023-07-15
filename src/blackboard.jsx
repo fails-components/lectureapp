@@ -3047,7 +3047,7 @@ export class BlackboardNotepad extends Component {
       left: '20px',
       color: 'red',
       textShadow: '0 0 3px #FF0000',
-      zIndex: 200
+      zIndex: 1202
     }
     return (
       <div
