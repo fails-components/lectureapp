@@ -836,11 +836,15 @@ class AVInputProcessor extends AVProcessor {
 
         curstream = this.multscaler.readable[qual]
         // encoder
-        curstream.pipeTo(this.encoder[qual].writable)
+        const pipeTos = []
+        pipeTos.push(curstream.pipeTo(this.encoder[qual].writable))
         curstream = this.encoder[qual].readable
-        curstream.pipeTo(this.encrypt[qual].writable)
+        pipeTos.push(curstream.pipeTo(this.encrypt[qual].writable))
         curstream = this.encrypt[qual].readable
-        curstream.pipeTo(this.framer[qual].writable)
+        pipeTos.push(curstream.pipeTo(this.framer[qual].writable))
+        Promise.all(pipeTos).catch((error) => {
+          console.log('Problem in pipetos buildOutgoingPipeline', error)
+        })
         curstream = this.framer[qual].readable
         const pipesMaker = (quality) => {
           this.bidiStreamToLoop({
@@ -1372,15 +1376,20 @@ class AVOutputProcessor extends AVProcessor {
         else resolve()
       })
 
+      const pipeTos = []
+
       let curstream = this.deframer.readable
-      curstream.pipeTo(this.decrypt.writable)
+      pipeTos.push(curstream.pipeTo(this.decrypt.writable))
       curstream = this.decrypt.readable
-      curstream.pipeTo(this.decoder.writable)
+      pipeTos.push(curstream.pipeTo(this.decoder.writable))
       curstream = this.decoder.readable
 
       if (this.outputwritable) {
-        curstream.pipeTo(this.outputwritable)
+        pipeTos.push(curstream.pipeTo(this.outputwritable))
       }
+      Promise.all(pipeTos).catch((error) => {
+        console.log('Problem in pipetos buildIncomingPipeline', error)
+      })
       this.inputctrlframerwriter = this.inputctrlframer.writable.getWriter()
 
       const pipesMaker = () => {
