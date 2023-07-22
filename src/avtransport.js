@@ -56,6 +56,7 @@ export class AVTransport {
     try {
       console.log('startconnection')
       let forcewebsocket = false // for debugging set to true
+      const preventwebsocket = false // for debugging set to true
       if (typeof globalThis.WebTransport === 'undefined') {
         console.log('Browser has no WebTransport support fall back to ponyfill')
         forcewebsocket = true
@@ -125,6 +126,8 @@ export class AVTransport {
           type = 'websocket'
           if (this.statuscb) this.statuscb({ status: 'connecting', type })
           try {
+            if (preventwebsocket)
+              throw new Error('WebSocket creation prevented by debug flag')
             this.transport = new WebTransportWS(wsurl)
             this.transport.closed
               .then(() => {
