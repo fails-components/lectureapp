@@ -62,6 +62,98 @@ class AVProcessor {
     this.ticketRej = []
   }
 
+  // The next code should work, but it does not!
+  async bidiStreamToLoopExperimental({
+    bidiStream /* function for getting the input Stream */,
+    reset,
+    inputStream,
+    outputStream,
+    tag,
+    running
+  }) {
+    const ls = {
+      lastupdate: new Date(),
+      position: -1
+    }
+    const statusPoll = setInterval(() => {
+      console.log(tag, 'bSTL loop status', JSON.stringify(ls))
+    }, 5000)
+    while (running()) {
+      let iowritable
+      let ioreadable
+      ls.pos = 1
+
+      try {
+        const bStream = await bidiStream()
+        ls.pos = 2
+        let resetrun = true
+        while (resetrun) {
+          try {
+            ls.pos = 2.1
+            await reset()
+            ls.pos = 2.2
+            resetrun = false
+          } catch (error) {
+            console.log(tag, 'bidiStreamToLoopProblem reset output', error)
+            ls.pos = 2.3
+            await new Promise((resolve) => setTimeout(resolve, 5000))
+          }
+        }
+        ls.pos = 3
+        iowritable = outputStream().writable
+        ioreadable = inputStream().readable
+        ls.pos = 4
+        // next two lines part of Chroimumbug work around
+        const inAbort = new AbortController()
+        const outAbort = new AbortController()
+
+        const inProm = bStream.readable.pipeTo(iowritable, {
+          preventClose: true,
+          preventAbort: true,
+          signal: inAbort.signal
+        })
+        const outProm = ioreadable.pipeTo(bStream.writable, {
+          preventCancel: true,
+          signal: outAbort.signal
+        })
+
+        let outaborted
+        outProm
+          .finally(() => {
+            console.log('bwriter PipeTo finished')
+            outaborted = true
+          })
+          .catch(() => {})
+        let inaborted
+        inProm
+          .finally(() => {
+            console.log('breader PipeTo finished')
+            inaborted = true
+          })
+          .catch(() => {})
+        ls.pos = 5
+        // workaround for chromium bug
+        await Promise.race([inProm, outProm])
+        ls.pos = 6
+        if (inaborted && !outaborted) {
+          console.log('outAbort')
+          outAbort.abort()
+        } else if (!inaborted && outaborted) {
+          console.log('inAbort')
+          inAbort.abort()
+        } else {
+          console.log('NO ABORT!')
+        }
+        ls.pos = 7
+        await Promise.all([inProm, outProm])
+        ls.pos = 8
+      } catch (error) {
+        console.log(tag, 'error bidi loop', error)
+      }
+    }
+    clearInterval(statusPoll)
+  }
+
   async bidiStreamToLoop({
     bidiStream /* function for getting the input Stream */,
     reset,
@@ -119,19 +211,23 @@ class AVProcessor {
         const breader = bStream.readable.getReader()
         let pumping = true
         const work = []
-        let failreject
-        const failprom = new Promise((resolve, reject) => {
-          failreject = reject
-        })
+
+        const failRejects = new Set()
+
         const bread = async () => {
+          let myreject
+          const myprom = new Promise((resolve, reject) => {
+            myreject = reject
+            failRejects.add(reject)
+          })
           try {
             ls.rpos = 1
-            const res = await Promise.race([breader.read(), failprom])
+            const res = await Promise.race([breader.read(), myprom])
             ls.rpos = 2
             if (res.value) {
               ls.read1 += res.value.byteLength
               ls.rpos = 3
-              await Promise.race([iowriter.write(res.value), failprom])
+              await Promise.race([iowriter.write(res.value), myprom])
               ls.rpos = 4
               ls.write1 += res.value.byteLength
             }
@@ -142,20 +238,27 @@ class AVProcessor {
           } catch (error) {
             console.log(tag, ' bread err', error)
             ls.rpos = 6
+            failRejects.delete(myreject)
             return 'brE'
           }
           // ls.rpos = 7
+          failRejects.delete(myreject)
           return 'br'
         }
         const bwrit = async () => {
+          let myreject
+          const myprom = new Promise((resolve, reject) => {
+            myreject = reject
+            failRejects.add(reject)
+          })
           try {
             ls.wpos = 1
-            const res = await Promise.race([ioreader.read(), failprom])
+            const res = await Promise.race([ioreader.read(), myprom])
             ls.wpos = 2
             if (res.value) {
               ls.read2 += res.value.byteLength
               ls.wpos = 3
-              await Promise.race([bwriter.write(res.value), failprom])
+              await Promise.race([bwriter.write(res.value), myprom])
               ls.wpos = 4
               ls.write2 += res.value.byteLength
             }
@@ -166,9 +269,11 @@ class AVProcessor {
           } catch (error) {
             console.log(tag, 'bread err', error)
             ls.wpos = 6
+            failRejects.delete(myreject)
             return 'bwE'
           }
           // ls.wpos = 7
+          failRejects.delete(myreject)
           return 'bw'
         }
         ls.pos = 4
@@ -185,17 +290,18 @@ class AVProcessor {
               break
             case 'bw':
               delete work[1]
-
               break
             case 'brE':
               // We errored on one stream
               pumping = false
-              failreject()
+              failRejects.forEach((rej) => rej())
+              failRejects.clear()
               break
             case 'bwE':
               // We errored on one stream
               pumping = false
-              failreject()
+              failRejects.forEach((rej) => rej())
+              failRejects.clear()
               break
             default:
               throw new Error('Unexpected case')
