@@ -63,25 +63,39 @@ class AVProcessor {
   }
 
   // The next code should work, but it does not!
-  async bidiStreamToLoopExperimental({
+  async bidiStreamToLoop({
     bidiStream /* function for getting the input Stream */,
     reset,
     inputStream,
     outputStream,
     tag,
-    running
+    running,
+    setClosePipes
   }) {
     const ls = {
       lastupdate: new Date(),
-      position: -1
+      position: -1,
+      run: 0
     }
     const statusPoll = setInterval(() => {
       console.log(tag, 'bSTL loop status', JSON.stringify(ls))
     }, 5000)
+    let closeBidiStreams
+    let inAbort
+    let outAbort
+
+    setClosePipes(() => {
+      if (inAbort && outAbort) {
+        closeBidiStreams = true
+        inAbort.abort()
+        outAbort.abort()
+      }
+    })
     while (running()) {
       let iowritable
       let ioreadable
       ls.pos = 1
+      ls.run++
 
       try {
         const bStream = await bidiStream()
@@ -104,8 +118,9 @@ class AVProcessor {
         ioreadable = inputStream().readable
         ls.pos = 4
         // next two lines part of Chroimumbug work around
-        const inAbort = new AbortController()
-        const outAbort = new AbortController()
+        inAbort = new AbortController()
+        outAbort = new AbortController()
+        closeBidiStreams = false
 
         const inProm = bStream.readable.pipeTo(iowritable, {
           preventClose: true,
@@ -133,7 +148,11 @@ class AVProcessor {
           .catch(() => {})
         ls.pos = 5
         // workaround for chromium bug
-        await Promise.race([inProm, outProm])
+        try {
+          await Promise.race([inProm, outProm])
+        } catch (error) {
+          console.log('bidi loop race:', error)
+        }
         ls.pos = 6
         if (inaborted && !outaborted) {
           console.log('outAbort')
@@ -145,22 +164,47 @@ class AVProcessor {
           console.log('NO ABORT!')
         }
         ls.pos = 7
-        await Promise.all([inProm, outProm])
+        try {
+          await Promise.all([inProm, outProm])
+        } catch (error) {
+          console.log('bidi loop all:', error)
+        }
         ls.pos = 8
+        if (closeBidiStreams) {
+          console.log('CloseBidiStreams')
+          // this means complete shutdown!
+          // await bStream.writable.close() // not necessary the AbortControllers takes care!
+          console.log('CloseBidiStreams mark2')
+          await bStream.readable.cancel()
+          console.log('CloseBidiStreams mark3')
+          await ioreadable.cancel()
+          console.log('CloseBidiStreams mark4')
+          await iowritable.close()
+          /* await Promise.all([
+            bStream.writable.close(),
+            bStream.readable.cancel(),
+            ioreadable.cancel(),
+            iowritable.close()
+          ]) */
+        }
+        ls.pos = 9
       } catch (error) {
         console.log(tag, 'error bidi loop', error)
       }
+      inAbort = outAbort = undefined
     }
     clearInterval(statusPoll)
   }
 
-  async bidiStreamToLoop({
+  // old code to be removed
+  async bidiStreamToLoopOld({
     bidiStream /* function for getting the input Stream */,
     reset,
     inputStream,
     outputStream,
     tag,
-    running
+    running,
+    setClosePipes
   }) {
     const ls = {
       lastupdate: new Date(),
@@ -178,15 +222,18 @@ class AVProcessor {
       write1: 0,
       read2: 0,
       write2: 0,
-      run: 0
+      run: 0,
+      lrun: 0
     }
     const statusPoll = setInterval(() => {
       console.log(tag, 'bSTL loop status', JSON.stringify(ls))
     }, 5000)
+    setClosePipes(() => {}) // dummy
     while (running()) {
       let iowriter
       let ioreader
       ls.pos = 1
+      ls.lrun++
 
       try {
         const bStream = await bidiStream()
@@ -324,247 +371,6 @@ class AVProcessor {
     }
     clearInterval(statusPoll)
   }
-  /*
-  async pipeToLoop(
-    args // srcstream, deststream, reset as callback
-  ) {
-    let deststream
-    let srcstream
-    let deststreamWritable
-    let srcstreamReadable
-    let reader
-    let writer
-    let running = true
-    let readerfailed
-    let writerfailed
-    const pipetoloopstatus = {
-      lastupdate: new Date(),
-      position: -1,
-      read: 0,
-      write: 0
-    }
-    const statusPoll = setInterval(() => {
-      console.log(args.tag, 'loop status', JSON.stringify(pipetoloopstatus))
-    }, 5000)
-
-    const timedBlock = async (funcprom, timeout) => {
-      let timeoutnum
-      const timeprom = new Promise((resolve, reject) => {
-        timeoutnum = setTimeout(() => resolve({ failed: true }), timeout)
-      })
-      const res = await Promise.race([funcprom, timeprom])
-
-      if (res?.failed) throw new Error('Timed out')
-      else {
-        clearTimeout(timeoutnum)
-        return res
-      }
-    }
-
-    while (running) {
-      try {
-        let res = {}
-        pipetoloopstatus.position = 0
-        pipetoloopstatus.lastupdate = new Date()
-        const curdeststream = await args.deststream()
-        pipetoloopstatus.position = 1
-        const cursrcstream = await args.srcstream()
-        pipetoloopstatus.position = 2
-        const curdeststreamWritable = curdeststream
-          ? curdeststream.writable
-          : undefined
-        const cursrcstreamReadable = cursrcstream
-          ? cursrcstream.readable
-          : undefined
-
-        if (
-          reader &&
-          writer &&
-          cursrcstreamReadable === srcstreamReadable &&
-          curdeststreamWritable === deststreamWritable &&
-          !readerfailed &&
-          !writerfailed
-        ) {
-          try {
-            res = await reader.read()
-          } catch (error) {
-            console.log(args.tag, 'reader failed', error)
-            readerfailed = true
-          }
-        }
-        pipetoloopstatus.position = 3
-        if (res.value) pipetoloopstatus.read += res.value.byteLength
-        if (res.done) {
-          console.log(args.tag, 'reader res.done')
-          readerfailed = true
-        }
-
-        if (curdeststreamWritable !== deststreamWritable) {
-          console.log(
-            args.tag,
-            'dest stream exchanged',
-            curdeststream,
-            srcstream,
-            args.resetOutput
-          )
-          if (writer) {
-            try {
-              pipetoloopstatus.position = 3.1
-              if (!writerfailed) await writer.close() // close the webtransport stream
-              pipetoloopstatus.position = 3.2
-              writer.releaseLock()
-            } catch (error) {
-              console.log('writer close failed', error)
-            }
-            if (writerfailed) {
-              try {
-                if (deststream) {
-                  pipetoloopstatus.position = 3.3
-                  await deststreamWritable.close()
-                  pipetoloopstatus.position = 3.4
-                }
-              } catch (error) {
-                console.log('deststream writable close failed', error)
-              }
-            }
-          }
-          res.value = undefined
-          res.done = undefined
-
-          if (args.resetOutput) {
-            console.log(args.tag, 'dest stream exchanged resetOutput before')
-            pipetoloopstatus.position = 3.5
-            await args.resetOutput()
-            pipetoloopstatus.position = 3.6
-            console.log(args.tag, 'dest stream exchanged resetOutput after')
-          }
-          deststream = curdeststream
-          deststreamWritable = curdeststreamWritable
-          writer = deststreamWritable.getWriter()
-          writerfailed = undefined
-        }
-        pipetoloopstatus.position = 4
-
-        if (cursrcstreamReadable !== srcstreamReadable) {
-          console.log(
-            args.tag,
-            'src stream exchanged' /*
-            cursrcstream,
-            srcstream,
-            args.resetInput *
-          )
-          if (reader) {
-            try {
-              if (!readerfailed) await reader.cancel()
-              reader.releaseLock()
-            } catch (error) {
-              console.log('reader failed close', error)
-            }
-            if (readerfailed) {
-              try {
-                if (srcstream) await srcstreamReadable.cancel()
-              } catch (error) {
-                console.log('writer failed close', error)
-              }
-            }
-          }
-          if (args.resetInput) {
-            await args.resetInput(reader)
-          }
-          srcstream = cursrcstream
-          srcstreamReadable = cursrcstreamReadable
-          reader = srcstreamReadable.getReader()
-          readerfailed = undefined
-        }
-        pipetoloopstatus.position = 5
-
-        if (res.value) {
-          try {
-            await timedBlock(writer.write(res.value), 5000)
-            if (res?.value) pipetoloopstatus.write += res.value.byteLength
-          } catch (error) {
-            console.log(args.tag, 'writer failed', error)
-            writerfailed = true
-          }
-        }
-        pipetoloopstatus.position = 6
-
-        // We are running infinitely
-        /* if (res.done) {
-          console.log(args.tag, 'loop res done case')
-          await writer.close()
-          running = false
-        } *
-        pipetoloopstatus.position = 7
-
-        if (writerfailed && writer) {
-          writer.releaseLock()
-          writer = undefined
-        }
-        pipetoloopstatus.position = 8
-
-        if (readerfailed && reader) {
-          reader.releaseLock()
-          reader = undefined
-        }
-        pipetoloopstatus.position = 9
-
-        if (readerfailed) {
-          console.log(
-            'read failed 1',
-            args.reconnectInput,
-            srcstream,
-            deststream
-          )
-          pipetoloopstatus.position = 9.1
-          const cursrcstream = await args.srcstream()
-          if (args.reconnectInput && cursrcstream === srcstream) {
-            console.log('pipeToLoop called reconnectInput before')
-            pipetoloopstatus.position = 9.2
-            try {
-              await args.reconnectInput()
-            } catch (error) {
-              console.log('pipeToLoop reconnectInput failed', error)
-            }
-            console.log('pipeToLoop called reconnectInput after')
-          }
-          pipetoloopstatus.position = 10
-          await new Promise((resolve) => setTimeout(resolve, 1000))
-        }
-        pipetoloopstatus.position = 11
-
-        if (writerfailed) {
-          console.log(
-            'write failed 1',
-            args.reconnectOutput,
-            srcstream,
-            deststream
-          )
-          const curdeststream = await args.deststream()
-          if (args.reconnectOutput && curdeststream === deststream) {
-            console.log('pipeToLoop called reconnectOutputbefore')
-            try {
-              await args.reconnectOutput()
-            } catch (error) {
-              console.log('pipeToLoop reconnectOutput failed', error)
-            }
-            console.log('pipeToLoop called reconnectOutput after')
-          }
-          pipetoloopstatus.position = 12
-          await new Promise((resolve) => setTimeout(resolve, 1000))
-        }
-      } catch (error) {
-        pipetoloopstatus.position = 13
-        console.log(args.tag, ' error in pipe to loop', error)
-
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        pipetoloopstatus.position = 14
-      }
-      pipetoloopstatus.position = 15
-    }
-    console.log(args.tag, 'loop status exited')
-    clearInterval(statusPoll)
-  } */
 
   async getTickets({ id, dir }) {
     if (!AVWorker.isNetworkOn()) {
@@ -649,6 +455,7 @@ class AVInputProcessor extends AVProcessor {
   close() {
     if (this.adOutgoing) clearInterval(this.adOutgoing)
     this.running = false
+    if (this.closePipes) this.closePipes()
     for (const qual in this.qualities) {
       const codec = this.encoder[qual]
       if (codec) {
@@ -918,60 +725,13 @@ class AVInputProcessor extends AVProcessor {
             inputStream: () => this.framer[quality],
             outputStream: () => this.outputctrldeframer[quality],
             tag: quality + ' outgoing ' + this.datatype,
-            running: () => this.running
+            running: () => this.running,
+            setClosePipes: (closefunc) => {
+              this.closePipes = closefunc
+            }
           }).catch((error) => {
             console.log('AVIP ', qual, 'Bidi prob:', error)
           })
-          /*
-          this.pipeToLoop({
-            deststream: () => this.streamDest[quality],
-            srcstream: () => this.framer[quality],
-            resetOutput: async () => {
-              try {
-                console.log('RECONNECT OUTPUT BEFORE')
-                const tickets = await this.getTickets({
-                  id: this.destid,
-                  dir: 'out'
-                })
-                console.log('RECONNECT OUTPUT', tickets)
-                if (!tickets) {
-                  await new Promise((resolve) => {
-                    // take a break
-                    setTimeout(resolve, 5000)
-                  })
-                  throw new Error(
-                    'no tickets out retry after 5 seconds',
-                    this.destid
-                  )
-                }
-                this.framer[quality].resetOutput() // gets a new empty stream
-                // then queue the bson
-                this.framer[quality].sendBson({
-                  command: 'configure',
-                  dir: 'incoming', // routers perspective
-                  tickets,
-                  quality,
-                  type: this.datatype
-                })
-                this.framer[quality].resendConfigs()
-              } catch (error) {
-                console.log('resetOutput failed', error)
-                throw new Error('resetOutput failed')
-              }
-            },
-            reconnectOutput: async () => await this.reconnect(quality),
-            tag: quality + ' out ' + this.datatype
-          }) // first pipeToLoop
-          this.pipeToLoop({
-            srcstream: () => this.streamDest[quality],
-            deststream: () => this.outputctrldeframer[quality],
-            resetInput: () => {
-              this.outputctrldeframer[quality].reset()
-              console.log('RESET outputctrldeframer')
-            },
-            reconnectInput: async () => await this.reconnect(quality),
-            tag: quality + ' out control ' + this.datatype
-          }) */
         }
         pipesMaker(qual)
         // quality control
@@ -1230,9 +990,7 @@ class AVOutputProcessor extends AVProcessor {
 
   close() {
     this.running = false
-    this.sendControlMessage({
-      task: 'close'
-    })
+    if (this.closePipes) this.closePipes()
     const codec = this.decoder
     if (codec) {
       codec.close()
@@ -1453,53 +1211,11 @@ class AVOutputProcessor extends AVProcessor {
           inputStream: () => this.inputctrlframer,
           outputStream: () => this.deframer,
           tag: 'incoming ' + this.datatype,
-          running: () => this.running
+          running: () => this.running,
+          setClosePipes: (closefunc) => {
+            this.closePipes = closefunc
+          }
         })
-        /* this.pipeToLoop({
-          deststream: () => this.deframer,
-          srcstream: () => this.streamSrc,
-          resetInput: () => {
-            this.deframer.reset()
-          },
-          reconnectInput: async () => await this.reconnect(),
-          tag: 'output in ' + this.datatype
-        }) // first pipeToLoop
-        this.pipeToLoop({
-          deststream: () => this.streamSrc,
-          srcstream: () => this.inputctrlframer,
-          resetOutput: async () => {
-            try {
-              const tickets = await this.getTickets({
-                id: this.srcid,
-                dir: 'in'
-              })
-              if (!tickets) {
-                await new Promise((resolve) => {
-                  // take a break
-                  setTimeout(resolve, 5000)
-                })
-                throw new Error(
-                  'no tickets in retry after 5 seconds',
-                  this.srcid
-                )
-              }
-              this.inputctrlframer.reset()
-              this.sendControlMessage({
-                command: 'configure',
-                dir: 'outgoing', // routers perspective
-                tickets,
-                type: this.datatype
-              }).catch((error) => {
-                console.log('SCM in resetOutput failed:', error)
-              })
-            } catch (error) {
-              console.log('problem reset output', error)
-              throw new Error('Resetoutput failed')
-            }
-          },
-          reconnectOutput: async () => await this.reconnect(),
-          tag: 'output in control ' + this.datatype
-        }) */
       }
       pipesMaker()
       if (this.nopint) clearInterval(this.nopint)
@@ -1513,46 +1229,6 @@ class AVOutputProcessor extends AVProcessor {
       console.log('build incoming pipeline error', error)
     }
   }
-
-  /*
-  async reconnect() {
-    const avtransport = AVTransport.getInterface()
-    console.log('type ', this.datatype, ' reconnect outputprocessor')
-
-    if (!this.streamSrcRes) {
-      this.streamSrc = new Promise((resolve) => {
-        this.streamSrcRes = resolve
-      })
-    } else {
-      if (this.initialconnect) {
-        delete this.initialconnect
-      } else {
-        console.log('some else is reconnecting')
-        await this.streamSrc
-        return
-      }
-    }
-
-    let newstream
-    while (!newstream) {
-      try {
-        newstream = await avtransport.getIncomingStream()
-        // it pipeline already build reconnected
-      } catch (error) {
-        console.log(
-          'type',
-          this.datatype,
-          ' getIncomingStream failed rDS, retry in 5 seconds',
-          error
-        )
-      }
-      if (!newstream) await new Promise((resolve) => setTimeout(resolve, 5000))
-    }
-    console.log('reconnect new stream', newstream)
-
-    this.streamSrcRes(newstream)
-    this.streamSrcRes = null
-  } */
 
   async setSrcId(id) {
     // dest is our id
