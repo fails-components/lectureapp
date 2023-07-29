@@ -60,6 +60,17 @@ class AVProcessor {
     this.ticketProm = []
     this.ticketRes = []
     this.ticketRej = []
+    /* if (navigator.userAgentData) {
+      // use old code for buggy Chromium versions
+      if (
+        navigator.userAgentData.brands.find(
+          ({ brand, version }) => brand === 'Chromium' && version < 117
+        )
+      ) {
+        console.log('CHROMIUM BUG install old bidiStremToLoop')
+        this.bidiStreamToLoop = this.bidiStreamToLoopOld
+      }
+    } */
   }
 
   // The next code should work, but it does not!
@@ -173,19 +184,12 @@ class AVProcessor {
         if (closeBidiStreams) {
           console.log('CloseBidiStreams')
           // this means complete shutdown!
-          // await bStream.writable.close() // not necessary the AbortControllers takes care!
-          console.log('CloseBidiStreams mark2')
-          await bStream.readable.cancel()
-          console.log('CloseBidiStreams mark3')
-          await ioreadable.cancel()
-          console.log('CloseBidiStreams mark4')
-          await iowritable.close()
-          /* await Promise.all([
-            bStream.writable.close(),
+          await Promise.all([
+            // bStream.writable.close(), // not necessary the AbortControllers takes care!
             bStream.readable.cancel(),
             ioreadable.cancel(),
             iowritable.close()
-          ]) */
+          ])
         }
         ls.pos = 9
       } catch (error) {
