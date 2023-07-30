@@ -198,28 +198,7 @@ export class ToolHandling extends Component {
 
   componentDidMount() {
     // select defaults after mount
-    let penselect = 2
-    for (penselect = 2; penselect < this.pensizesizes.length; penselect++) {
-      if (
-        this.pensizesizes[penselect] *
-          0.001 *
-          this.svgscale *
-          this.props.bbwidth *
-          this.props.devicePixelRatio >=
-        1.0
-      )
-        break
-    }
-
-    this.selectColor(3, this.tmcolorwheelcolors[2], 20)
-    this.selectColor(2, this.colorwheelcolors[0], this.pensizesizes[penselect])
-    this.selectColor(1, this.colorwheelcolors[0], 10)
-
-    if (this.blackboard())
-      this.blackboard().setPenTool(
-        this.colorwheelcolors[0],
-        this.pensizesizes[penselect]
-      )
+    this.setDefaults()
 
     if (this.state.touchOn === undefined && this.blackboard())
       this.blackboard().pushTouchConfigToToolbox()
@@ -347,27 +326,30 @@ export class ToolHandling extends Component {
   }
 
   setDefaults() {
-    let penselect = 2
-    for (penselect = 2; penselect < this.pensizesizes.length; penselect++) {
+    const bbwidth = this.state.bbwidth || this.props.bbwidth
+    let penselect = 1
+    for (penselect = 1; penselect < this.pensizesizes.length; penselect++) {
       if (
         this.pensizesizes[penselect] *
           0.001 *
-          this.svgscale *
-          this.props.bbwidth *
-          this.props.devicePixelRatio >=
-        1.0
+          bbwidth *
+          (this.state.devicePixelRatio || this.props.devicePixelRatio) >=
+        1.5
       )
         break
     }
 
     this.selectColor(3, this.tmcolorwheelcolors[2], 20)
-    this.selectColor(2, this.colorwheelcolors[0], this.pensizesizes[penselect])
+    this.selectColor(
+      2,
+      this.colorwheelcolors[0],
+      this.pensizesizes[penselect] * 0.001 * bbwidth
+    )
     this.selectColor(1, this.colorwheelcolors[0], 10)
-
     if (this.blackboard())
       this.blackboard().setPenTool(
         this.colorwheelcolors[0],
-        this.pensizesizes[penselect]
+        this.pensizesizes[penselect] * 0.001 * bbwidth
       )
   }
 
@@ -442,7 +424,9 @@ export class ToolHandling extends Component {
           color={'#ffffff'}
           addclass={addclass}
           pickerid={2}
-          selected={this.state.pensize === this.pensizesizes[it]}
+          selected={
+            this.state.pensize === this.pensizesizes[it] * 0.001 * bbwidth
+          }
           size={this.pensizesizes[it] * 0.001 * bbwidth}
           mysize={this.pensizesizes[it] * 0.001 * bbwidth}
           sizefac={/* this.props.devicePixelRatio */ 1.0}
@@ -454,10 +438,9 @@ export class ToolHandling extends Component {
       if (
         this.pensizesizes[it] *
           0.001 *
-          this.svgscale *
           (this.state.devicePixelRatio || this.props.devicePixelRatio) *
           bbwidth <
-        1.0
+        0.5
       )
         continue
 
