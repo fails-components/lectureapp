@@ -60,7 +60,7 @@ class AVProcessor {
     this.ticketProm = []
     this.ticketRes = []
     this.ticketRej = []
-    /* if (navigator.userAgentData) {
+    if (navigator.userAgentData) {
       // use old code for buggy Chromium versions
       if (
         navigator.userAgentData.brands.find(
@@ -70,7 +70,7 @@ class AVProcessor {
         console.log('CHROMIUM BUG install old bidiStremToLoop')
         this.bidiStreamToLoop = this.bidiStreamToLoopOld
       }
-    } */
+    }
   }
 
   // The next code should work, but it does not!
