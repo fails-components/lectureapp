@@ -31,6 +31,7 @@ import {
   faImages,
   faArrowsAlt,
   faArrowsAltV as faUpdown,
+  faMaximize,
   faLongArrowAltDown as faArrowDownLong,
   faLongArrowAltUp as faArrowUpLong,
   faBars,
@@ -83,43 +84,94 @@ class ColorPickerButton2 extends Component {
     if (this.props.addclass) addclass += this.props.addclass
     const selbuttonclass = (cond, add) =>
       cond
-        ? // eslint-disable-next-line no-unneeded-ternary
-          (add ? add : '') +
+        ? (add || '') +
           'p-button-primary p-button-raised p-button-rounded tbChild' +
           addclass
         : 'p-button-secondary p-button-raised p-button-rounded tbChild' +
           addclass
 
-    return (
-      <Button
-        icon={
-          <svg viewBox='-20 -20 40 40' width='100%' height='100%'>
-            {this.props.size < 15 && (
-              <circle
-                cx='0'
-                cy='0'
-                r={15}
-                stroke='#001A00'
-                strokeWidth='0'
-                fill='#001A00'
+    if (!this.props.strokecolor) {
+      if (this.props.alpha > 0)
+        return (
+          <Button
+            icon={
+              <svg viewBox='-20 -20 40 40' width='100%' height='100%'>
+                {this.props.size < 15 && (
+                  <circle
+                    cx='0'
+                    cy='0'
+                    r={15}
+                    stroke='#001A00'
+                    strokeWidth='0'
+                    fill='#001A00'
+                  />
+                )}
+                <circle
+                  cx='0'
+                  cy='0'
+                  r={this.props.size * this.props.sizefac}
+                  stroke='#001A00'
+                  strokeWidth='0'
+                  fill={this.props.color}
+                  fillOpacity={this.props.alpha}
+                />
+              </svg>
+            }
+            key={2}
+            onClick={this.onClick}
+            className={selbuttonclass(this.props.selected)}
+          />
+        )
+      else
+        return (
+          <Button
+            icon={
+              <svg viewBox='-20 -20 40 40' width='100%' height='100%'>
+                <line
+                  x1='-10'
+                  y1='-10'
+                  x2='10'
+                  y2='10'
+                  stroke='#fff'
+                  strokeWidth='3'
+                />
+                <line
+                  x1='-10'
+                  y1='10'
+                  x2='10'
+                  y2='-10'
+                  stroke='#fff'
+                  strokeWidth='3'
+                />
+              </svg>
+            }
+            key={4}
+            onClick={this.onClick}
+            className={selbuttonclass(this.props.selected)}
+          />
+        )
+    } else
+      return (
+        <Button
+          icon={
+            <svg viewBox='-20 -20 40 40' width='100%' height='100%'>
+              <rect
+                x='-10'
+                y='-10'
+                width='20'
+                height='20'
+                stroke={this.props.strokecolor}
+                strokeWidth='1'
+                fill={this.props.color}
+                fillOpacity={this.props.alpha}
               />
-            )}
-            <circle
-              cx='0'
-              cy='0'
-              r={this.props.size * this.props.sizefac}
-              stroke='#001A00'
-              strokeWidth='0'
-              fill={this.props.color}
-              fillOpacity={this.props.alpha}
-            />
-          </svg>
-        }
-        key={2}
-        onClick={this.onClick}
-        className={selbuttonclass(this.props.selected)}
-      />
-    )
+            </svg>
+          }
+          key={4}
+          onClick={this.onClick}
+          className={selbuttonclass(this.props.selected)}
+        />
+      )
   }
 }
 
@@ -131,19 +183,19 @@ export class ToolHandling extends Component {
     this.lasttool = 5
 
     this.colorwheelcolors = [
-      '#FFFFFF',
-      // '#844D18',
-      '#BFBFBF',
-      '#000000',
-      '#FF7373',
-      '#FFAC62',
-      '#FFF284',
-      '#CAFEB8',
-      '#99C7FF',
-      // '#2F74D0',
-      '#AE70ED',
-      '#FE8BF0',
-      '#FFA8A8'
+      '#FFFFFFFF',
+      // '#844D18FF',
+      '#BFBFBFFF',
+      '#000000FF',
+      '#FF7373FF',
+      '#FFAC62FF',
+      '#FFF284FF',
+      '#CAFEB8FF',
+      '#99C7FFFF',
+      // '#2F74D0FF',
+      '#AE70EDFF',
+      '#FE8BF0FF',
+      '#FFA8A8FF'
     ]
     this.pensizesizes = [0.25, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 11, 16]
     this.tmcolorwheelcolors = [
@@ -172,6 +224,8 @@ export class ToolHandling extends Component {
     state.selectedPickerid = 1
     state.canundo = false
     state.cantooltip = true
+    state.bordercolor = '#FFFFFFFF'
+    state.fillcolor = '#00000000'
   }
 
   setBBConfig(prop, val) {
@@ -228,6 +282,15 @@ export class ToolHandling extends Component {
         if (oldbuttonid) this.selectTool(oldbuttonid)
         this.setState({ secondtoolstep: 0 })
       }, 8000)
+  }
+
+  addRemoveThirdToolGuardian(newguard) {
+    if (this.thirdtoolnum) clearTimeout(this.thirdtoolnum)
+    this.thirdtoolnum = null
+    if (newguard)
+      this.thirdtoolnum = setTimeout(() => {
+        this.setState({ thirdtoolstep: 0 })
+      }, 5000)
   }
 
   addRemoveTouchToolGuardian(newguard) {
@@ -292,6 +355,11 @@ export class ToolHandling extends Component {
         this.addRemoveSecondToolGuardian(false)
         this.lasttool = 8
         break
+      case 10: // addformpict menu
+        if (this.blackboard()) this.blackboard().setMenuMode()
+        this.setState({ selectedFormid: undefined })
+        this.addRemoveSecondToolGuardian(true, this.lasttool)
+        break
       default:
         break
     }
@@ -307,6 +375,7 @@ export class ToolHandling extends Component {
           break
         case 1:
         case 4:
+        case 10:
           secondtoolstep = 1
           newbuttonid = buttonid
           break
@@ -322,6 +391,55 @@ export class ToolHandling extends Component {
       }
 
       return { selectedButtonid: newbuttonid, secondtoolstep }
+    })
+  }
+
+  selectForm(formid) {
+    if (this.blackboard()) this.blackboard().deactivateLaserPointer()
+
+    if (this.blackboard())
+      this.blackboard().setFormTool({
+        type: formid,
+        bColor: this.state.bordercolor,
+        lw: this.state.pensize,
+        fColor: this.state.fillcolor
+      })
+    this.addRemoveSecondToolGuardian(true)
+    // this.lasttool = 10
+
+    this.addRemoveThirdToolGuardian(true)
+
+    this.setState((state) => {
+      let secondtoolstep = 1
+      let thirdtoolstep = 1
+      const oldthirdtoolstep = state.thirdtoolstep || 0
+      let newbuttonid = state.selectedButtonid
+      let newformid = state.selectedFormid
+      switch (formid) {
+        case 1: // line
+          newbuttonid = 10
+          newformid = formid
+          if (formid === newformid) thirdtoolstep = (oldthirdtoolstep % 2) + 1
+          break
+        case 2:
+        case 3:
+        case 4:
+          newbuttonid = 10
+          newformid = formid
+          if (formid === newformid) thirdtoolstep = (oldthirdtoolstep % 3) + 1
+          break
+        default:
+          secondtoolstep = 1
+          thirdtoolstep = 0
+          break
+      }
+
+      return {
+        selectedButtonid: newbuttonid,
+        secondtoolstep,
+        thirdtoolstep,
+        selectedFormid: newformid
+      }
     })
   }
 
@@ -351,25 +469,44 @@ export class ToolHandling extends Component {
         this.colorwheelcolors[0],
         this.pensizesizes[penselect] * 0.001 * bbwidth
       )
+    if (this.blackboard())
+      this.blackboard().updateToolProps({
+        fillcolor: '#00000000',
+        bordercolor: '#ffffffff',
+        lw: this.pensizesizes[penselect] * 0.001 * bbwidth
+      })
   }
 
-  selectColor(pickerid, color, size) {
+  selectColor(pickerid, color, size, formmode) {
     this.addRemoveSecondToolGuardian(true)
     switch (pickerid) {
       case 1:
         this.setState({ pencolor: color, selectedPickerid: pickerid })
-        if (this.blackboard())
-          this.blackboard().setPenTool(color, this.state.pensize)
+        if (this.blackboard()) this.blackboard().updateToolProps({ color })
         break
       case 2:
         this.setState({ pensize: size, selectedPickerid: pickerid })
-        if (this.blackboard())
-          this.blackboard().setPenTool(this.state.pencolor, size)
+
+        if (this.blackboard()) {
+          if (this.state.selectedButtonid === 10)
+            this.blackboard().updateToolProps({ lw: size })
+          else this.blackboard().updateToolProps({ size })
+        }
         break
       case 3:
         this.setState({ markercolor: color, selectedPickerid: pickerid })
         if (this.blackboard())
           this.blackboard().setMarkerTool(color, 12 * 0.001 * this.svgscale)
+        break
+      case 4:
+        this.setState({ fillcolor: color, selectedPickerid: pickerid })
+        if (this.blackboard())
+          this.blackboard().updateToolProps({ fillcolor: color })
+        break
+      case 5:
+        this.setState({ bordercolor: color, selectedPickerid: pickerid })
+        if (this.blackboard())
+          this.blackboard().updateToolProps({ bordercolor: color })
         break
       default:
         break
@@ -389,8 +526,39 @@ export class ToolHandling extends Component {
       this.setState({ cantooltip: !!cantooltip })
   }
 
-  getColorButtons({ addclass }) {
+  getColorButtons({ addclass, notransparent }) {
     const colorwheel = []
+    const bcolorwheel = []
+    const fcolorwheel = []
+
+    if (!notransparent) {
+      bcolorwheel.push(
+        <ColorPickerButton2
+          toolbox={this}
+          color={'#00000000'}
+          addclass={addclass}
+          pickerid={5}
+          size={20}
+          sizefac={1}
+          alpha={0}
+          key={'trans_bcol'}
+          selected={this.state.bordercolor === '#00000000'}
+        />
+      )
+      fcolorwheel.push(
+        <ColorPickerButton2
+          toolbox={this}
+          color={'#00000000'}
+          strokecolor={this.state.bordercolor}
+          addclass={addclass}
+          pickerid={4}
+          sizefac={1}
+          alpha={0}
+          key={'trans_fcol'}
+          selected={this.state.fillcolor === '#00000000'}
+        />
+      )
+    }
     // this.addChild(this.colorwheel);
 
     let it = 0
@@ -409,6 +577,34 @@ export class ToolHandling extends Component {
         />
       )
       colorwheel.push(newcolorbutton)
+      const newfcolorbutton = (
+        <ColorPickerButton2
+          toolbox={this}
+          color={this.colorwheelcolors[it]}
+          strokecolor={this.state.pencolor}
+          addclass={addclass}
+          pickerid={4}
+          sizefac={1}
+          alpha={1}
+          key={it + '_fcol'}
+          selected={this.state.fillcolor === this.colorwheelcolors[it]}
+        />
+      )
+      fcolorwheel.push(newfcolorbutton)
+      const newbcolorbutton = (
+        <ColorPickerButton2
+          toolbox={this}
+          color={this.colorwheelcolors[it]}
+          addclass={addclass}
+          pickerid={5}
+          size={20}
+          sizefac={1}
+          alpha={1}
+          key={it + '_bcol'}
+          selected={this.state.bordercolor === this.colorwheelcolors[it]}
+        />
+      )
+      bcolorwheel.push(newbcolorbutton)
     }
 
     // this.colorwheel.arrangeButtons();
@@ -467,8 +663,36 @@ export class ToolHandling extends Component {
         />
       )
       tmcolorwheel.push(newcolorbutton)
+      /* const newfcolorbutton = (
+        <ColorPickerButton2
+          toolbox={this}
+          color={this.tmcolorwheelcolors[it] + '4c'}
+          strokecolor={this.state.pencolor}
+          addclass={addclass}
+          pickerid={4}
+          sizefac={1}
+          alpha={1.0}
+          key={it + '_tmfcol'}
+          selected={this.state.fillcolor === this.tmcolorwheelcolors[it]}
+        />
+      )
+      fcolorwheel.push(newfcolorbutton)
+      const newbcolorbutton = (
+        <ColorPickerButton2
+          toolbox={this}
+          color={this.tmcolorwheelcolors[it] + '4c'}
+          addclass={addclass}
+          pickerid={5}
+          sizefac={1}
+          size={20}
+          alpha={1.0}
+          key={it + '_tmbcol'}
+          selected={this.state.bordercolor === this.tmcolorwheelcolors[it]}
+        />
+      )
+      bcolorwheel.push(newbcolorbutton) */
     }
-    return { colorwheel, pensizewheel, tmcolorwheel }
+    return { colorwheel, pensizewheel, tmcolorwheel, bcolorwheel, fcolorwheel }
   }
 }
 
@@ -861,6 +1085,7 @@ export class ToolBox extends ToolHandling {
   }
 
   pictButtonPressed() {
+    this.addRemoveSecondToolGuardian(false)
     if (this.blackboard()) {
       this.blackboard().pictButtonPressed()
       this.setState({ activated: false })
@@ -869,7 +1094,8 @@ export class ToolBox extends ToolHandling {
 
   reactivate() {
     console.log('reactivate toolbox')
-    this.setState({ activated: true })
+    this.addRemoveSecondToolGuardian(true)
+    this.setState({ activated: true, selectedButtonid: this.lasttool })
   }
 
   deactivate() {
@@ -979,6 +1205,17 @@ export class ToolBox extends ToolHandling {
       />
     )
 
+    const addformpictbutton = (
+      <Button
+        icon={<p>FP</p>}
+        tooltip='Add form or picture'
+        tooltipOptions={ttopts}
+        key={10}
+        onClick={(e) => this.selectTool(10)}
+        className={selbuttonclass(this.state.selectedButtonid === 10)}
+      />
+    )
+
     //   onPointerLeave={this.scrollPointerup}
     const scrollbutton = (
       <Button
@@ -1084,7 +1321,8 @@ export class ToolBox extends ToolHandling {
     maintools.push(eraserbutton)
     maintools.push(magicbutton)
     if (this.state.canundo) maintools.push(undobutton)
-    maintools.push(pictbutton)
+    if (!this.props.experimental) maintools.push(pictbutton)
+    else maintools.push(addformpictbutton)
     maintools.push(laserbutton)
     maintools.push(pollbutton)
     maintools.push(endbutton)
@@ -1099,6 +1337,8 @@ export class ToolBox extends ToolHandling {
     // maintools.arrangeButtons();
 
     let cwheelcpos = false
+    let bcwheelcpos = false
+    let fcwheelcpos = false
     let pswheelcpos = false
     if (this.state.selectedButtonid === 5) {
       if (this.state.secondtoolstep === 1) {
@@ -1422,24 +1662,79 @@ export class ToolBox extends ToolHandling {
       </div>
     ))
 
-    let { colorwheel, pensizewheel, tmcolorwheel } =
-      this.getColorButtons('p-mr-2 p-mb-2')
-    colorwheel = colorwheel.map((el, it) => (
+    let formpictwheel = []
+    const linebutton = (
+      <Button
+        icon={<p>L</p>}
+        tooltip='Add a line, press twice for linewidth'
+        tooltipOptions={ttopts}
+        key={'F1'}
+        onClick={(e) => this.selectForm(1)}
+        className={selbuttonclass(this.state.selectedFormid === 1)}
+      />
+    )
+    const rectbutton = (
+      <Button
+        icon={<p>R</p>}
+        tooltip='Add a rectangle, press twice for linewidth, press three times for fill color'
+        tooltipOptions={ttopts}
+        key={'F2'}
+        onClick={(e) => this.selectForm(2)}
+        className={selbuttonclass(this.state.selectedFormid === 2)}
+      />
+    )
+    const circlebutton = (
+      <Button
+        icon={<p>C</p>}
+        tooltip='Add a circle, press twice for linewidth, press three times for fill color'
+        tooltipOptions={ttopts}
+        key={'F3'}
+        onClick={(e) => this.selectForm(3)}
+        className={selbuttonclass(this.state.selectedFormid === 3)}
+      />
+    )
+    const ellipsebutton = (
+      <Button
+        icon={<p>E</p>}
+        tooltip='Add an ellipse, press twice for linewidth, press three times for fill color'
+        tooltipOptions={ttopts}
+        key={'F4'}
+        onClick={(e) => this.selectForm(4)}
+        className={selbuttonclass(this.state.selectedFormid === 4)}
+      />
+    )
+
+    formpictwheel.push(linebutton)
+    formpictwheel.push(rectbutton)
+    formpictwheel.push(circlebutton)
+    formpictwheel.push(ellipsebutton)
+    formpictwheel.push(pictbutton)
+
+    let formpictwheelcpos = false
+    if (this.state.selectedButtonid === 10) {
+      if (this.state.secondtoolstep === 1) {
+        formpictwheelcpos = true
+      }
+      if (this.state.thirdtoolstep === 1) {
+        bcwheelcpos = true
+      } else if (this.state.thirdtoolstep === 2) {
+        pswheelcpos = true
+      } else if (this.state.thirdtoolstep === 3) {
+        fcwheelcpos = true
+      }
+    }
+
+    formpictwheel = formpictwheel.map((ele, it) => (
       <div className='p-mr-2 p-mb-2' id={it} key={it}>
-        {el}
-      </div>
-    ))
-    pensizewheel = pensizewheel.map((el, it) => (
-      <div className='p-mr-2 p-mb-2' id={it} key={it}>
-        {el}
-      </div>
-    ))
-    tmcolorwheel = tmcolorwheel.map((el, it) => (
-      <div className='p-mr-2 p-mb-2' id={it} key={it}>
-        {el}
+        {ele}
       </div>
     ))
 
+    const { colorwheel, pensizewheel, tmcolorwheel, bcolorwheel, fcolorwheel } =
+      this.getColorButtons({
+        addclass: 'p-mr-2 p-mb-2',
+        notransparent: this.state.selectedFormid === 1
+      })
     let tbposabove = false
     if (this.state.posy < this.scrollheight() * 0.5) tbposabove = true
 
@@ -1562,9 +1857,24 @@ export class ToolBox extends ToolHandling {
                 />
               </div>
             </div>
+            {formpictwheelcpos && (
+              <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                {formpictwheel}
+              </div>
+            )}
             {cwheelcpos && (
               <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
                 {colorwheel}
+              </div>
+            )}
+            {bcwheelcpos && (
+              <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                {bcolorwheel}
+              </div>
+            )}
+            {fcwheelcpos && (
+              <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                {fcolorwheel}
               </div>
             )}
             {pswheelcpos && (
@@ -1677,7 +1987,10 @@ export class UtilBox extends Component {
       now - this.lastmovetime > 25
     ) {
       const pos = { x: event.clientX, y: event.clientY }
-      this.blackboard().addPictureMovePos({ pos, corner: this.props.corner })
+      this.blackboard().addFormPictureMovePos({
+        pos,
+        corner: this.props.corner
+      })
       this.lastmovetime = now
     }
   }
@@ -1712,7 +2025,11 @@ export class UtilBox extends Component {
 
     const movebutton = (
       <Button
-        icon={<FontAwesomeIcon icon={faArrowsAlt} />}
+        icon={
+          <FontAwesomeIcon
+            icon={this.props.utilbox ? faMaximize : faArrowsAlt}
+          />
+        }
         style={{
           touchAction: 'none'
         }}
@@ -1722,7 +2039,7 @@ export class UtilBox extends Component {
         onPointerMove={this.movePointermove}
         onPointerUp={this.movePointerup}
         ref={this.moveButtonRef}
-        className='p-button-primary p-button-raised p-button-rounded tbChild'
+        className='p-button-primary p-button-raised p-button-rounded tbChild moveButtonTransparent'
       />
     )
     okcancel.push(movebutton)
