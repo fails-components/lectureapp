@@ -672,7 +672,7 @@ export class FormHelper extends Component {
     if (this.props.width) style.width = width + 20 + 'px'
     if (this.props.height) style.height = height + 20 + 'px'
     let classname = ''
-    if (this.props.selected) classname += 'selectedImage'
+    if (this.props.selected) classname += 'selectedForm'
     let form
     let helplines
     const stroke = Color(this.props.bColor).hex()
@@ -1869,7 +1869,7 @@ export class Blackboard extends Component {
             type={el.formtype}
             bColor={el.bColor}
             fColor={el.fColor}
-            lw={el.lw}
+            lw={el.lw * this.props.bbwidth}
             key={key}
           ></FormHelper>
         )
@@ -3348,7 +3348,7 @@ export class BlackboardNotepad extends Component {
           this.state.addformpictformtype,
           ToRGBANumber(this.state.addformpictbColor),
           ToRGBANumber(this.state.addformpictfColor),
-          this.state.addformpictlw
+          this.state.addformpictlw / this.svgscale
         )
       } else {
         this.props.outgoingsink.addPicture(
@@ -3466,7 +3466,7 @@ export class BlackboardNotepad extends Component {
       addformpict = {
         uuid: this.state.addformpictuuid,
         formType: this.state.addformpictformtype,
-        lw: this.state.addformpictlw,
+        lw: (this.state.addformpictlw * this.props.bbwidth) / this.svgscale,
         url: this.state.addformpicturl,
         posx: this.state.addformpictposx,
         posy: this.state.addformpictposy,
