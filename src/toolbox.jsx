@@ -358,7 +358,7 @@ export class ToolHandling extends Component {
       case 10: // addformpict menu
         if (this.blackboard()) this.blackboard().setMenuMode()
         this.setState({ selectedFormid: undefined })
-        this.addRemoveSecondToolGuardian(true, this.lasttool)
+        this.addRemoveSecondToolGuardian(false, this.lasttool)
         break
       default:
         break
@@ -404,7 +404,7 @@ export class ToolHandling extends Component {
         lw: this.state.pensize,
         fColor: this.state.fillcolor
       })
-    this.addRemoveSecondToolGuardian(true)
+    // this.addRemoveSecondToolGuardian(false, this.lasttool)
     // this.lasttool = 10
 
     this.addRemoveThirdToolGuardian(true)
@@ -478,7 +478,7 @@ export class ToolHandling extends Component {
   }
 
   selectColor(pickerid, color, size, formmode) {
-    this.addRemoveSecondToolGuardian(true)
+    this.addRemoveSecondToolGuardian(this.state.selectedButtonid !== 10)
     switch (pickerid) {
       case 1:
         this.setState({ pencolor: color, selectedPickerid: pickerid })
@@ -663,7 +663,7 @@ export class ToolHandling extends Component {
         />
       )
       tmcolorwheel.push(newcolorbutton)
-      /* const newfcolorbutton = (
+      const newfcolorbutton = (
         <ColorPickerButton2
           toolbox={this}
           color={this.tmcolorwheelcolors[it] + '4c'}
@@ -690,7 +690,7 @@ export class ToolHandling extends Component {
           selected={this.state.bordercolor === this.tmcolorwheelcolors[it]}
         />
       )
-      bcolorwheel.push(newbcolorbutton) */
+      bcolorwheel.push(newbcolorbutton)
     }
     return { colorwheel, pensizewheel, tmcolorwheel, bcolorwheel, fcolorwheel }
   }
