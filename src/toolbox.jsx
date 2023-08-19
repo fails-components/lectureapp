@@ -28,7 +28,6 @@ import {
   faEraser,
   faPen,
   faHighlighter,
-  faImages,
   faArrowsAlt,
   faArrowsAltV as faUpdown,
   faMaximize,
@@ -60,7 +59,13 @@ import {
   fiTouchOff,
   fiBroadcastStart,
   fiStudent,
-  fiFailsLogo
+  fiFailsLogo,
+  fiFormPictSubMenuIcon,
+  fiAddPictIcon,
+  fiAddLineIcon,
+  fiAddRectangleIcon,
+  fiAddEllipseIcon,
+  fiAddCircleIcon
 } from './icons/icons.jsx'
 import { UAParser } from 'ua-parser-js'
 
@@ -1194,7 +1199,7 @@ export class ToolBox extends ToolHandling {
 
     const pictbutton = (
       <Button
-        icon={<FontAwesomeIcon icon={faImages} />}
+        icon={fiAddPictIcon}
         tooltip='Add picture'
         tooltipOptions={ttopts}
         key={6}
@@ -1207,7 +1212,7 @@ export class ToolBox extends ToolHandling {
 
     const addformpictbutton = (
       <Button
-        icon={<p>FP</p>}
+        icon={fiFormPictSubMenuIcon}
         tooltip='Add form or picture'
         tooltipOptions={ttopts}
         key={10}
@@ -1665,7 +1670,10 @@ export class ToolBox extends ToolHandling {
     let formpictwheel = []
     const linebutton = (
       <Button
-        icon={<p>L</p>}
+        icon={fiAddLineIcon({
+          borderColor: this.state.bordercolor,
+          fillColor: this.state.fillcolor
+        })}
         tooltip='Add a line, press twice for linewidth'
         tooltipOptions={ttopts}
         key={'F1'}
@@ -1675,7 +1683,10 @@ export class ToolBox extends ToolHandling {
     )
     const rectbutton = (
       <Button
-        icon={<p>R</p>}
+        icon={fiAddRectangleIcon({
+          borderColor: this.state.bordercolor,
+          fillColor: this.state.fillcolor
+        })}
         tooltip='Add a rectangle, press twice for linewidth, press three times for fill color'
         tooltipOptions={ttopts}
         key={'F2'}
@@ -1685,7 +1696,10 @@ export class ToolBox extends ToolHandling {
     )
     const circlebutton = (
       <Button
-        icon={<p>C</p>}
+        icon={fiAddCircleIcon({
+          borderColor: this.state.bordercolor,
+          fillColor: this.state.fillcolor
+        })}
         tooltip='Add a circle, press twice for linewidth, press three times for fill color'
         tooltipOptions={ttopts}
         key={'F3'}
@@ -1695,7 +1709,10 @@ export class ToolBox extends ToolHandling {
     )
     const ellipsebutton = (
       <Button
-        icon={<p>E</p>}
+        icon={fiAddEllipseIcon({
+          borderColor: this.state.bordercolor,
+          fillColor: this.state.fillcolor
+        })}
         tooltip='Add an ellipse, press twice for linewidth, press three times for fill color'
         tooltipOptions={ttopts}
         key={'F4'}
