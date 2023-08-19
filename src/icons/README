@@ -33,6 +33,12 @@ videoQuestionOn
 broadcastStart
 receiveStart
 student
+formPictSubMenu
+addPictIcon
+addEllipseIcon (border removed by marten richter)
+addRectangleIcon (border removed by marten richter)
+addCircleIcon (border removed by marten richter)
+addLineIcon (border removed by marten richter)
 
 The fails icon is not subject to AGPL 3.0 and where designed by chadkills also ordered via fiverr:
 
