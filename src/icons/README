@@ -33,12 +33,12 @@ videoQuestionOn
 broadcastStart
 receiveStart
 student
-formPictSubMenu
+formPictSubMenu (borders removed and rescaled by Marten Richter)
 addPictIcon
-addEllipseIcon (border removed by marten richter)
-addRectangleIcon (border removed by marten richter)
-addCircleIcon (border removed by marten richter)
-addLineIcon (border removed by marten richter)
+addEllipseIcon (border removed by Marten Richter)
+addRectangleIcon (border removed by Marten Richter)
+addCircleIcon (border removed by Marten Richter)
+addLineIcon (border removed by Marten Richter)
 
 The fails icon is not subject to AGPL 3.0 and where designed by chadkills also ordered via fiverr:
 
