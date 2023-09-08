@@ -977,7 +977,7 @@ export class AVFramer extends AVTransformStream {
 
     // hdrflags 1 begin
     if (framedata.key) hdrflags1 |= 1
-    if (metadata.svc && metadata.svc.temporalLayerId) {
+    if (metadata.svc && typeof metadata.svc.temporalLayerId !== 'undefined') {
       hdrflags1 |= 1 << 1
       hdrlen += 4
     }
@@ -1007,7 +1007,7 @@ export class AVFramer extends AVTransformStream {
     hdrpos += 1
     hdrdv.setUint8(hdrpos, chunk.keyindex & 0xff)
     hdrpos += 1
-    if (metadata.svc && metadata.svc.temporalLayerId) {
+    if (metadata.svc && typeof metadata.svc.temporalLayerId !== 'undefined') {
       hdrdv.setUint32(hdrpos, metadata.svc.temporalLayerId)
       hdrpos += 4
     }
