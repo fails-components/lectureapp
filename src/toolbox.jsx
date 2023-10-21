@@ -1735,11 +1735,11 @@ export class ToolBox extends ToolHandling {
         formpictwheelcpos = true
       }
       if (this.state.thirdtoolstep === 1) {
-        bcwheelcpos = true
-      } else if (this.state.thirdtoolstep === 2) {
-        pswheelcpos = true
-      } else if (this.state.thirdtoolstep === 3) {
         fcwheelcpos = true
+      } else if (this.state.thirdtoolstep === 2) {
+        bcwheelcpos = true
+      } else if (this.state.thirdtoolstep === 3) {
+        pswheelcpos = true
       }
     }
 
