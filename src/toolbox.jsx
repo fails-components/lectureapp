@@ -407,7 +407,9 @@ export class ToolHandling extends Component {
         type: formid,
         bColor: this.state.bordercolor,
         lw: this.state.pensize,
-        fColor: this.state.fillcolor
+        fColor: this.state.fillcolor,
+        lastdrawx: this.lastrdpx,
+        lastdrawy: this.lastrdpy
       })
     // this.addRemoveSecondToolGuardian(false, this.lasttool)
     // this.lasttool = 10

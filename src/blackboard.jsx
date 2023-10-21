@@ -3187,7 +3187,7 @@ export class BlackboardNotepad extends Component {
     // console.log("sPT",this.tooltype, this.toolsize,this.toolcolor );
   }
 
-  setFormTool({ type, bColor, lw, fColor }) {
+  setFormTool({ type, bColor, lw, fColor, lastdrawx, lastdrawy }) {
     this.saveLastCursorState()
     this.deselectOldTool()
     this.addformpictmode = 2 // stage of adding picture
@@ -3198,9 +3198,27 @@ export class BlackboardNotepad extends Component {
 
     this.lastpictmovetime = Date.now()
 
+    let sugposx
+    let sugposy
+    if (lastdrawx) {
+      sugposx = lastdrawx + 0.01
+      if (sugposx < 0.025) sugposx = 0.05
+      if (sugposx > 0.95) sugposx = 0.85
+    }
+
+    if (lastdrawy) {
+      sugposy = lastdrawy + 0.01
+      if (sugposy < 0.025) sugposy = 0.05
+      if (sugposy > this.scrollheight() - 0.05)
+        sugposy = this.scrollheight() - 0.1
+    }
+
     this.setState((state) => {
-      const posx = state.addformpictposx || 0.3
-      const posy = state.addformpictposy || 0.1 + this.getCurScrollPos()
+      const posx = state.addformpictposx || sugposx || 0.3
+      const posy =
+        state.addformpictposy ||
+        sugposy + this.getCurScrollPos() ||
+        0.1 + this.getCurScrollPos()
       let height = state.addformpictheight || 0.1
       let width = state.addformpictwidth || 0.1
       if (type === 3) width = height = (width + height) * 0.5
@@ -3362,6 +3380,11 @@ export class BlackboardNotepad extends Component {
           this.state.addformpictuuid
         )
       }
+      if (this.toolbox())
+        this.toolbox().reportDrawPos(
+          this.state.addformpictposx + 0.01,
+          this.state.addformpictposy + 0.01 - this.getCurScrollPos()
+        )
       this.addUndo(objid, Math.floor(this.state.addformpictposy))
 
       this.setState({
