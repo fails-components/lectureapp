@@ -36,8 +36,16 @@ import { ProgressBar } from 'primereact/progressbar'
 import { Chart } from 'primereact/chart'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
+import './primereactpatch.css'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faDesktop, faBars, faFilePen } from '@fortawesome/free-solid-svg-icons'
+import {
+  faDesktop,
+  faBars,
+  faFilePen,
+  faLock,
+  faTv,
+  faVolumeXmark
+} from '@fortawesome/free-solid-svg-icons'
 import failsLogo from './logo/logo2.svg'
 import failsLogoLong from './logo/logo1.svg'
 import failsLogoExp from './logo/logo2exp.svg'
@@ -56,19 +64,24 @@ import {
   fiWristMiddleLeft,
   fiWristMiddleRight,
   fiWristTopLeft,
-  fiWristTopRight
-} from './icons/icons.js'
-import { NoteScreenBase } from './notepad.js'
+  fiWristTopRight,
+  fiBroadcastStart,
+  fiReceiveStart,
+  fiVideoQuestionPermit,
+  fiVideoQuestionOn,
+  fiVideoQuestionOff
+} from './icons/icons.jsx'
+import { NoteScreenBase } from './notepad.jsx'
 import { NoteTools } from './toolbox'
-import { io } from 'socket.io-client'
-// eslint-disable-next-line camelcase
-import jwt_decode from 'jwt-decode'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
 import { UAParser } from 'ua-parser-js'
 import { ScreenManager } from './screenmanager'
-// import screenfull from 'screenfull'
+import { VideoControl, FloatingVideo, SpeakerSet } from './audiovideoctrl'
+import { SocketInterface } from './socketinterface'
+import { AVInterface } from './avinterface'
+import { KeyStore } from './keystore'
 
 class ChannelEdit extends Component {
   constructor(props) {
@@ -157,7 +170,8 @@ class ChannelEdit extends Component {
                     className='p-button-rounded p-button-text p-button-sm'
                     onClick={(event) => {
                       this.selchannel = el.channeluuid
-                      this.availscreensmenu.current.toggle(event)
+                      this.availscreensmenu.current.hide(event)
+                      this.availscreensmenu.current.show(event)
                     }}
                     aria-controls='availscreen_menu'
                     aria-haspopup
@@ -198,6 +212,7 @@ class ChannelEdit extends Component {
             <Menu
               model={availscreensitems}
               popup
+              baseZIndex={3000}
               ref={this.availscreensmenu}
               id='availscreen_menu'
             />
@@ -252,33 +267,92 @@ class ChannelEdit extends Component {
 export class FailsBasis extends Component {
   constructor(props) {
     super(props)
-    this.myauthtoken = sessionStorage.getItem('failstoken')
+
     this.noteref = null
     this.getNoteRef = this.getNoteRef.bind(this)
     this.updateSizes = this.updateSizes.bind(this)
-    this.requestReauthor = this.requestReauthor.bind(this)
-    this.getToken = this.getToken.bind(this)
-    this.authCB = this.authCB.bind(this)
+
     this.toggleFullscreen = this.toggleFullscreen.bind(this)
-    this.reauthorizeTimeout = null
+    this.servererrorhandler = this.servererrorhandler.bind(this)
+    this.setReloading = this.setReloading.bind(this)
+    this.setExpiredToken = this.setExpiredToken.bind(this)
+    this.setIdentities = this.setIdentities.bind(this)
+    this.processAVoffers = this.processAVoffers.bind(this)
 
     this.state = {}
     this.state.screensToSel = []
     this.state.reloading = true
+    this.state.identobj = { idents: [], masterdigest: 'no masterdigest' }
+    this.state.avinterfaceStarted = false
+    this.state.supportedMedia = {}
+    this.state.gotavstuff = false
 
     this.screenm = new ScreenManager()
 
-    this.periodicStatusCheck = this.periodicStatusCheck.bind(this)
+    this.floatvideo = React.createRef()
+    this.speakerset = new SpeakerSet()
 
-    window.setInterval(this.periodicStatusCheck, 1000)
+    this.socket = SocketInterface.getInterface()
+    this.socket.setServerErrorHandler(this.servererrorhandler)
+    this.socket.setReloadingHandler(this.setReloading)
+    this.socket.setExpiredTokenHandler(this.setExpiredToken)
+    this.socket.setInformIdentsHandler(this.setIdentities)
+
+    const bbchannel = new MessageChannel()
+    this.socket.setBoardChannel(bbchannel.port1)
+    this.bbchannel = bbchannel.port2
+
+    const avchannel = new MessageChannel()
+    this.socket.setAVChannel(avchannel.port1)
+    this.avchannel = avchannel.port2
+
+    this.avoffers = {
+      video: {},
+      audio: {},
+      screen: {}
+    }
+    this.videoquestions = {
+      authorized: {},
+      closed: {},
+      panels: {}
+    }
+
+    this.avstate = {
+      playback: { audio: false, video: false },
+      recording: {
+        audio: false,
+        video: false
+      }
+    }
+
+    this.keystore = KeyStore.getKeyStore()
+
+    // TODO add purpose stuff
   }
 
-  periodicStatusCheck() {
-    const token = this.decodedToken()
-    let expired = true
-    if (token && token.exp && token.exp - Date.now() / 1000 > 0) expired = false
-    if (this.state.tokenexpired !== expired)
-      this.setState({ tokenexpired: expired })
+  startUpAVinterface() {
+    if (!AVInterface.getInterface()) {
+      AVInterface.createAVInterface()
+      this.avinterf = AVInterface.getInterface() // please hold a reference for the gargabe collector
+      AVInterface.setNetworkControl(this.avchannel)
+      this.setState({ avinterfaceStarted: true })
+    }
+  }
+
+  setReloading(reloading) {
+    this.setState({ reloading })
+  }
+
+  setExpiredToken(tokenexpired) {
+    this.setState({ tokenexpired })
+  }
+
+  setIdentities(identobj) {
+    this.setState({ identobj })
+  }
+
+  decodedToken() {
+    return this.socket.decodedToken()
   }
 
   expiredTokenDialog() {
@@ -313,55 +387,112 @@ export class FailsBasis extends Component {
   }
 
   netSendSocket(command, data) {
-    if (this.socket) this.socket.emit(command, data)
+    if (this.socket) this.socket.simpleEmit(command, data)
   }
 
   initializeCommonSocket(commonsocket) {
-    commonsocket.removeAllListeners('authtoken')
-    commonsocket.on(
-      'authtoken',
-      function (data) {
-        // console.log('authtoken renewed', data)
-        // console.log('oldauthtoken' /* , this.myauthtoken */)
-        this.myauthtoken = data.token
-        sessionStorage.setItem('failstoken', data.token)
-        // console.log('newauthtoken' /* , this.myauthtoken */)
-        console.log('authtoken renewed')
-        this.scheduleReauthor() // request renewal
-      }.bind(this)
-    )
+    commonsocket.on('avoffer', (data) => {
+      if (data.id && data.type && data.type in this.avoffers) {
+        this.avoffers[data.type][data.id] = { time: Date.now(), db: data.db }
+      }
+      if (this.processAVoffers) this.processAVoffers()
+      if (!this.state.gotavstuff) this.setState({ gotavstuff: true })
+    })
 
-    commonsocket.removeAllListeners('reloadBoard')
-    commonsocket.on(
-      'reloadBoard',
-      function (data) {
-        // console.log('reloadboard', data, this.noteref)
-        this.setState({ reloading: !data.last })
-        if (this.noteref) {
-          this.noteref.replaceData(data)
-          // if (data.last) this.noteref.setHasControl(true)
+    commonsocket.on('avofferList', (data) => {
+      const now = Date.now()
+      if (data.offers) {
+        const newoffers = {
+          video: {},
+          audio: {},
+          screen: {}
         }
-      }.bind(this)
-    )
+        data.offers.forEach((el) => {
+          if (el.time && Number(el.time) > now - 60 * 1000) {
+            if (el.id && el.type && el.type in newoffers)
+              newoffers[el.type][el.id] = { time: Number(el.time), db: el.db }
+          }
+        })
+        this.avoffers = newoffers
+        if (this.processAVoffers) this.processAVoffers()
+        if (!this.state.gotavstuff && data?.offers?.length > 0)
+          this.setState({ gotavstuff: true })
+      }
+    })
 
-    commonsocket.removeAllListeners('availscreens')
-    commonsocket.on(
-      'availscreens',
-      function (data) {
-        // we can also figure out a notescreen id
-        // console.log('availscreens', data)
-        if (data.screens) {
-          const notescreenuuid = this.decodedToken().notescreenuuid
+    commonsocket.on('vqoffer', (data) => {
+      if (data.id && data.type && this.videoquestions.panels[data.id]) {
+        if (data.type === 'video')
+          this.videoquestions.panels[data.id].turnVideoOn(true)
+        else if (data.type === 'audio')
+          this.videoquestions.panels[data.id].turnAudioOn(true)
+      }
+    })
 
-          const nsid = data.screens.findIndex(
-            (el) => el.uuid === notescreenuuid
-          )
-
-          this.setState({ availscreens: data.screens, notescreenid: nsid })
-          console.log('notescreenid', nsid)
+    commonsocket.on('videoquestion', (data) => {
+      if (data.id && data.displayname && data.userhash) {
+        if (data.id !== this.state.id) {
+          this.videoquestions.authorized[data.id] = {
+            displayname: data.displayname,
+            userhash: data.userhash
+          }
+          delete this.videoquestions.closed[data.id]
+          this.updateVideoquestions()
+        } else {
+          // that's me..., I may ask
+          if (this.startVideoQuestion) this.startVideoQuestion()
         }
-      }.bind(this)
-    )
+      }
+    })
+
+    commonsocket.on('closevideoquestion', (data) => {
+      if (data.id) {
+        if (data.id !== this.state.id) {
+          this.videoquestions.closed[data.id] = {
+            closed: true
+          }
+          delete this.videoquestions.authorized[data.id]
+        } else {
+          if (this.activeVideoQuestion) {
+            this.activeVideoQuestion.closeChat()
+            delete this.activeVideoQuestion
+          }
+        }
+      }
+      this.updateVideoquestions()
+    })
+
+    commonsocket.on('videoquestionList', (data) => {
+      if (data.vquestions) {
+        const newauthorized = {}
+        data.vquestions.forEach((el) => {
+          if (el.displayname && el.userhash) {
+            if (el.id && el.id !== this.state.id) {
+              newauthorized[el.id] = {
+                displayname: el.displayname,
+                userhash: el.userhash
+              }
+              delete this.videoquestions.closed[el.id]
+            }
+          }
+        })
+        this.videoquestions.authorized = newauthorized
+        this.updateVideoquestions()
+      }
+    })
+    // commonsocket.removeAllListeners('availscreens')
+    commonsocket.on('availscreens', (data) => {
+      // we can also figure out a notescreen id
+      // console.log('availscreens', data)
+      if (data.screens) {
+        const notescreenuuid = this.decodedToken().notescreenuuid
+
+        const nsid = data.screens.findIndex((el) => el.uuid === notescreenuuid)
+
+        this.setState({ availscreens: data.screens, notescreenid: nsid })
+        console.log('notescreenid', nsid)
+      }
+    })
 
     commonsocket.on('presinfo', (data) => {
       console.log('data presinfo', data)
@@ -445,89 +576,160 @@ export class FailsBasis extends Component {
               blackbackground: data.backgroundbw=="true"  } */
     })
 
-    commonsocket.removeAllListeners('drawcommand')
-    commonsocket.on(
-      'drawcommand',
-      function (data) {
-        // console.log("drawcommand commoncocket",data );
-        // console.log("noteref",this.noteref);
-        if (this.noteref) this.noteref.receiveData(data)
-      }.bind(this)
-    )
-
-    commonsocket.removeAllListeners('pictureinfo')
-    commonsocket.on(
-      'pictureinfo',
-      function (data) {
-        if (this.noteref) {
-          data.forEach((el) => {
-            this.noteref.receivePictInfo({
-              uuid: el.sha,
-              url: el.url,
-              mimetype: el.mimetype
-            })
-          })
-        }
-      }.bind(this)
-    )
-
-    commonsocket.removeAllListeners('bgpdfinfo')
-    commonsocket.on(
-      'bgpdfinfo',
-      function (data) {
-        console.log('bgpdfinfo commonsocket', data)
-        if (data.bgpdfurl) {
-          this.updateSizes({ blackbackground: false })
-          this.setState({ bgpdf: true })
-        }
-        if (data.none) this.setState({ bgpdf: false })
-        if (this.noteref) {
-          this.noteref.receiveBgpdfInfo({
-            url: data.bgpdfurl,
-            none: !!data.none
-          })
-        }
-      }.bind(this)
-    )
-
-    commonsocket.removeAllListeners('FoG')
-    commonsocket.on(
-      'FoG',
-      function (data) {
-        if (this.noteref) this.noteref.receiveFoG(data)
-      }.bind(this)
-    )
-
-    commonsocket.removeAllListeners('error')
-    commonsocket.on(
-      'error',
-      function (data) {
-        console.log('Socketio error', data)
-        this.servererrorhandler(data.code, data.message, data.type)
-        this.setState({ reloading: true })
-        if (commonsocket) {
-          commonsocket.disconnect()
-        }
-      }.bind(this)
-    )
-
-    commonsocket.on('unauthorized', (error) => {
-      console.log('unauthorized', error)
-      if (
-        error.data.type === 'UnauthorizedError' ||
-        error.data.code === 'invalid_token'
-      ) {
-        this.servererrorhandler(null, 'unauthorized', null)
-        // redirect user to login page perhaps?
-        console.log('User token has expired')
+    commonsocket.on('bgpdfinfo', (data) => {
+      console.log('bgpdfinfo commonsocket', data)
+      if (data.bgpdfurl) {
+        this.updateSizes({ blackbackground: false })
+        this.setState({ bgpdf: true })
+      }
+      if (data.none) this.setState({ bgpdf: false })
+      if (this.noteref) {
+        this.noteref.receiveBgpdfInfo({
+          url: data.bgpdfurl,
+          none: !!data.none
+        })
       }
     })
+  }
 
-    commonsocket.on('connect_error', (err) => {
-      console.log('connect error', err.message)
-      this.setState({ reloading: true })
-      this.servererrorhandler(null, 'connect error: ' + err.message, null)
+  updateVideoquestions() {
+    // ok we have an update, we only process it, if we are doing video stuff
+    // TODO add test for video stuff
+    if (
+      this.state.avinterfaceStarted /* &&
+      (this.state.avstate?.playback?.audio ||
+        this.state.avstate?.playback?.video) */
+    ) {
+      Object.keys(this.videoquestions.authorized).forEach((id) => {
+        if (!this.videoquestions.panels[id]) {
+          // we do not have a panel, so plese add it
+          const el = this.videoquestions.authorized[id]
+          const retobj = (args) => {
+            return (
+              <VideoChat
+                id={id}
+                ref={(el2) => (this.videoquestions.panels[id] = el2)}
+                blockChat={() => this.blockChat(el.userhash)}
+                displayName={el.displayname}
+                userhash={el.userhash}
+                onClose={args.onClose}
+                initialAvstate={this.state.avstate}
+                speakerset={this.speakerset}
+                processAV={this.processAVoffers}
+                closeHook={
+                  !this.sendCloseVideoQuestion
+                    ? undefined
+                    : () => {
+                        this.sendCloseVideoQuestion({ id })
+                      }
+                }
+              />
+            )
+          }
+
+          this.toast.show({
+            severity: 'info',
+            content: retobj,
+            sticky: true,
+            closable: false
+          })
+        }
+      })
+    }
+
+    Object.keys(this.videoquestions.closed).forEach((id) => {
+      // const el = this.videoquestions.authorized[id]
+      if (this.videoquestions.panels[id]) {
+        // we do not have a panel, so plese add it
+        this.videoquestions.panels[id].closeChat()
+        delete this.videoquestions.panels[id]
+      }
     })
+  }
+
+  processAVoffers() {
+    // avoffers have updated, now we may change everything
+
+    const audio = this.avoffers.audio
+    const video = this.avoffers.video
+    const selaudio = new Set()
+
+    let selaid
+    let seldb = -70
+
+    const la = this.speakerset.getListAudio() || new Set()
+
+    for (const aid in audio) {
+      const el = audio[aid]
+      if (el.time > Date.now() - 10 * 1000 && aid !== this.state.id) {
+        if (el.db > -70 || (el.db > -75 && la.has(this.aid))) selaudio.add(aid)
+      }
+      if (el.db > seldb && aid in video && el.time > Date.now() - 10 * 1000) {
+        seldb = el.db
+        selaid = aid
+      }
+    }
+    // now we ask the video question folks
+    Object.keys(this.videoquestions.authorized).forEach((id) => {
+      if (this.videoquestions.panels[id]) {
+        const vqla = this.videoquestions.panels[id].getListAudio()
+        if (vqla) vqla.forEach((el) => selaudio.add(el))
+      }
+    })
+    //
+    const dp = this.state.dispvideo
+    if (
+      dp &&
+      audio[dp] &&
+      seldb - audio[dp].db < 10 &&
+      audio[dp].time > Date.now() - 15 * 1000 // discard audio after 15 seconds, otherwise even if the other client is long gone we are stuck
+    )
+      selaid = dp
+
+    if (!selaid) {
+      // no audio
+      let newvideo = false
+      if (dp) {
+        if (
+          !this.avoffers.video[dp] ||
+          this.avoffers.video[dp].time < Date.now() - 30 * 1000 ||
+          dp === this.state.id
+        ) {
+          // we need a new one this
+          newvideo = true
+        }
+      } else newvideo = true
+      if (newvideo) {
+        // select the most recent
+        let curtime = 0
+        let curid = null
+        const video = this.avoffers.video
+        for (const id in video) {
+          if (
+            video[id].time > Date.now() - 30 * 1000 &&
+            (video[id].time > curtime ||
+              (curid === this.state.id && video[id].time > curtime - 5 * 1000))
+          ) {
+            curtime = video[id].time
+            curid = id
+          }
+        }
+        if (curid) {
+          selaid = curid
+        }
+      }
+    }
+    if (selaid && selaid !== dp) {
+      console.log('change video to', selaid)
+      this.setState({ dispvideo: selaid })
+    }
+    // now figure out if the audio has changed
+    if (selaudio.size !== la.size || [...selaudio].some((i) => !la.has(i))) {
+      // console.log('set Audio IDS', la, selaudio)
+      this.speakerset.setAudioIds(selaudio).catch((error) => {
+        console.log('problem speakerset', error)
+      })
+    }
   }
 
   servererrorhandler(code, message, type) {
@@ -543,7 +745,7 @@ export class FailsBasis extends Component {
   experimental() {
     const exp = window.location.pathname.includes('experimental')
     const token = this.decodedToken()
-    console.log('token', token)
+    // console.log('token', token)
 
     if (exp && token && token.appversion === 'stable') {
       console.log(
@@ -589,43 +791,6 @@ export class FailsBasis extends Component {
         </div>
       </Dialog>
     )
-  }
-
-  scheduleReauthor() {
-    if (this.reauthorizeTimeout) {
-      clearTimeout(this.reauthorizeTimeout)
-      this.reauthorizeTime = null
-    }
-    this.reauthorizeTimeout = setTimeout(this.requestReauthor, 5 * 60 * 1000) // renew every 5 Minutes, a token last 10 minutes
-  }
-
-  authCB(cb) {
-    const token = this.getToken()
-    // console.log("authCB",cb);
-    // eslint-disable-next-line n/no-callback-literal
-    cb({ token })
-  }
-
-  decodedToken() {
-    const curtoken = this.getToken()
-    // console.log("tokens internal",curtoken,this.decoded_token_int, window.failstoken, this.lastdectoken);
-    if (curtoken !== this.lastdectoken) {
-      try {
-        this.decoded_token_int = jwt_decode(curtoken)
-        this.lastdectoken = curtoken
-      } catch (error) {
-        console.log('curtoken', curtoken)
-        console.log('token error', error)
-      }
-    }
-    // console.log("tokens",curtoken,this.decoded_token_int);
-
-    return this.decoded_token_int
-  }
-
-  getToken() {
-    // console.log("gettoken",this.myauthtoken);
-    if (this.myauthtoken) return this.myauthtoken
   }
 
   async toggleFullscreen(event) {
@@ -692,6 +857,36 @@ export class FailsBasis extends Component {
         rejectClassName: 'hiddenButton'
       })
     }
+    // we support it for a period of time only on the experimental branch
+    const expmedia = this.experimental()
+    const supportedMedia = AVInterface.queryMediaSupported()
+    this.setState({ supportedMedia })
+    this.hasMedia =
+      (supportedMedia.videoin ||
+        supportedMedia.videoout ||
+        supportedMedia.audioin ||
+        supportedMedia.audioout) &&
+      expmedia
+    this.hasMediaSend =
+      (supportedMedia.videoout || supportedMedia.audioout) && expmedia
+  }
+
+  commonDidUpdate(prevProps, prevState, snapshot) {
+    if (this.state.avstate !== prevState.avstate) {
+      // we have to inform all video messages
+      if (
+        (this.state?.avstate?.playback?.audio ||
+          this.state?.avstate?.playback?.video) !==
+        (prevState?.avstate?.playback?.audio ||
+          prevState?.avstate?.playback?.video)
+      ) {
+        this.updateVideoquestions()
+      }
+      Object.values(this.videoquestions.panels).forEach((panel) => {
+        if (panel) panel.informAvstate(this.state.avstate)
+        else console.log('WEIRD panel', this.videoquestions.panels, panel)
+      })
+    }
   }
 
   commonUnmount() {
@@ -699,10 +894,7 @@ export class FailsBasis extends Component {
       clearTimeout(this.reauthorizeTimeout)
       this.reauthorizeTime = null
     }
-  }
-
-  requestReauthor() {
-    this.netSendSocket('reauthor', {})
+    this.speakerset.close()
   }
 
   getNoteRef(ref) {
@@ -793,7 +985,7 @@ export class FailsBasis extends Component {
 class ShortcutsMessage extends React.Component {
   constructor(args) {
     super(args)
-    this.state = {}
+    this.state = { avinterfaceStarted: false }
   }
 
   render() {
@@ -845,6 +1037,26 @@ class ShortcutsMessage extends React.Component {
               ></Button>
             </div>
           </div>
+          {!(
+            this.props.parent?.state?.avinterfaceStarted ||
+            this.state.avinterfaceStarted
+          ) &&
+            this.props.hasMedia && (
+              <div className='p-grid p-align-center'>
+                <div className='p-col-9'>Start up Audio/Video broadcast:</div>
+                <div className='p-col-3'>
+                  <Button
+                    icon={fiBroadcastStart}
+                    id='bt-broadcast'
+                    className='p-button-primary p-button-outlined p-button-rounded p-m-2'
+                    onClick={(event) => {
+                      this.props.parent.startUpAVinterface()
+                      this.setState({ avinterfaceStarted: true })
+                    }}
+                  ></Button>
+                </div>
+              </div>
+            )}
           <div className='p-grid p-align-center'>
             <div className='p-col-12'>Select your wrist position:</div>
             <div className='p-col-2'>
@@ -915,10 +1127,219 @@ class ShortcutsMessage extends React.Component {
   }
 }
 
+class VideoChat extends React.Component {
+  constructor(args) {
+    super(args)
+    this.state = {
+      avstate: args.initialAvstate,
+      videoid: undefined,
+      audioid: undefined
+    }
+  }
+
+  closeChat() {
+    this.props.onClose()
+  }
+
+  informAvstate(avstate) {
+    this.setState({ avstate })
+  }
+
+  turnVideoOn(on) {
+    if (on && this.state.videoid !== this.props.id)
+      this.setState({
+        videoid: this.props.id
+      })
+  }
+
+  turnAudioOn(on) {
+    if (on && this.state.audioids?.length !== 1)
+      this.setState({
+        audioids: [this.props.id]
+      })
+  }
+
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    if (
+      !prevState.audioids ||
+      !this.state.audioids ||
+      prevState.audioids.some((ele, ind) => ele !== this.state.audioids[ind])
+    ) {
+      if (this.props.processAV) this.props.processAV()
+    }
+  }
+
+  getListAudio() {
+    return this.state.audioids
+  }
+
+  render() {
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top'
+    }
+    const style = {
+      left: '0vw',
+      top: '0vh',
+      position: 'relative'
+    }
+
+    const retobj = (
+      <React.Fragment>
+        <span className='p-toast-message-icon pi pi-info-circle'></span>
+        <div className='p-toast-message-text'>
+          <div className='buttonheadinggroup' key='buttonheading'>
+            <h3>{'A/V from ' + this.props.displayName} </h3>
+          </div>
+          <div className='m-0 buttonbarparent' style={style}>
+            <VideoControl
+              id={this.props.id}
+              videoid={this.state.videoid}
+              receiveOnly={true}
+              nobuttonbar={true}
+              speakerset={this.props.speakerset}
+              avstate={this.state?.avstate}
+            ></VideoControl>
+          </div>
+
+          <div className='p-grid p-align-center'>
+            <div className='p-col-7'>
+              {this.props.closeHook && (
+                <Button
+                  icon='pi pi-times'
+                  key='closevideoquestion'
+                  className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+                  tooltip='Close Videoquestion for all users'
+                  tooltipOptions={ttopts}
+                  onClick={this.props.closeHook}
+                />
+              )}
+              <Button
+                icon='pi pi-ban'
+                key='blockchat'
+                className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+                tooltip='Block user from future messages'
+                tooltipOptions={ttopts}
+                onClick={(event) => {
+                  confirmPopup({
+                    target: event.currentTarget,
+                    message:
+                      'Do you want to block ' +
+                      this.props.displayName +
+                      ' from sending messages for the remaining session!',
+                    icon: 'pi pi-exclamation-triangle',
+                    accept: this.props.blockChat()
+                  })
+                }}
+              />
+              <Button
+                icon='pi pi-info-circle'
+                className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+                tooltip='Forensic report about user'
+                key='forensic'
+                tooltipOptions={ttopts}
+                onClick={(event) => {
+                  confirmPopup({
+                    target: event.currentTarget,
+                    message: (
+                      <div style={{ width: '30vw' }}>
+                        {'Forensic report: userhash: ' +
+                          this.props.userhash +
+                          ' Displayname: ' +
+                          this.props.displayName +
+                          '" You can copy and paste this and send it to your admin as evidence!'}
+                      </div>
+                    ),
+                    acceptLabel: 'Ok',
+                    rejectClassName: 'hiddenButton',
+                    icon: 'pi pi-exclamation-triangle'
+                  })
+                }}
+              />
+            </div>
+            <div className='p-col'>
+              {!this.state?.avstate?.playback?.video && (
+                <React.Fragment>
+                  {' '}
+                  <FontAwesomeIcon icon={faTv} /> off.
+                </React.Fragment>
+              )}
+              {!this.state?.avstate?.playback?.audio && (
+                <React.Fragment>
+                  {' '}
+                  <FontAwesomeIcon icon={faVolumeXmark} /> off.
+                </React.Fragment>
+              )}
+            </div>
+          </div>
+        </div>
+      </React.Fragment>
+    )
+    return retobj
+  }
+}
+
+class VideoChatSender extends React.Component {
+  constructor(args) {
+    super(args)
+    this.state = {}
+  }
+
+  closeChat() {
+    this.props.onClose()
+  }
+
+  render() {
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top'
+    }
+    const style = {
+      left: '0vw',
+      top: '0vh',
+      position: 'relative'
+    }
+    // props.id is for sending stuff
+    const retobj = (
+      <React.Fragment>
+        <span className='p-toast-message-icon pi pi-info-circle'></span>
+        <div className='p-toast-message-text'>
+          <div className='buttonheadinggroup' key='buttonheading'>
+            <h3> A/V Question</h3>
+          </div>
+          <br></br>
+          <div className='m-0 buttonbarparent' style={style}>
+            <VideoControl
+              id={this.props.id}
+              videoid={this.props.id}
+              sendOnly={true}
+            ></VideoControl>
+          </div>
+          <div className='p-grid p-align-center'>
+            <div className='p-col-7'>
+              {this.props.closeHook && (
+                <Button
+                  icon='pi pi-times'
+                  key='closevideoquestion'
+                  className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+                  tooltip='Close Videoquestion'
+                  tooltipOptions={ttopts}
+                  onClick={this.props.closeHook}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </React.Fragment>
+    )
+    return retobj
+  }
+}
+
 class ChatMessage extends React.Component {
   constructor(args) {
     super(args)
-    this.state = { hideName: true }
+    this.state = { hideName: true, videoQuestionSend: false }
   }
 
   render() {
@@ -931,11 +1352,19 @@ class ChatMessage extends React.Component {
         displayname = data.displayname
       }
     }
+    const isEncrypted = this.props.isEncrypted
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top'
+    }
 
     const retobj = (
       <React.Fragment>
-        <span className='p-toast-message-icon pi pi-info-circle'></span>
-        <div className='p-toast-message-text'>
+        <span
+          className='p-toast-message-icon pi pi-info-circle'
+          key='messicon'
+        ></span>
+        <div className='p-toast-message-text' key='messkey'>
           {displayname && (
             <div className='buttonheadinggroup'>
               <h3>{displayname + ':'} </h3>
@@ -948,10 +1377,31 @@ class ChatMessage extends React.Component {
               />
             </div>
           )}
-          {this.props.latex} <br></br>
+          {this.props.latex}
+          <br></br>
+          {this.props.videoQuestion && !this.state.videoQuestionSend && (
+            <Button
+              icon={fiVideoQuestionPermit}
+              key='broadcast'
+              className='p-button-success p-button-outlined p-button-rounded p-m-2'
+              tooltip='Allow audio/video transmission.'
+              tooltipOptions={ttopts}
+              onClick={(event) => {
+                this.props.allowVideoquestion({
+                  id: data?.videoquestion?.id,
+                  displayname,
+                  userhash: data.userhash
+                })
+                this.setState({ videoQuestionSend: true })
+              }}
+            />
+          )}
           <Button
             icon='pi pi-ban'
+            key='blockchat'
             className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+            tooltip='Block user from future messages'
+            tooltipOptions={ttopts}
             onClick={(event) => {
               confirmPopup({
                 target: event.currentTarget,
@@ -967,6 +1417,9 @@ class ChatMessage extends React.Component {
           <Button
             icon='pi pi-info-circle'
             className='p-button-danger p-button-outlined p-button-rounded p-m-2'
+            tooltip='Forensic report about user'
+            key='forensic'
+            tooltipOptions={ttopts}
             onClick={(event) => {
               confirmPopup({
                 target: event.currentTarget,
@@ -974,7 +1427,7 @@ class ChatMessage extends React.Component {
                   <div style={{ width: '30vw' }}>
                     {'Forensic report: userhash: ' +
                       data.userhash +
-                      'Displayname: ' +
+                      ' Displayname: ' +
                       data.displayname +
                       ' Message: "' +
                       data.text +
@@ -987,6 +1440,15 @@ class ChatMessage extends React.Component {
               })
             }}
           />
+          {isEncrypted && (
+            <Button
+              icon={<FontAwesomeIcon icon={faLock} />}
+              key='e2e'
+              className='p-button-message p-button-outlined p-button-rounded p-m-2'
+              tooltip='Message was E2E encrypted!'
+              tooltipOptions={ttopts}
+            />
+          )}
         </div>
       </React.Fragment>
     )
@@ -1017,8 +1479,9 @@ export class FailsBoard extends FailsBasis {
 
     // this.notepaduuid=uuidv4(); // may be get it later from server together with token?, yes that is how it is handled
 
-    this.netSendShortCircuit = this.netSendShortCircuit.bind(this)
     this.netSendSocket = this.netSendSocket.bind(this)
+
+    this.reportDrawPos = this.reportDrawPos.bind(this)
 
     this.onHideArrangeDialog = this.onHideArrangeDialog.bind(this)
     this.onHidePictDialog = this.onHidePictDialog.bind(this)
@@ -1031,11 +1494,13 @@ export class FailsBoard extends FailsBasis {
     this.thumbnailGalleriaTemplate = this.thumbnailGalleriaTemplate.bind(this)
     this.pollTemplate = this.pollTemplate.bind(this)
     this.blockChat = this.blockChat.bind(this)
+    this.allowVideoquestion = this.allowVideoquestion.bind(this)
     this.onStartPoll = this.onStartPoll.bind(this)
     this.onStartSelPoll = this.onStartSelPoll.bind(this)
     this.onFinishSelPoll = this.onFinishSelPoll.bind(this)
   }
 
+  /*
   netSendShortCircuit(command, data) {
     if (command === 'lecturedetail') {
       this.setState({ lecturedetail: data })
@@ -1057,44 +1522,34 @@ export class FailsBoard extends FailsBasis {
       }
     }
   }
+  */
 
   componentDidMount() {
     console.log('Component mount Failsboard')
-    if (this.decodedToken().notepadhandler) {
-      let notepadhandler = this.decodedToken().notepadhandler
-      if (notepadhandler === '/')
-        notepadhandler =
-          window.location.protocol +
-          '//' +
-          window.location.hostname +
-          (window.location.port !== '' ? ':' + window.location.port : '')
+    // call connect socket?
 
-      this.socket = io(notepadhandler + '/notepads', {
-        auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
-        path: '/notepad.io',
-        multiplex: false,
-        transports: ['websocket']
-      })
-      this.initializeNotepadSocket(this.socket)
-      this.updateSizes() // no argument no effect
-      if (!this.welcomeMessageSend) {
-        this.toast.show({
-          severity: 'info',
-          sticky: true,
-          content: <ShortcutsMessage parent={this} />
-        })
-        this.welcomeMessageSend = 1
-      }
-    }
+    this.socket.connectNotepad()
+    this.initializeNotepadSocket(this.socket)
+    // this.updateSizes() // no argument no effect
+
     this.commonMount()
+    if (!this.welcomeMessageSend) {
+      this.toast.show({
+        severity: 'info',
+        sticky: true,
+        content: <ShortcutsMessage parent={this} hasMedia={this.hasMedia} />
+      })
+      this.welcomeMessageSend = 1
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    this.commonDidUpdate(prevProps, prevState, snapshot)
   }
 
   componentWillUnmount() {
     console.log('Component unmount Failsboard')
-    if (this.socket) {
-      this.socket.disconnect()
-      this.socket = null
-    }
+    this.socket.disconnect()
     this.commonUnmount()
   }
 
@@ -1120,92 +1575,108 @@ export class FailsBoard extends FailsBasis {
       }.bind(this)
     )
 
-    notepadsocket.removeAllListeners('connect')
-    notepadsocket.on(
-      'connect',
-      function (data) {
-        // if (this.noteref) this.noteref.setHasControl(false) // do not emit while reloading!
-        setTimeout(function () {
+    notepadsocket.on('connect', (data) => {
+      // if (this.noteref) this.noteref.setHasControl(false) // do not emit while reloading!
+      /* setTimeout(function () {
           notepadsocket.emit('sendboards', {})
-        }, 500)
-        this.updateSizes() // inform sizes
-        this.scheduleReauthor()
-      }.bind(this)
-    )
+        }, 500) */
+      this.setState({ id: this.socket.id })
+      this.updateSizes() // inform sizes
+    })
 
-    notepadsocket.removeAllListeners('chatquestion')
-    notepadsocket.on(
-      'chatquestion',
-      function (data) {
-        console.log('Incoming chat', data)
-        const retobj = (
-          <ChatMessage
-            data={data}
-            blockChat={() => this.blockChat(data.userhash)}
-            latex={this.convertToLatex(data.text)}
-          />
-        )
-        if (this.blockchathash.indexOf(data.userhash) === -1) {
-          this.toast.show({ severity: 'info', content: retobj, sticky: true })
+    notepadsocket.on('chatquestion', async (data) => {
+      console.log('Incoming chat', data)
+      let { text, userhash, encData, iv, keyindex } = data
+      let isEncrypted = false
+      try {
+        if (this.blockchathash.indexOf(userhash) === -1) {
+          if ((text === 'Encrypted' && encData, iv, keyindex)) {
+            isEncrypted = true
+            const decoder = new TextDecoder()
+            const key = await this.keystore.getKey(keyindex)
+            const decdata = await globalThis.crypto.subtle.decrypt(
+              {
+                name: 'AES-GCM',
+                iv
+              },
+              key.e2e,
+              encData
+            )
+            text = decoder.decode(decdata)
+          }
         } else console.log('chat had been blocked')
-      }.bind(this)
-    )
+      } catch (error) {
+        console.log('Error in chatquestion', error)
+        text = 'Error: receiving/decrypting chat: ' + error
+      }
+      const retobj = (
+        <ChatMessage
+          data={data}
+          blockChat={() => this.blockChat(userhash)}
+          latex={this.convertToLatex(text)}
+          isEncrypted={isEncrypted}
+          allowVideoquestion={this.allowVideoquestion}
+          videoQuestion={
+            this.state.avinterfaceStarted &&
+            data?.videoquestion &&
+            this.hasMediaSend
+          }
+        />
+      )
+      this.toast.show({ severity: 'info', content: retobj, sticky: true })
+    })
 
-    notepadsocket.removeAllListeners('startPoll')
-    notepadsocket.on(
-      'startPoll',
-      function (data) {
-        console.log('startpoll incoming', data)
+    notepadsocket.on('startPoll', (data) => {
+      console.log('startpoll incoming', data)
 
-        this.setState({
-          polltask: 1,
-          curpoll: data,
-          pollsel: undefined,
-          pollshowres: false,
-          pollvotes: {},
-          pollballots: []
+      this.setState({
+        polltask: 1,
+        curpoll: data,
+        pollsel: undefined,
+        pollshowres: false,
+        pollvotes: {},
+        pollballots: []
+      })
+    })
+
+    notepadsocket.on('finishPoll', (data) => {
+      console.log('finishpoll incoming', data)
+
+      this.setState({ polltask: 2, pollsel: undefined })
+    })
+
+    notepadsocket.on('castvote', (data) => {
+      console.log('castvote incoming', data)
+      if (
+        data.ballotid &&
+        data.vote &&
+        data.pollid &&
+        data.pollid === this.state.curpoll.id
+      ) {
+        this.setState((state) => {
+          const ballots = state.pollballots
+          ballots.push({ data })
+          const votes = state.pollvotes
+          votes[data.ballotid] = data.vote
+
+          return { pollballots: ballots, pollvotes: votes }
         })
-      }.bind(this)
-    )
+      }
 
-    notepadsocket.removeAllListeners('finishPoll')
-    notepadsocket.on(
-      'finishPoll',
-      function (data) {
-        console.log('finishpoll incoming', data)
-
-        this.setState({ polltask: 2, pollsel: undefined })
-      }.bind(this)
-    )
-
-    notepadsocket.removeAllListeners('castvote')
-    notepadsocket.on(
-      'castvote',
-      function (data) {
-        console.log('castvote incoming', data)
-        if (
-          data.ballotid &&
-          data.vote &&
-          data.pollid &&
-          data.pollid === this.state.curpoll.id
-        ) {
-          this.setState((state) => {
-            const ballots = state.pollballots
-            ballots.push({ data })
-            const votes = state.pollvotes
-            votes[data.ballotid] = data.vote
-
-            return { pollballots: ballots, pollvotes: votes }
-          })
-        }
-
-        // this.setState({ polltask: 2,  pollsel: undefined} );
-      }.bind(this)
-    )
+      // this.setState({ polltask: 2,  pollsel: undefined} );
+    })
   }
 
   blockChat(userhash) {
     this.blockchathash.push(userhash)
+  }
+
+  allowVideoquestion(data) {
+    this.netSendSocket('allowvideoquestion', data)
+  }
+
+  sendCloseVideoQuestion(data) {
+    this.netSendSocket('closevideoquestion', data)
   }
 
   arrangebuttonCallback() {
@@ -1213,9 +1684,16 @@ export class FailsBoard extends FailsBasis {
     this.setState({ arrangebuttondialog: true })
   }
 
-  onOpenNewScreen() {
-    const authtoken = this.myauthtoken
-    this.socket.emit('createscreen', function (ret) {
+  reportDrawPos(x, y) {
+    if (this.floatvideo.current) {
+      this.floatvideo.current.reportDrawPos(x, y)
+    }
+  }
+
+  async onOpenNewScreen() {
+    try {
+      const authtoken = sessionStorage.getItem('failstoken')
+      const ret = await this.socket.createScreen()
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
 
@@ -1256,12 +1734,15 @@ export class FailsBoard extends FailsBasis {
         }
         window.addEventListener('message', messageHandle)
       }
-    })
+    } catch (error) {
+      console.log('createScreen failed', error)
+    }
   }
 
-  onOpenNewNotepad() {
-    const authtoken = this.myauthtoken
-    this.socket.emit('createnotepad', function (ret) {
+  async onOpenNewNotepad() {
+    try {
+      const authtoken = this.myauthtoken
+      const ret = await this.socket.createNotepad()
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
 
@@ -1302,12 +1783,14 @@ export class FailsBoard extends FailsBasis {
         }
         window.addEventListener('message', messageHandle)
       }
-    })
+    } catch (error) {
+      console.log('createNotepad failed', error)
+    }
   }
 
   onNewWriting() {
     console.log('onnewwriting!')
-    this.socket.emit('createchannel')
+    this.socket.simpleEmit('createchannel')
   }
 
   /* onRemoveScreen()
@@ -1318,24 +1801,21 @@ export class FailsBoard extends FailsBasis {
 
   onRemoveChannel(channeluuid) {
     console.log('Remove channel', channeluuid)
-    this.socket.emit('removechannel', { channeluuid })
+    this.socket.simpleEmit('removechannel', { channeluuid })
   }
 
-  pictbuttonCallback() {
+  async pictbuttonCallback() {
     // Picture button was pressed
-    this.socket.emit(
-      'getAvailablePicts',
-      function (ret) {
-        console.log('getAvailablePicts', ret)
-        const picts = ret.map((el) => ({
-          itemImageSrc: el.url,
-          thumbnailImageSrc: el.urlthumb,
-          id: el.sha,
-          alt: el.name
-        }))
-        this.setState({ pictbuttondialog: true, pictures: picts })
-      }.bind(this)
-    )
+    const ret = await this.socket.getAvailablePicts()
+
+    console.log('getAvailablePicts', ret)
+    const picts = ret.map((el) => ({
+      itemImageSrc: el.url,
+      thumbnailImageSrc: el.urlthumb,
+      id: el.sha,
+      alt: el.name
+    }))
+    this.setState({ pictbuttondialog: true, pictures: picts })
 
     /* let dummypicthelp=dummypict.default;
 
@@ -1373,17 +1853,14 @@ export class FailsBoard extends FailsBasis {
     }
   }
 
-  onStartPoll() {
+  async onStartPoll() {
     this.setState({ polltask: 0 })
     this.onHideArrangeDialog()
 
-    this.socket.emit(
-      'getPolls',
-      function (ret) {
-        console.log('getPolls', ret)
-        this.setState({ pollcoll: ret })
-      }.bind(this)
-    )
+    const ret = await this.socket.getPolls()
+
+    console.log('getPolls', ret)
+    this.setState({ pollcoll: ret })
   }
 
   onStartSelPoll() {
@@ -1391,7 +1868,7 @@ export class FailsBoard extends FailsBasis {
     const polfind = this.state.pollcoll.find(
       (el) => el.id === this.state.pollsel
     )
-    this.socket.emit('startPoll', {
+    this.socket.simpleEmit('startPoll', {
       poll: polfind
     })
   }
@@ -1404,7 +1881,7 @@ export class FailsBoard extends FailsBasis {
       const mine = this.state.curpoll.children.find((el) => el.id === res)
       tresult.push({ id: res, data: result[res], name: mine.name })
     }
-    this.socket.emit('finishPoll', {
+    this.socket.simpleEmit('finishPoll', {
       pollid: this.state.curpoll.id,
       result: tresult
     })
@@ -1412,7 +1889,7 @@ export class FailsBoard extends FailsBasis {
 
   addNotescreenToChannel(channeluuid, uuid) {
     console.log('Add screen with uuid')
-    this.socket.emit('addnotescreentochannel', {
+    this.socket.simpleEmit('addnotescreentochannel', {
       channeluuid,
       notescreenuuid: uuid
     })
@@ -1420,17 +1897,30 @@ export class FailsBoard extends FailsBasis {
 
   itemGalleriaTemplate(item) {
     return (
-      <img
-        src={item.itemImageSrc}
-        alt={item.alt}
-        style={{
-          width: 'auto',
-          height: 'auto',
-          display: 'block',
-          maxHeight: '50vh',
-          maxWidth: '75vw'
-        }}
-      />
+      <div>
+        <img
+          src={item.itemImageSrc}
+          alt={item.alt}
+          style={{
+            width: 'auto',
+            height: 'auto',
+            display: 'block',
+            maxHeight: '50vh',
+            maxWidth: '75vw'
+          }}
+        />
+        <span
+          style={{
+            right: 0,
+            bottom: 0,
+            position: 'absolute',
+            color: '#2196F3'
+          }}
+        >
+          {' '}
+          {item.alt}
+        </span>
+      </div>
     )
   }
 
@@ -1447,9 +1937,12 @@ export class FailsBoard extends FailsBasis {
   pollTemplate(item) {
     console.log('itemlog', item)
     let childlist = []
-    if (item.children) childlist = item.children.map((el) => <li>{el.name}</li>)
+    if (item.children)
+      childlist = item.children.map((el, ind) => (
+        <li key={item.id + ind}>{el.name}</li>
+      ))
     return (
-      <div>
+      <div key={item.id}>
         <h3> {item.name + (item.multi ? ' (multi)' : ' (single)')} </h3>
         <ol>{childlist}</ol>
       </div>
@@ -1533,7 +2026,7 @@ export class FailsBoard extends FailsBasis {
         ? true
         : this.state.blackbackground
 
-    // console.log("pictures",this.state.pictures);
+    // console.log('pictures', this.state.pictures)
     return (
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
@@ -1542,13 +2035,11 @@ export class FailsBoard extends FailsBasis {
         {this.expiredTokenDialog()}
         <NoteScreenBase
           arrangebuttoncallback={this.arrangebuttonCallback}
-          netsend={
-            this.decodedToken() && this.decodedToken().notepadhandler
-              ? this.netSendSocket
-              : this.netSendShortCircuit
-          }
+          netsend={this.netSendSocket}
           isnotepad={true}
+          bbchannel={this.bbchannel}
           pictbuttoncallback={this.pictbuttonCallback}
+          reportDrawPosCB={this.reportDrawPos}
           mainstate={{
             blackbackground,
             bgpdf: this.state.bgpdf,
@@ -1578,7 +2069,15 @@ export class FailsBoard extends FailsBasis {
           updateSizes={this.updateSizes}
           toggleFullscreen={this.toggleFullscreen}
           showscreennumber={this.state.showscreennumber}
+          identobj={this.state.identobj}
           experimental={this.experimental()}
+          startUpAVBroadcast={
+            this.state.avinterfaceStarted || !this.hasMedia
+              ? undefined
+              : () => {
+                  this.startUpAVinterface()
+                }
+          }
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div
@@ -1601,6 +2100,18 @@ export class FailsBoard extends FailsBasis {
               className='p-button-primary p-button-raised p-button-rounded'
             />
           </div>
+        )}
+        {this.state.avinterfaceStarted && (
+          <FloatingVideo ref={this.floatvideo}>
+            <VideoControl
+              videoid={this.state.dispvideo}
+              id={this.state.id}
+              speakerset={this.speakerset}
+              avStateHook={(avstate) => {
+                this.setState({ avstate })
+              }}
+            ></VideoControl>
+          </FloatingVideo>
         )}
 
         <Dialog
@@ -1788,39 +2299,26 @@ export class FailsScreen extends FailsBasis {
 
   componentDidMount() {
     console.log('Component mount FailsScreen')
-    if (this.decodedToken().notepadhandler) {
-      let notepadhandler = this.decodedToken().notepadhandler
-      if (notepadhandler === '/')
-        notepadhandler =
-          window.location.protocol +
-          '//' +
-          window.location.hostname +
-          (window.location.port !== '' ? ':' + window.location.port : '')
+    this.socket.connectScreen()
+    this.initializeScreenSocket(this.socket)
 
-      this.socket = io(notepadhandler + '/screens', {
-        auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
-        path: '/notepad.io',
-        multiplex: false,
-        transports: ['websocket']
-      })
-      this.initializeScreenSocket(this.socket)
-    }
     this.commonMount()
+  }
+
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    this.commonDidUpdate(prevProps, prevState, snapshot)
   }
 
   componentWillUnmount() {
     console.log('Component unmount FailsScreen')
-    if (this.socket) {
-      this.socket.disconnect()
-      this.socket = null
-    }
+
+    this.socket.disconnect()
     this.commonUnmount()
   }
 
   initializeScreenSocket(screensocket) {
     this.initializeCommonSocket(screensocket)
     // TODO convert to react
-    screensocket.removeAllListeners('lecturedetail')
     screensocket.on(
       'lecturedetail',
       function (data) {
@@ -1829,7 +2327,7 @@ export class FailsScreen extends FailsBasis {
       }.bind(this)
     )
 
-    /* screensocket.removeAllListeners('removeScreen');
+    /* 
     screensocket.on('removeScreen',function(data) {
         
         this.setState((state)=> {let newld=state.lecturedetail;
@@ -1843,25 +2341,20 @@ export class FailsScreen extends FailsBasis {
         this.setState({casttoscreens: false  } );
     }.bind(this)); */
 
-    screensocket.removeAllListeners('connect')
-    screensocket.on(
-      'connect',
-      function (data) {
-        // todo imform size
-        this.updateSizes()
-        console.log('screensocket connect', data)
-        this.setState((state) => {
-          return {
-            casttoscreens: false,
-            showscreennumber: false,
-            screenmode: 'connected'
-          }
-        })
-        this.scheduleReauthor()
-      }.bind(this)
-    )
+    screensocket.on('connect', (data) => {
+      this.setState({ id: this.socket.id })
+      // todo imform size
+      this.updateSizes()
+      console.log('screensocket connect', data)
+      this.setState((state) => {
+        return {
+          casttoscreens: false,
+          showscreennumber: false,
+          screenmode: 'connected'
+        }
+      })
+    })
 
-    screensocket.removeAllListeners('disconnect')
     screensocket.on(
       'disconnect',
       function (data) {
@@ -1979,15 +2472,52 @@ export class FailsScreen extends FailsBasis {
         lastpointermove: Date.now()
       })
     }
+    const buttonstyle = {
+      position: 'absolute',
+      bottom: '2vh',
+      right: '2vw',
+      zIndex: 101
+    }
+    const ttopts = {
+      className: 'teal-tooltip',
+      position: 'top',
+      showDelay: 1000
+    }
     return (
       <div onPointerMove={pointermove}>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
         {this.screenOverlay()}
         {this.expiredTokenDialog()}
+        <OverlayPanel
+          className='tbChild'
+          ref={(el) => {
+            this.keyinfo = el
+          }}
+          style={{ maxWidth: '40vw', maxHeight: '50vh' }}
+          showCloseIcon
+        >
+          {this.state.identobj?.masterdigest && (
+            <React.Fragment>
+              <h4> Masterkey:</h4>
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontVariantNumeric: 'slashed-zero'
+                }}
+              >
+                {this.state.identobj?.masterdigest}
+              </span>
+              <br></br>
+              <br></br>
+              Compare the Masterkey to verify E2E encryption.
+            </React.Fragment>
+          )}
+        </OverlayPanel>
         <NoteScreenBase
           isnotepad={false}
           showscreennumber={this.state.showscreennumber}
           screennumber={this.state.notescreenid}
+          bbchannel={this.bbchannel}
           backgroundcolor={
             this.state.bgpdf
               ? '#FFFFFF'
@@ -2022,19 +2552,55 @@ export class FailsScreen extends FailsBasis {
         >
           {this.state.screenmode && this.renderScreenText()}
         </Sidebar>
+        {this.state.avinterfaceStarted && (
+          <FloatingVideo ref={this.floatvideo}>
+            <VideoControl
+              videoid={this.state.dispvideo}
+              id={this.state.id}
+              speakerset={this.speakerset}
+              receiveOnly={true}
+              avStateHook={(navstate) => {
+                const avstate = { ...this.state.avstate }
+                avstate.playback = navstate.playback
+                this.setState({ avstate })
+              }}
+            ></VideoControl>
+          </FloatingVideo>
+        )}
         {this.state.lastpointermove !== 0 && (
-          <Button
-            icon='pi pi-window-maximize'
-            style={{
-              position: 'absolute',
-              top: '90vh',
-              left: '90vw',
-              zIndex: 101
-            }}
-            key={1}
-            onClick={this.toggleFullscreen}
-            className='p-button-primary p-button-raised p-button-rounded fadeMenu'
-          />
+          <div style={buttonstyle}>
+            {!this.state.avinterfaceStarted && (
+              <Button
+                icon={fiBroadcastStart}
+                tooltip='Startup audio/video broadcast'
+                key={17}
+                tooltipOptions={ttopts}
+                onClick={(e) => {
+                  this.startUpAVinterface()
+                }}
+                className='p-button-primary p-button-raised p-button-rounded fadeMenu p-m-2'
+              />
+            )}
+
+            <Button
+              icon='pi pi-key'
+              tooltip='Encryption key'
+              tooltipOptions={ttopts}
+              onClick={(e) => {
+                if (this.keyinfo) this.keyinfo.toggle(e)
+              }}
+              className='p-button-primary p-button-raised p-button-rounded fadeMenu p-m-2'
+            ></Button>
+
+            <Button
+              icon='pi pi-window-maximize'
+              key={1}
+              tooltip='Toggle fullscreen'
+              tooltipOptions={ttopts}
+              onClick={this.toggleFullscreen}
+              className='p-button-primary p-button-raised p-button-rounded fadeMenu p-m-2'
+            />
+          </div>
         )}
       </div>
     )
@@ -2055,6 +2621,7 @@ export class FailsNotes extends FailsBasis {
     this.state.notesmode = false
 
     this.state.chattext = ''
+    this.state.videoquestion = false
 
     this.notepaduuid = null
     this.notetools = React.createRef()
@@ -2068,60 +2635,37 @@ export class FailsNotes extends FailsBasis {
 
   componentDidMount() {
     console.log('Component mount FailsNotes')
-    console.log('decoded token', this.decodedToken())
-    if (this.decodedToken().noteshandler) {
-      let noteshandler = this.decodedToken().noteshandler
-      if (noteshandler === '/')
-        noteshandler =
-          window.location.protocol +
-          '//' +
-          window.location.hostname +
-          (window.location.port !== '' ? ':' + window.location.port : '')
-
-      this.socket = io(noteshandler + '/notes', {
-        auth: this.authCB /* + sessionStorage.getItem("FailsAuthtoken") */,
-        path: '/notes.io',
-        multiplex: false,
-        transports: ['websocket']
-      })
-      this.initializeNotesSocket(this.socket)
-    }
+    this.socket.connectNotes()
+    this.initializeNotesSocket(this.socket)
     this.commonMount()
+  }
+
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    this.commonDidUpdate(prevProps, prevState, snapshot)
   }
 
   componentWillUnmount() {
     console.log('Component unmount FailsScreen')
-    if (this.socket) {
-      this.socket.disconnect()
-      this.socket = null
-    }
+    this.socket.disconnect()
     this.commonUnmount()
   }
 
   initializeNotesSocket(notessocket) {
     this.initializeCommonSocket(notessocket)
     // TODO convert to react
-    notessocket.removeAllListeners('lecturedetail')
-    notessocket.on(
-      'lecturedetail',
-      function (data) {
-        console.log('got lecture detail', data)
-        this.setState({
-          lectdetail: { ...data, uuid: this.decodedToken()?.lectureuuid }
-        })
-      }.bind(this)
-    )
-
-    notessocket.removeAllListeners('connect')
-    notessocket.on('connect', (data) => {
-      // todo imform size
-
-      console.log('notessocket connect', data)
-
-      this.scheduleReauthor()
+    notessocket.on('lecturedetail', (data) => {
+      console.log('got lecture detail', data)
+      this.setState({
+        lectdetail: { ...data, uuid: this.decodedToken()?.lectureuuid }
+      })
     })
 
-    notessocket.removeAllListeners('disconnect')
+    notessocket.on('connect', (data) => {
+      // todo imform size
+      this.setState({ id: this.socket.id })
+      console.log('notessocket connect', data)
+    })
+
     notessocket.on('disconnect', (data) => {
       console.log('notessocket disconnect')
       // clear polling
@@ -2133,38 +2677,34 @@ export class FailsNotes extends FailsBasis {
         polldata: undefined,
         pollballotid: undefined
       })
+      if (this.activeVideoQuestion) {
+        this.activeVideoQuestion.closeChat()
+        delete this.activeVideoQuestion
+      }
     })
 
-    notessocket.removeAllListeners('startPoll')
-    notessocket.on(
-      'startPoll',
-      function (data) {
-        console.log('startpoll incoming', data)
+    notessocket.on('startPoll', (data) => {
+      console.log('startpoll incoming', data)
 
-        this.setState({
-          polltask: 1,
-          curpoll: data,
-          votesel: [],
-          pollvotes: {},
-          polldata: undefined,
-          pollballotid: undefined
-        })
-      }.bind(this)
-    )
+      this.setState({
+        polltask: 1,
+        curpoll: data,
+        votesel: [],
+        pollvotes: {},
+        polldata: undefined,
+        pollballotid: undefined
+      })
+    })
 
-    notessocket.removeAllListeners('finishPoll')
-    notessocket.on(
-      'finishPoll',
-      function (data) {
-        console.log('finishpoll incoming', data)
+    notessocket.on('finishPoll', (data) => {
+      console.log('finishpoll incoming', data)
 
-        this.setState({
-          polltask: 2,
-          pollsel: undefined,
-          polldata: data.result
-        })
-      }.bind(this)
-    )
+      this.setState({
+        polltask: 2,
+        pollsel: undefined,
+        polldata: data.result
+      })
+    })
   }
 
   informDraw() {
@@ -2190,9 +2730,77 @@ export class FailsNotes extends FailsBasis {
     })
   }
 
+  startVideoQuestion() {
+    // First we should not do this several times
+    if (!this.activeVideoQuestion) {
+      const retobj = (args) => {
+        return (
+          <VideoChatSender
+            ref={(el2) => (this.activeVideoQuestion = el2)}
+            onClose={args.onClose}
+            id={this.state.id}
+            closeHook={() => {
+              if (this.activeVideoQuestion) {
+                this.activeVideoQuestion.closeChat()
+                delete this.activeVideoQuestion
+              }
+              if (this.sendCloseVideoQuestionSender)
+                this.sendCloseVideoQuestionSender({ id: this.state.id })
+            }}
+          />
+        )
+      }
+
+      this.toast.show({
+        severity: 'info',
+        content: retobj,
+        sticky: true,
+        closable: false
+      })
+    }
+  }
+
+  sendCloseVideoQuestionSender(data) {
+    this.netSendSocket('closevideoquestion') // no data the handler know me
+  }
+
   sendChatMessage() {
-    console.log('Send chat message', this.state.chattext)
-    this.netSendSocket('chatquestion', { text: this.state.chattext })
+    const chattext = this.state.chattext
+    const videoquestion = this.state.videoquestion ? true : undefined
+    const encoder = new TextEncoder()
+    const afunc = async () => {
+      console.log(
+        'Send chat message',
+        chattext,
+        this.state.videoquestion,
+        videoquestion
+      )
+      const iv = globalThis.crypto.getRandomValues(new Uint8Array(12))
+      console.log('Send chat message 1')
+      const keyindex = await this.keystore.getCurKeyId()
+      console.log('Send chat message 2')
+      const key = await this.keystore.getKey(keyindex)
+      console.log('Send chat message 3')
+      const encData = await globalThis.crypto.subtle.encrypt(
+        {
+          name: 'AES-GCM',
+          iv
+        },
+        key.e2e,
+        encoder.encode(chattext)
+      )
+      console.log('Send chat message 4')
+      this.netSendSocket('chatquestion', {
+        text: 'Encrypted',
+        encData,
+        keyindex,
+        iv,
+        videoquestion
+      })
+    }
+    afunc().catch((error) => {
+      console.log('Problem in sendChatMessage', error)
+    })
 
     this.setState({ chattext: '' })
     this.chatop.hide()
@@ -2218,16 +2826,15 @@ export class FailsNotes extends FailsBasis {
     }
   }
 
-  onCastvote() {
-    this.socket.emit(
-      'castvote',
-      { selection: this.state.votesel, pollid: this.state.curpoll.id },
-      function (ret) {
-        console.log('cast vote incl ballot id', ret)
-        this.setState({ pollballotid: ret.ballot })
-      }.bind(this)
-    )
+  async onCastvote() {
     this.setState({ polltask: 2, votesel: undefined })
+    const ret = await this.socket.castVote({
+      selection: this.state.votesel,
+      pollid: this.state.curpoll.id
+    })
+
+    console.log('cast vote incl ballot id', ret)
+    this.setState({ pollballotid: ret.ballot })
   }
 
   onNotesmodeEnterDialog({ persist, tryPersist, persistGranted }) {
@@ -2293,25 +2900,37 @@ export class FailsNotes extends FailsBasis {
     } else {
       // First we need to figure out, if we have permissions for persistance
       if (navigator.storage?.persisted) {
-        navigator.storage.persisted().then((isPersisted) => {
-          console.log('ispersisted', isPersisted)
-          if (isPersisted) {
-            this.onNotesmodeEnterDialog({ persist: true })
-          } else {
-            if (navigator.permissions)
-              navigator.permissions
-                .query({ name: 'persistent-storage' })
-                .then((result) => {
-                  console.log('perm query result', result)
-                  if (result.state === 'granted')
-                    this.onNotesmodeEnterDialog({ persistGranted: true })
-                  else if (result.state === 'prompt') {
+        navigator.storage
+          .persisted()
+          .then((isPersisted) => {
+            console.log('ispersisted', isPersisted)
+            if (isPersisted) {
+              this.onNotesmodeEnterDialog({ persist: true })
+            } else {
+              if (navigator.permissions)
+                navigator.permissions
+                  .query({ name: 'persistent-storage' })
+                  .then((result) => {
+                    console.log('perm query result', result)
+                    if (result.state === 'granted')
+                      this.onNotesmodeEnterDialog({ persistGranted: true })
+                    else if (result.state === 'prompt') {
+                      this.onNotesmodeEnterDialog({ tryPersist: true })
+                    } else this.onNotesmodeEnterDialog({ persist: false })
+                  })
+                  .catch((error) => {
+                    console.log(
+                      'Problem in persistent check or unsupported permissions:',
+                      error
+                    )
                     this.onNotesmodeEnterDialog({ tryPersist: true })
-                  } else this.onNotesmodeEnterDialog({ persist: false })
-                })
-            else this.onNotesmodeEnterDialog({ tryPersist: true })
-          }
-        })
+                  })
+              else this.onNotesmodeEnterDialog({ tryPersist: true })
+            }
+          })
+          .catch((error) => {
+            console.log('Problem in persitentcheck', error)
+          })
       } else {
         this.onNotesmodeEnterDialog({ persist: false })
       }
@@ -2374,6 +2993,20 @@ export class FailsNotes extends FailsBasis {
           aria-haspopup
           aria-controls='overlay_panel'
         />
+        {!this.state.avinterfaceStarted &&
+          this.state.gotavstuff &&
+          this.state.casttoscreens && (
+            <Button
+              icon={fiReceiveStart}
+              tooltip='Startup audio/video receiving'
+              key={17}
+              tooltipOptions={ttopts}
+              onClick={(e) => {
+                this.startUpAVinterface()
+              }}
+              className='p-button-raised p-button-rounded p-m-2'
+            />
+          )}
         <Button
           icon={<FontAwesomeIcon icon={faFilePen} />}
           className={
@@ -2407,29 +3040,65 @@ export class FailsNotes extends FailsBasis {
         )}
 
         <OverlayPanel ref={(el) => (this.chatop = el)}>
-          {this.detectLatex(this.state.chattext) && (
-            <React.Fragment>
-              <h4>Preview: </h4>
-              {this.convertToLatex(this.state.chattext)}
-              <br></br>
-            </React.Fragment>
-          )}
-          <h4>Question ($...$ for math):</h4>
-          <InputTextarea
-            rows={5}
-            cols={30}
-            value={this.state.chattext}
-            onChange={(e) => this.setState({ chattext: e.target.value })}
-            autoResize
-          />
-
-          {this.state.chattext !== '' && (
-            <Button
-              icon={'pi pi-send'}
-              className='p-button-raised p-button-rounded p-m-2'
-              onClick={this.sendChatMessage}
-            />
-          )}
+          <div className='p-grid p-align-end'>
+            <div className='p-col'>
+              {this.detectLatex(this.state.chattext) && (
+                <React.Fragment>
+                  <h4>Preview: </h4>
+                  {this.convertToLatex(this.state.chattext)}
+                  <br></br>
+                </React.Fragment>
+              )}
+              <h4>Question ($...$ for math):</h4>
+              <InputTextarea
+                rows={5}
+                cols={30}
+                value={this.state.chattext}
+                onChange={(e) => this.setState({ chattext: e.target.value })}
+                autoResize
+              />
+              {this.state.videoquestion && (
+                <div>Request Audio/Video question.</div>
+              )}
+            </div>
+            <div className='p-col'>
+              <div className='p-d-flex p-flex-column p-jc-center'>
+                {this.state.avinterfaceStarted && (
+                  <div className='p-m-1' key='audiovideo'>
+                    <Button
+                      icon={
+                        this.state.videoquestion
+                          ? fiVideoQuestionOn
+                          : fiVideoQuestionOff
+                      }
+                      id='bt-broadcast'
+                      className={
+                        this.state.videoquestion
+                          ? 'p-button-raised p-button-rounded p-m-2'
+                          : 'p-button-secondary p-button-raised p-button-rounded p-m-2'
+                      }
+                      onClick={(event) => {
+                        this.setState({
+                          videoquestion: !this.state.videoquestion
+                        })
+                      }}
+                    ></Button>
+                  </div>
+                )}
+                <div className='p-m-1' key='sendmessage'>
+                  <Button
+                    icon={'pi pi-send'}
+                    className={
+                      this.state.chattext !== ''
+                        ? 'p-button-raised p-button-rounded p-m-2'
+                        : 'p-button-raised p-button-rounded p-m-2 hiddenElement'
+                    }
+                    onClick={this.sendChatMessage}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </OverlayPanel>
       </div>
     )
@@ -2515,9 +3184,10 @@ export class FailsNotes extends FailsBasis {
               2021- (FAILS Components) Marten Richter
             </div>
           </div>
-          Lectureapp version {process.env.REACT_APP_VERSION} <br /> <br />
+          Lectureapp version {import.meta.env.REACT_APP_VERSION} <br /> <br />
           FAILS logo by chadkills <br />
-          Custom icons by icon_xpert786 <br /> <br />
+          Custom icons by icon_xpert786 and petedesignworks
+          <br /> <br />
           Released under GNU Affero General Public License Version 3. <br />{' '}
           <br />
           Download the source code from{' '}
@@ -2526,15 +3196,48 @@ export class FailsNotes extends FailsBasis {
           </a>{' '}
           <br /> <br />
           Build upon the shoulders of giants, see{' '}
-          <a href='/static/oss'> OSS attribution and licensing.</a>
-        </OverlayPanel>
+          <a href='/static/oss'> OSS attribution and licensing.</a> <br />
+          {this.state.identobj?.masterdigest && (
+            <React.Fragment>
+              <h4> Masterkey for E2E encryption:</h4>
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontVariantNumeric: 'slashed-zero',
 
+                  maxWidth: '20vw',
+                  display: 'block'
+                }}
+              >
+                {this.state.identobj?.masterdigest}
+              </span>
+              <br />
+              Compare the Masterkey to verify E2E encryption.
+            </React.Fragment>
+          )}
+        </OverlayPanel>
+        {this.state.avinterfaceStarted && (
+          <FloatingVideo ref={this.floatvideo}>
+            <VideoControl
+              videoid={this.state.dispvideo}
+              id={this.state.id}
+              speakerset={this.speakerset}
+              receiveOnly={true}
+              avStateHook={(navstate) => {
+                const avstate = { ...this.avstate }
+                avstate.playback = navstate.playback
+                this.setState({ avstate })
+              }}
+            ></VideoControl>
+          </FloatingVideo>
+        )}
         <NoteScreenBase
           isnotepad={false}
           notesmode={this.state.notesmode}
           notetools={this.notetools}
           pageoffset={this.state.pageoffset}
           pageoffsetabsolute={this.state.scrollunlock}
+          bbchannel={this.bbchannel}
           lectdetail={this.state.lectdetail}
           backgroundcolor={
             this.state.bgpdf

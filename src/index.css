@@ -33,7 +33,7 @@ code {
 }
 
 .toolboxStatic {
-  transform: translate(-50%, 0%);
+  transform: translate(-50%, -50%);
   touch-action: none;
   pointer-events: none;
 }
@@ -121,6 +121,10 @@ code {
   background-color: #efefef;
 }
 
+.moveButtonTransparent {
+  opacity: 80%;
+}
+
 .fade-in-welcome {
   animation: fadeInWelcome linear 4s;
 }
@@ -139,7 +143,57 @@ code {
   100% {opacity:1;}
 }
 
+.buttonbar {
+  position: absolute; 
+  opacity:0;
+  display: block;
+  width: 100%;
+  left: 0;
+  bottom: 0;
+  z-index: 211; 
+  cursor: pointer;
+  transition: opacity;
+  transition-timing-function: ease-out;
+  transition-duration: 200ms;
+  transition-delay: 5s;
+}
+
+.buttonbarparent:hover .buttonbar, .buttonbarparent:hover .coninfo {
+  display: block;
+  opacity: 1;
+  transition: opacity;
+  transition-timing-function: ease-out;
+  transition-duration: 200ms;
+}
+
 .buttonheadinggroup {
   display: flex;
   align-items: center;
+}
+
+.hiddenElement {
+  visibility: hidden;
+}
+
+.coninfo {
+  position:absolute;
+  display: block;
+  right: 0;
+  top  : 0;
+  color: white;
+  opacity:0;
+  transition: opacity;
+  transition-timing-function: ease-out;
+  transition-duration: 200ms;
+  transition-delay: 5s;
+  font-size: small;
+}
+
+.coninfoinline {
+  color: white;
+  font-size: small;
+}
+
+.coninfoicon {
+  font-size: small !important;
 }

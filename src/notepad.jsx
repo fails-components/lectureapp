@@ -18,8 +18,8 @@
 */
 
 import React, { Component, Fragment } from 'react'
-import { Blackboard, BlackboardNotepad } from './blackboard.js'
-import { ToolBox, ConfirmBox, DeleteBox } from './toolbox.js'
+import { Blackboard, BlackboardNotepad } from './blackboard.jsx'
+import { ToolBox, UtilBox, DeleteBox } from './toolbox.jsx'
 import {
   Dispatcher,
   Collection,
@@ -138,6 +138,7 @@ export class NoteScreenBase extends Component {
     this.blackboardnotes = React.createRef()
     this.toolbox = React.createRef()
     this.confirmbox = React.createRef()
+    this.originbox = React.createRef()
     this.deletebox = React.createRef()
 
     this.storage = new StorageHandler()
@@ -153,7 +154,10 @@ export class NoteScreenBase extends Component {
     this.outgodispatcher = new Dispatcher()
 
     this.networksender = new NetworkSink((data) => {
-      this.netSend('drawcommand', data)
+      this.props.bbchannel.postMessage({
+        command: 'drawcommand',
+        data
+      })
     })
     this.outgodispatcher.addSink(this.networksender)
   }
@@ -298,11 +302,11 @@ export class NoteScreenBase extends Component {
               coursetitle,
               instructors
             })
-            .catch((error) => {
-              console.log('Problem db in componentDidUpdate', error)
-            })
             .then(() => {
               this.loadNotesFromLocalStorage(lectdetail.uuid)
+            })
+            .catch((error) => {
+              console.log('Problem db in componentDidUpdate', error)
             })
         }
         this.lectdetail = lectdetail
@@ -322,7 +326,6 @@ export class NoteScreenBase extends Component {
 
   initNotepad() {
     if (this.props.isnotepad) {
-      // this.confirmbox = new ConfirmBox(this.stage,this.blackboard); // TODO
       this.isscreen = false
       // this.isalsoscreen = this.props.isalsoscreen;
       this.casttoscreens = false
@@ -392,12 +395,6 @@ export class NoteScreenBase extends Component {
     this.props.pictbuttoncallback()
   }
 
-  receiveData(data) {
-    // console.log("notepad receive Data",this.blackbaord,data);
-    if (this.blackboard && this.blackboard.current)
-      this.blackboard.current.receiveData(data)
-  }
-
   receivePictInfo(data) {
     if (this.blackboard && this.blackboard.current)
       this.blackboard.current.receivePictInfo(data)
@@ -406,29 +403,6 @@ export class NoteScreenBase extends Component {
   receiveBgpdfInfo(data) {
     if (this.blackboard && this.blackboard.current)
       this.blackboard.current.receiveBgpdfInfo(data)
-  }
-
-  replaceData(data) {
-    if (this.blackboard && this.blackboard.current) {
-      if (this.props.notesmode)
-        this.blackboard.current.replaceData(data, (cs) =>
-          this.setCommandState(cs)
-        )
-      else this.blackboard.current.replaceData(data)
-    }
-  }
-
-  netSend(command, data) {
-    this.props.netsend(command, data)
-  }
-
-  reportFoG(x, y, clientid) {
-    this.props.netsend('FoG', { x, y, clientid })
-  }
-
-  receiveFoG(data) {
-    if (this.blackboard && this.blackboard.current)
-      this.blackboard.current.receiveFoG(data)
   }
 
   enterAddPictureMode(uuid, url) {
@@ -531,9 +505,11 @@ export class NoteScreenBase extends Component {
               storage={this.storage}
               backcolor={this.props.backgroundcolor}
               backclass={this.props.backclass}
+              bbchannel={this.props.bbchannel}
               notepadscreen={this}
               bbwidth={this.state.bbwidth}
               bbheight={this.state.bbheight}
+              reportDrawPosCB={this.props.reportDrawPosCB}
               pageoffset={
                 (this.props.pageoffset * this.state.bbheight) /
                 this.state.bbwidth
@@ -568,9 +544,11 @@ export class NoteScreenBase extends Component {
             outgoingsink={this.outgodispatcher}
             backcolor={this.props.backgroundcolor}
             backclass={this.props.backclass}
+            bbchannel={this.props.bbchannel}
             notepadscreen={this}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
+            reportDrawPosCB={this.props.reportDrawPosCB}
             devicePixelRatio={this.state.devicePixelRatio}
             informDraw={this.props.informDraw}
           ></BlackboardNotepad>
@@ -587,15 +565,28 @@ export class NoteScreenBase extends Component {
             toggleFullscreen={this.props.toggleFullscreen}
             mainstate={this.props.mainstate}
             dispres={this.dispres}
+            identobj={this.props.identobj}
             experimental={this.props.experimental}
+            startUpAVBroadcast={this.props.startUpAVBroadcast}
           />
         )}
         {this.props.isnotepad && (
-          <ConfirmBox
+          <UtilBox
             ref={this.confirmbox}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
             notepad={this}
+            utilbox={true}
+            corner={'rightBottom'}
+          />
+        )}
+        {this.props.isnotepad && (
+          <UtilBox
+            ref={this.originbox}
+            bbwidth={this.state.bbwidth}
+            bbheight={this.state.bbheight}
+            notepad={this}
+            corner={'leftTop'}
           />
         )}
         {(this.props.isnotepad || this.props.notesmode) && (

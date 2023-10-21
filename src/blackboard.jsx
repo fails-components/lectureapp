@@ -18,16 +18,18 @@
 */
 
 import React, { Component } from 'react'
-import { DrawObjectGlyph, DrawObjectPicture } from '@fails-components/data'
+import {
+  DrawObjectGlyph,
+  DrawObjectPicture,
+  DrawObjectForm
+} from '@fails-components/data'
 import { SHA1 } from 'jshashes'
 import Color from 'color'
 
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.js'
-// eslint-disable-next-line import/no-webpack-loader-syntax
-// import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry'
+import * as pdfjs from 'pdfjs-dist'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/legacy/build/pdf.worker',
+  '../node_modules/pdfjs-dist/build/pdf.worker.min.js',
   import.meta.url
 )
 
@@ -36,6 +38,12 @@ window.addEventListener('contextmenu', function (e) {
   e.stopPropagation()
   return false
 })
+
+function ToRGBANumber(color) {
+  if (typeof color === 'number') return color // no need to convert
+  const cobj = Color(color)
+  return ((cobj.rgbNumber() >>> 0) | ((0xff * cobj.valpha) << 24)) >>> 0
+}
 
 export class SVGWriting2 extends Component {
   render() {
@@ -69,13 +77,15 @@ export class SVGWriting2 extends Component {
     }
     if (glyph.gtype === 0) {
       //  console.log('color check', glyph.color, this.props.backcolor)
-      if (
-        Color(this.props.backcolor).isLight() &&
-        Color(glyph.color).luminosity() > 0.9
-      ) {
-        stroke = 'black'
-        // console.log("stroke changed to black");
-      } /* else if (
+      if (Color(this.props.backcolor).isLight()) {
+        if (Color(glyph.color).luminosity() > 0.9) {
+          stroke = 'black'
+          // console.log("stroke changed to black");
+        } else if (Color(glyph.color).luminosity() > 0.5) {
+          scolor = Color(glyph.color).darken(0.3).hex()
+        }
+      }
+      /* else if (
         Color(this.props.backcolor).isDark() &&
         Color(glyph.color).luminosity() < 0.2
       ) {
@@ -589,17 +599,39 @@ export class ImageHelper extends Component {
   }
 
   render() {
+    let x = this.props.x
+    let y = this.props.y
+    let width
+    let height
+    let transform
+    if (this.props.width) {
+      width = Math.abs(this.props.width)
+      if (this.props.width < 0) {
+        transform = 'rotateY(180deg)'
+        x -= width
+      }
+    }
+    if (this.props.height) {
+      height = Math.abs(this.props.height)
+      if (this.props.height < 0) {
+        transform = transform
+          ? transform + ' rotateX(180deg)'
+          : 'rotateX(180deg)'
+        y -= height
+      }
+    }
     const style = {
       position: 'absolute',
       zIndex: this.props.zIndex,
-      left: this.props.x + 'px',
-      top: this.props.y + 'px',
+      left: x + 'px',
+      top: y + 'px',
       userSelect: 'none',
-      pointerEvents: 'none'
+      pointerEvents: 'none',
+      transform
     }
 
-    if (this.props.width) style.width = this.props.width + 'px'
-    if (this.props.height) style.height = this.props.height + 'px'
+    if (width) style.width = Math.abs(width) + 'px'
+    if (height) style.height = Math.abs(height) + 'px'
     let classname = ''
     if (this.props.selected) classname += 'selectedImage'
 
@@ -611,6 +643,209 @@ export class ImageHelper extends Component {
         style={style}
         onLoad={this.imageLoaded}
       ></img>
+    )
+  }
+}
+
+export class FormHelper extends Component {
+  Aspect() {
+    if (this.props.type === 3) return 1
+    else return undefined
+  }
+
+  render() {
+    const width = Math.abs(this.props.width)
+    const height = Math.abs(this.props.height)
+    const style = {
+      position: 'absolute',
+      zIndex: this.props.zIndex,
+      left: Math.round(this.props.x - 10) + 'px',
+      top: Math.round(this.props.y - 10) + 'px',
+      /* width: Math.round(width) + 'px',
+      height: Math.round(height) + 'px', */
+      userSelect: 'none',
+      pointerEvents: 'none'
+    }
+    const viewbox =
+      '0 0 ' + Math.round(width + 20) + ' ' + Math.round(height + 20) + ' '
+
+    if (this.props.width) style.width = width + 20 + 'px'
+    if (this.props.height) style.height = height + 20 + 'px'
+    let classname = ''
+    if (this.props.selected) classname += 'selectedForm'
+    let form
+    let helplines
+    const stroke = Color(this.props.bColor).hex()
+    const strokeAlpha = ((this.props.bColor & 0xff000000) >>> 24) / 255
+    const strokeWidth = this.props.lw
+
+    const alpha = ((this.props.fColor & 0xff000000) >>> 24) / 255
+    const scolor = alpha > 0 ? Color(this.props.fColor).hex() : undefined
+
+    if (this.props.width < 0)
+      style.left = Math.round(this.props.x - 10 - width) + 'px'
+    if (this.props.height < 0)
+      style.top = Math.round(this.props.y - 10 - height) + 'px'
+    // eslint-disable-next-line default-case
+    switch (this.props.type) {
+      case 1: // line
+        {
+          // Fix me!
+          const x1 = this.props.width > 0 ? 10 : width + 10
+          const y1 = this.props.height > 0 ? 10 : height + 10
+          const x2 = this.props.width < 0 ? 10 : width + 10
+          const y2 = this.props.height < 0 ? 10 : height + 10
+          form = (
+            <line
+              x1={x1.toFixed(2)}
+              y1={y1.toFixed(2)}
+              x2={x2.toFixed(2)}
+              y2={y2.toFixed(2)}
+              stroke={stroke}
+              strokeOpacity={strokeAlpha}
+              strokeWidth={strokeWidth.toFixed(2)}
+              fill={scolor}
+              fillOpacity={scolor && alpha}
+            />
+          )
+        }
+        break
+      case 2: // rectangle
+        form = (
+          <rect
+            x={10}
+            y={10}
+            width={width.toFixed(2)}
+            height={height.toFixed(2)}
+            stroke={stroke}
+            strokeOpacity={strokeAlpha}
+            strokeWidth={strokeWidth.toFixed(2)}
+            fill={scolor}
+            fillOpacity={alpha}
+          />
+        )
+        if (this.props.helplines) {
+          helplines = (
+            <React.Fragment>
+              <line
+                x1='10'
+                y1='10'
+                x2={(width + 10).toFixed(2)}
+                y2={(height + 10).toFixed(2)}
+                stroke='#fff'
+                strokeDasharray='1,2'
+              />
+              <line
+                x1='10'
+                y2='10'
+                x2={(width + 10).toFixed(2)}
+                y1={(height + 10).toFixed(2)}
+                stroke='#fff'
+                strokeDasharray='1,2'
+              />
+            </React.Fragment>
+          )
+        }
+
+        break
+      case 3: // circle
+        form = (
+          <circle
+            cx={(width * 0.5 + 10).toFixed(2)}
+            cy={(height * 0.5 + 10).toFixed(2)}
+            r={(width * 0.5).toFixed(2)}
+            stroke={stroke}
+            strokeOpacity={strokeAlpha}
+            strokeWidth={strokeWidth}
+            fill={scolor}
+            fillOpacity={alpha}
+          />
+        )
+        if (this.props.helplines)
+          helplines = (
+            <React.Fragment>
+              <rect
+                x='10'
+                y='10'
+                width={width.toFixed(2)}
+                height={height.toFixed(2)}
+                stroke='#fff'
+                strokeDasharray='1,2'
+                fill='none'
+              />
+              <line
+                x1='10'
+                y1={(height * 0.5 + 10).toFixed(2)}
+                x2={(width + 10).toFixed(2)}
+                y2={(height * 0.5 + 10).toFixed(2)}
+                stroke='#fff'
+                strokeDasharray='1,2'
+              />
+              <line
+                x1={(width * 0.5 + 10).toFixed(2)}
+                y1='10'
+                x2={(width * 0.5 + 10).toFixed(2)}
+                y2={(height + 10).toFixed(2)}
+                stroke='#fff'
+                strokeDasharray='1,2'
+              />
+            </React.Fragment>
+          )
+
+        break
+      case 4:
+        // ellipse
+        form = (
+          <ellipse
+            cx={(width * 0.5 + 10).toFixed(2)}
+            cy={(height * 0.5 + 10).toFixed(2)}
+            rx={(width * 0.5).toFixed(2)}
+            ry={(height * 0.5).toFixed(2)}
+            stroke={stroke}
+            strokeOpacity={strokeAlpha}
+            strokeWidth={strokeWidth}
+            fill={scolor}
+            fillOpacity={alpha}
+          />
+        )
+        if (this.props.helplines)
+          helplines = (
+            <React.Fragment>
+              <rect
+                x='10'
+                y='10'
+                width={width.toFixed(2)}
+                height={height.toFixed(2)}
+                stroke='#fff'
+                strokeDasharray='1,2'
+                fill='none'
+              />
+              <line
+                x1='10'
+                y1={(height * 0.5 + 10).toFixed(2)}
+                x2={(width + 10).toFixed(2)}
+                y2={(height * 0.5 + 10).toFixed(2)}
+                stroke='#fff'
+                strokeDasharray='1,2'
+              />
+              <line
+                x1={(width * 0.5 + 10).toFixed(2)}
+                y1='10'
+                x2={(width * 0.5 + 10).toFixed(2)}
+                y2={(height + 10).toFixed(2)}
+                stroke='#fff'
+                strokeDasharray='1,2'
+              />
+            </React.Fragment>
+          )
+
+        break
+    }
+    return (
+      <svg viewBox={viewbox} style={style} className={classname}>
+        {form}
+        {helplines}
+      </svg>
     )
   }
 }
@@ -691,7 +926,7 @@ export class BackgroundPDFPage extends Component {
       console.log('Render pdf page ', page.pagenum)
       this.inrendering = false
 
-      this.setState({ page, bbwidth })
+      // this.setState({ page, bbwidth })
     } catch (error) {
       console.log('problem pdf page render', error)
       this.inrendering = false
@@ -866,7 +1101,7 @@ export class Blackboard extends Component {
 
     this.preworkobj = {}
 
-    this.addpictimage = React.createRef()
+    this.addformpictobj = React.createRef()
     this.spotlight = React.createRef()
 
     this.redrawing = false // not to be confused with the state
@@ -908,6 +1143,8 @@ export class Blackboard extends Component {
     this.pathstarted = this.pathupdated = false
 
     this.stage = props.stage
+
+    this.handleBBChannel = this.handleBBChannel.bind(this)
 
     this.stepDrawVersion = this.stepDrawVersion.bind(this)
     this.renderObjectsWithCache = this.renderObjectsWithCache.bind(this)
@@ -954,6 +1191,59 @@ export class Blackboard extends Component {
     }
   }
 
+  handleBBChannel(event) {
+    const data = event.data
+    const type = data.type
+    switch (type) {
+      case 'replaceData':
+        {
+          const callback = (cs) => {
+            if (this.props.outgodispatcher)
+              this.props.outgodispatcher.setTimeandScrollPos(
+                cs.time,
+                cs.scrollx,
+                cs.scrolly
+              )
+            this.props.notepadscreen.setCommandState(cs)
+          }
+          this.replaceData(data.data, callback)
+        }
+        break
+      case 'receiveData':
+        if (typeof data.data.timeSet !== 'undefined') {
+          if (data.data.timeSet) {
+            // console.log('initialscroll', data)
+            if (this.props.outgodispatcher)
+              this.props.outgodispatcher.setTimeandScrollPos(data.data.time)
+          }
+        }
+        this.networkreceive.receiveData(data.data)
+        break
+      case 'receivePictInfo':
+        this.receivePictInfo(data.data)
+        break
+      case 'receiveFoG':
+        this.receiveFoG(data.data)
+        break
+      default:
+        throw new Error('Unknown bbchannel type ' + type)
+    }
+  }
+
+  componentDidMount() {
+    if (this.props.bbchannel) {
+      this.props.bbchannel.onmessage = this.handleBBChannel
+    }
+  }
+
+  /* componentWillUnmount()
+  {
+    if (this.props.bbchannel)
+    {
+    }
+
+  } */
+
   componentDidUpdate(prevprops, prevState) {
     if (
       !isNaN(this.props.pageoffset) &&
@@ -986,9 +1276,10 @@ export class Blackboard extends Component {
     return this.props.bbheight / this.props.bbwidth
   }
 
-  curPictAspect() {
+  curFormPictAspect() {
     let aspect = 1
-    if (this.addpictimage.current) aspect = this.addpictimage.current.Aspect()
+    if (this.addformpictobj.current)
+      aspect = this.addformpictobj.current.Aspect()
     return aspect
   }
 
@@ -1030,6 +1321,32 @@ export class Blackboard extends Component {
     // resubmitpath
   }
 
+  addForm(
+    time,
+    objnum,
+    curclient,
+    x,
+    y,
+    width,
+    height,
+    type,
+    bColor,
+    fColor,
+    lw
+  ) {
+    this.updateRenderArea(x, y)
+    this.updateRenderArea(x + width, y + height)
+    const addform = new DrawObjectForm(objnum)
+
+    addform.addForm(x, y, width, height, type, bColor, fColor, lw)
+
+    this.work.objects.push(addform)
+
+    this.setState({ objects: this.work.objects.concat() })
+
+    // resubmitpath
+  }
+
   stepDrawVersion(state) {
     return { drawversion: state.drawversion + 1 }
   }
@@ -1063,13 +1380,21 @@ export class Blackboard extends Component {
     if (this.magicobject) {
       this.magicobject.addPoint(x, y)
       this.isdirty = true
-      if (this.toolbox() && now - this.lastrpd > 200) {
+      if (now - this.lastrpd > 200) {
         // this is quite expensive, do not do this during a redraw, but this is never a redraw
         this.lastrpd = now
-        this.toolbox().reportDrawPos(
-          x,
-          y - this.state.curscrollpos - this.state.scrolloffset
-        )
+        if (this.toolbox())
+          this.toolbox().reportDrawPos(
+            x,
+            y - this.state.curscrollpos - this.state.scrolloffset
+          )
+
+        if (this.props.reportDrawPosCB)
+          this.props.reportDrawPosCB(
+            x,
+            (y - this.state.curscrollpos - this.state.scrolloffset) /
+              this.scrollheight()
+          )
       }
     }
   }
@@ -1176,13 +1501,20 @@ export class Blackboard extends Component {
 
       if (this.state.fogpos) this.setState({ fogpos: false })
       this.isdirty = true
-      if (this.toolbox() && now - this.lastrpd > 200) {
+      if (now - this.lastrpd > 200) {
         // this is quite expensive, do not do this during a redraw, but this is never a redraw
         this.lastrpd = now
-        this.toolbox().reportDrawPos(
-          x,
-          y - this.state.curscrollpos - this.state.scrolloffset
-        )
+        if (this.toolbox())
+          this.toolbox().reportDrawPos(
+            x,
+            y - this.state.curscrollpos - this.state.scrolloffset
+          )
+        if (this.props.reportDrawPosCB)
+          this.props.reportDrawPosCB(
+            x,
+            (y - this.state.curscrollpos - this.state.scrolloffset) /
+              this.scrollheight()
+          )
       }
 
       // this.updateRenderArea(x, y)
@@ -1262,6 +1594,7 @@ export class Blackboard extends Component {
       let newpos = /* this.curscrollpos+ */ y
       if (newpos < 0) newpos = 0
       this.setState({ curscrollpos: newpos })
+      if (this.props.scrollposListener) this.props.scrollposListener(newpos)
     }
     if (x !== 0 || y !== 0 || this.forceredraw) {
       this.checkRedraw()
@@ -1279,13 +1612,14 @@ export class Blackboard extends Component {
       let newpos = /* this.curscrollpos+ */ y
       if (newpos < 0) newpos = 0
       this.setState({ curscrollpos: newpos })
+      if (this.props.scrollposListener) this.props.scrollposListener(newpos)
     }
     if (x !== 0 || y !== 0 || this.forceredraw) {
       this.checkRedraw()
     }
   }
 
-  calcCurpos() {
+  calcCurpos(curscrollpos) {
     // console.log("calcCurpos pre",this.props.pageoffsetabsolute, this.props.pageoffset );
     if (this.props.pageoffsetabsolute) return this.props.pageoffset
     let pageoffset = 0
@@ -1297,7 +1631,11 @@ export class Blackboard extends Component {
       pageoffset,
       this.state.scrolloffset
     ) */
-    return this.state.curscrollpos + pageoffset + this.state.scrolloffset
+    return (
+      (curscrollpos || this.state.curscrollpos) +
+      pageoffset +
+      this.state.scrolloffset
+    )
   }
 
   checkRedraw() {
@@ -1338,13 +1676,6 @@ export class Blackboard extends Component {
 
   getCurScrollPos() {
     return this.state.curscrollpos
-  }
-
-  receiveData(data) {
-    // console.log("receivedata!");
-
-    // console.log("Blackboard receive data",data);
-    this.networkreceive.receiveData(data)
   }
 
   replaceData(data, callback) {
@@ -1520,7 +1851,30 @@ export class Blackboard extends Component {
             key={key}
           ></ImageHelper>
         )
+      } else if (el.type === 'form') {
+        let ox = 0
+        let oy = 0
+        if (el.preshift) {
+          ox = el.preshift.x
+          oy = el.preshift.y
+        }
+        rendercache = (
+          <FormHelper
+            selected={el.isSelected()}
+            x={(el.posx + ox) * this.props.bbwidth}
+            y={(el.posy + oy) * this.props.bbwidth}
+            zIndex={zindex}
+            width={el.width * this.props.bbwidth}
+            height={el.height * this.props.bbwidth}
+            type={el.formtype}
+            bColor={el.bColor}
+            fColor={el.fColor}
+            lw={el.lw * this.props.bbwidth}
+            key={key}
+          ></FormHelper>
+        )
       } else {
+        console.log('unknown drawing', el)
         rendercache = <React.Fragment key={key}></React.Fragment>
       }
       // console.log('cache miss')
@@ -1618,17 +1972,32 @@ export class Blackboard extends Component {
           <span style={stylespan}>
             {written}
             {pwobj}
-            {this.props.addpict && (
+            {this.props.addformpict?.url && (
               <ImageHelper
-                x={this.props.addpict.posx * this.props.bbwidth}
-                y={this.props.addpict.posy * this.props.bbwidth}
+                x={this.props.addformpict.posx * this.props.bbwidth}
+                y={this.props.addformpict.posy * this.props.bbwidth}
                 zIndex={50 + zoffset}
-                width={this.props.addpict.width * this.props.bbwidth}
-                height={this.props.addpict.height * this.props.bbwidth}
-                url={this.props.addpict.url}
-                uuid={this.props.addpict.uuid}
-                ref={this.addpictimage}
+                width={this.props.addformpict.width * this.props.bbwidth}
+                height={this.props.addformpict.height * this.props.bbwidth}
+                url={this.props.addformpict.url}
+                uuid={this.props.addformpict.uuid}
+                ref={this.addformpictobj}
               ></ImageHelper>
+            )}
+            {this.props.addformpict?.formType && (
+              <FormHelper
+                x={this.props.addformpict.posx * this.props.bbwidth}
+                y={this.props.addformpict.posy * this.props.bbwidth}
+                zIndex={50 + zoffset}
+                width={this.props.addformpict.width * this.props.bbwidth}
+                height={this.props.addformpict.height * this.props.bbwidth}
+                type={this.props.addformpict.formType}
+                bColor={ToRGBANumber(this.props.addformpict.bColor)}
+                fColor={ToRGBANumber(this.props.addformpict.fColor)}
+                lw={this.props.addformpict.lw}
+                ref={this.addformpictobj}
+                helplines={true}
+              ></FormHelper>
             )}
             {this.magicobject &&
               this.magicobject.getRenderObject({
@@ -1654,7 +2023,7 @@ export class BlackboardNotepad extends Component {
   ) {
     super(props)
     // interactive class
-    this.state = { addpictmode: 0 }
+    this.state = { addformpictmode: 0 }
 
     this.curkeyscroll = 0
 
@@ -1697,19 +2066,18 @@ export class BlackboardNotepad extends Component {
     this.toolsize = 10
     this.tooltype = 0
 
-    this.addpictmode = 0 // stage of adding picture
-    this.addpictuuid = null
-    this.addpictsprite = null
+    this.addformpictmode = 0 // stage of adding picture / form
 
     this.pointerdown = this.pointerdown.bind(this)
     this.pointermove = this.pointermove.bind(this)
     this.pointerup = this.pointerup.bind(this)
     this.wheel = this.wheel.bind(this)
-    this.curPictAspect = this.curPictAspect.bind(this)
-    this.calcAddPictSize = this.calcAddPictSize.bind(this)
+    this.curFormPictAspect = this.curFormPictAspect.bind(this)
+    this.calcAddFormPictSizeAndPos = this.calcAddFormPictSizeAndPos.bind(this)
     this.processEvent = this.processEvent.bind(this)
     this.processPointerReject = this.processPointerReject.bind(this)
     this.recycleObjId = this.recycleObjId.bind(this)
+    this.scrollposListener = this.scrollposListener.bind(this)
 
     this.pointerRejectInterval = setInterval(this.processPointerReject, 100)
 
@@ -1797,15 +2165,21 @@ export class BlackboardNotepad extends Component {
     return null
   }
 
+  originbox() {
+    if (this.props.notepadscreen && this.props.notepadscreen.originbox)
+      return this.props.notepadscreen.originbox.current
+    return null
+  }
+
   deletebox() {
     if (this.props.notepadscreen && this.props.notepadscreen.deletebox)
       return this.props.notepadscreen.deletebox.current
     return null
   }
 
-  curPictAspect() {
+  curFormPictAspect() {
     if (this.realblackboard && this.realblackboard.current)
-      return this.realblackboard.current.curPictAspect()
+      return this.realblackboard.current.curFormPictAspect()
     return 1
   }
 
@@ -1997,13 +2371,13 @@ export class BlackboardNotepad extends Component {
       if (!this.touchOn) return // touch is turned off!
     }
 
-    if (this.laserpointer && this.addpictmode === 0) return
+    if (this.laserpointer && this.addformpictmode === 0) return
 
     const pos = { x: event.clientX, y: event.clientY }
 
     this.rightmousescroll = false
 
-    if (this.magictool && this.addpictmode === 0) {
+    if (this.magictool && this.addformpictmode === 0) {
       console.log(
         'magic pointerdown pointerId:',
         event.pointerId,
@@ -2070,24 +2444,33 @@ export class BlackboardNotepad extends Component {
       this.pointerdraw[event.pointerId] = 1
       if (this.props.informDraw) this.props.informDraw()
 
-      if (this.addpictmode !== 0) {
-        switch (this.addpictmode) {
+      if (this.addformpictmode !== 0) {
+        switch (this.addformpictmode) {
           case 4:
-            // this.addpictsprite.
-            // this.addpictsprite.position=pos;
             this.setState({
-              addpictposx: pos.x / this.props.bbwidth,
-              addpictposy: pos.y / this.props.bbwidth + this.calcCurpos(),
-              // addpictmode: 3 /* for drawing */
-              addpictmode: 2 /* for drawing */
+              addformpictposx: pos.x / this.props.bbwidth,
+              addformpictposy: pos.y / this.props.bbwidth + this.calcCurpos(),
+              addformpictheight: 200 / this.props.bbwidth,
+              addformpictwidth: 200 / this.props.bbwidth,
+              // addformpictmode: 3 /* for drawing */
+              addformpictmode: 2 /* for drawing */
             })
-            // this.addpictmode = 3
+            // this.addformpictmode = 3
             this.lastpictmovetime = now
             // break
             // case 3:
-            this.addpictmode = 2
-            // this.setState({ addpictmode: 2 })
-            this.addPictureMovePos({ x: pos.x + 200, y: pos.y + 200 }, true)
+            this.addformpictmode = 2
+            // this.setState({ addformpictmode: 2 })
+            this.addFormPictureMovePos({
+              pos: { x: pos.x + 200, y: pos.y + 200 },
+              reactivate: true,
+              corner: 'rightBottom'
+            })
+            this.addFormPictureMovePos({
+              pos: { x: pos.x, y: pos.y },
+              reactivate: true,
+              corner: 'leftTop'
+            })
 
             break
           default:
@@ -2164,43 +2547,81 @@ export class BlackboardNotepad extends Component {
     this.mouseidentifier = null
   }
 
-  calcAddPictSize(state, pos) {
-    const aspectratio = this.curPictAspect()
-    let nx = pos.x / this.props.bbwidth - state.addpictposx
-    let ny = pos.y / this.props.bbwidth + this.calcCurpos() - state.addpictposy
-    if (nx === 0) nx = 0.001
-    if (ny === 0) ny = 0.001
-    if (nx > ny) {
-      nx = ny * aspectratio
-    } else {
-      ny = nx / aspectratio
+  calcAddFormPictSizeAndPos(state, pos, corner) {
+    const aspectratio = this.curFormPictAspect()
+    switch (corner) {
+      case 'rightBottom': {
+        let nx = pos.x / this.props.bbwidth - state.addformpictposx
+        let ny =
+          pos.y / this.props.bbwidth + this.calcCurpos() - state.addformpictposy
+        if (nx === 0) nx = 0.001
+        if (ny === 0) ny = 0.001
+        if (aspectratio) {
+          const anx = Math.abs(nx)
+          const any = Math.abs(ny)
+          if (anx > any) {
+            if (nx > 0) nx = any * aspectratio
+            else nx = -any * aspectratio
+          } else {
+            if (ny > 0) ny = anx / aspectratio
+            else ny = -anx / aspectratio
+          }
+        }
+        return { addformpictwidth: nx, addformpictheight: ny }
+      }
+      case 'leftTop': {
+        const npx = pos.x / this.props.bbwidth
+        const npy = pos.y / this.props.bbwidth + this.calcCurpos()
+        // old sizes
+
+        return {
+          addformpictposx: npx,
+          addformpictposy: npy
+        }
+      }
+      default:
+        throw new Error('unknown corner')
     }
-    return { nx, ny }
   }
 
-  addPictureMovePos(pos, reactivate) {
+  addFormPictureMovePos({ pos, reactivate, corner }) {
     this.setState((state) => {
-      const size = this.calcAddPictSize(state, pos)
+      const retstate = this.calcAddFormPictSizeAndPos(state, pos, corner)
+      let task
       if (reactivate) {
-        if (this.confirmbox())
-          this.confirmbox().reactivate({
-            x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
-            y:
-              state.addpictposy +
-              /* this.state.addpictheight */ size.ny -
-              this.calcCurpos()
-          })
+        task = 'reactivate'
       } else {
-        if (this.confirmbox())
-          this.confirmbox().setPosition({
-            x: state.addpictposx + /* this.state.addpictwidth */ size.nx,
-            y:
-              state.addpictposy +
-              /* this.state.addpictheight */ size.ny -
-              this.calcCurpos()
-          })
+        task = 'setPosition'
       }
-      return { addpictwidth: size.nx, addpictheight: size.ny }
+      const addformpictposx = retstate.addformpictposx || state.addformpictposx
+      const addformpictposy = retstate.addformpictposy || state.addformpictposy
+      const addformpictheight =
+        retstate.addformpictheight || state.addformpictheight
+      const addformpictwidth =
+        retstate.addformpictwidth || state.addformpictwidth
+      let box
+      box = this.confirmbox()
+      if (box)
+        box[task]({
+          x: addformpictposx + addformpictwidth,
+          y: addformpictposy + addformpictheight - this.calcCurpos()
+        })
+
+      box = this.originbox()
+      if (box)
+        box[task]({
+          x: addformpictposx,
+          y: addformpictposy - this.calcCurpos()
+        })
+
+      return retstate
+    })
+  }
+
+  reportFoG(x, y, clientid) {
+    this.props.bbchannel.postMessage({
+      command: 'FoG',
+      data: { x, y, clientid }
     })
   }
 
@@ -2235,7 +2656,7 @@ export class BlackboardNotepad extends Component {
         this.state.curscrollpos,
         this.state.scrolloffset
       ) */
-      this.props.notepadscreen.reportFoG(x, y, this.clientId)
+      this.reportFoG(x, y, this.clientId)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preReceiveFoG({
           x,
@@ -2394,19 +2815,19 @@ export class BlackboardNotepad extends Component {
           }
           this.processEvent(event)
         }
-      } else if (this.addpictmode !== 0) {
+      } else if (this.addformpictmode !== 0) {
         const pos = { x: event.clientX, y: event.clientY }
         if (now - this.lastpictmovetime > 25) {
           // console.log('createmousemovement', pos)
-          switch (this.addpictmode) {
+          switch (this.addformpictmode) {
             case 4:
               this.setState({
-                addpictposx: pos.x / this.props.bbwidth,
-                addpictposy: pos.y / this.props.bbwidth + this.calcCurpos()
+                addformpictposx: pos.x / this.props.bbwidth,
+                addformpictposy: pos.y / this.props.bbwidth + this.calcCurpos()
               })
               break
             case 3:
-              this.addPictureMovePos(pos)
+              this.addFormPictureMovePos({ pos, corner: 'rightBottom' })
               break
             default:
               break
@@ -2651,7 +3072,7 @@ export class BlackboardNotepad extends Component {
 
   deactivateLaserPointer() {
     if (this.laserpointer === true) {
-      this.props.notepadscreen.reportFoG(null, null, this.clientId)
+      this.reportFoG(null, null, this.clientId)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preReceiveFoG({
           x: null,
@@ -2666,6 +3087,16 @@ export class BlackboardNotepad extends Component {
     if (this.magictool && this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.turnOffMagic()
     if (this.deletebox()) this.deletebox().deactivate()
+    if (this.addformpictmode > 0) {
+      this.addformpictmode = 0
+      this.setState({
+        addformpictuuid: undefined,
+        addformpicturl: undefined,
+        addformpictmode: 0,
+        addformpictformtype: undefined
+      })
+      this.deactivateUtilBoxes()
+    }
     this.laserpointer = false
     this.magictool = false
   }
@@ -2713,6 +3144,35 @@ export class BlackboardNotepad extends Component {
       })
   }
 
+  updateToolProps({ size, lw, color, bordercolor, fillcolor }) {
+    if (this.state.addformpictmode !== 0 && (bordercolor || fillcolor || lw)) {
+      this.setState((state) => {
+        const nstate = {}
+        if (bordercolor) nstate.addformpictbColor = bordercolor
+        if (fillcolor) nstate.addformpictfColor = fillcolor
+        if (lw) nstate.addformpictlw = lw
+        return nstate
+      })
+    }
+
+    if (this.state.addformpictmode === 0) {
+      this.toolsize = size || this.toolsize
+
+      this.toolcolor = color || this.toolcolor
+    }
+    if (
+      this.realblackboard &&
+      this.realblackboard.current &&
+      this.addformpictmode === 0 &&
+      (size || color)
+    )
+      this.realblackboard.current.setcursor({
+        mode: 'drawing',
+        size: this.toolsize,
+        color: this.toolcolor
+      })
+  }
+
   setPenTool(color, size) {
     this.deselectOldTool()
     this.tooltype = 0
@@ -2725,6 +3185,98 @@ export class BlackboardNotepad extends Component {
         color
       })
     // console.log("sPT",this.tooltype, this.toolsize,this.toolcolor );
+  }
+
+  setFormTool({ type, bColor, lw, fColor, lastdrawx, lastdrawy }) {
+    this.saveLastCursorState()
+    this.deselectOldTool()
+    this.addformpictmode = 2 // stage of adding picture
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.setcursor({
+        mode: 'normal'
+      })
+
+    this.lastpictmovetime = Date.now()
+
+    let sugposx
+    let sugposy
+    if (lastdrawx) {
+      sugposx = lastdrawx + 0.01
+      if (sugposx < 0.025) sugposx = 0.05
+      if (sugposx > 0.95) sugposx = 0.85
+    }
+
+    if (lastdrawy) {
+      sugposy = lastdrawy + 0.01
+      if (sugposy < 0.025) sugposy = 0.05
+      if (sugposy > this.scrollheight() - 0.05)
+        sugposy = this.scrollheight() - 0.1
+    }
+
+    this.setState((state) => {
+      const posx = state.addformpictposx || sugposx || 0.3
+      const posy =
+        state.addformpictposy ||
+        sugposy + this.getCurScrollPos() ||
+        0.1 + this.getCurScrollPos()
+      let height = state.addformpictheight || 0.1
+      let width = state.addformpictwidth || 0.1
+      if (type === 3) width = height = (width + height) * 0.5
+      this.addFormPictureMovePos({
+        pos: {
+          x: (posx + width) * this.props.bbwidth,
+          y: (posy + height - this.getCurScrollPos()) * this.props.bbwidth
+        },
+        reactivate: true,
+        corner: 'rightBottom'
+      })
+      this.addFormPictureMovePos({
+        pos: {
+          x: posx * this.props.bbwidth,
+          y: (posy - this.getCurScrollPos()) * this.props.bbwidth
+        },
+        reactivate: true,
+        corner: 'leftTop'
+      })
+
+      return {
+        addformpictfColor: fColor,
+        addformpictbColor: bColor,
+        addformpictlw: lw,
+        addformpictuuid: undefined,
+        addformpicturl: undefined,
+        addformpictposx: posx,
+        addformpictposy: posy,
+        addformpictheight: height,
+        addformpictwidth: width,
+        addformpictmode: 2,
+        addformpictformtype: type
+      }
+    })
+  }
+
+  scrollposListener(scrollpos) {
+    if (this.addformpictmode === 2) {
+      const posx = this.state.addformpictposx || 0.3
+      const posy =
+        this.state.addformpictposy || 0.1 + this.calcCurpos(scrollpos)
+      const height = this.state.addformpictheight || 0.1
+      const width = this.state.addformpictwidth || 0.1
+
+      let box = this.confirmbox()
+      if (box)
+        box.setPosition({
+          x: posx + width,
+          y: posy + height - this.calcCurpos(scrollpos)
+        })
+
+      box = this.originbox()
+      if (box)
+        box.setPosition({
+          x: posx,
+          y: posy - this.calcCurpos(scrollpos)
+        })
+    }
   }
 
   setMarkerTool(color, size) {
@@ -2766,7 +3318,8 @@ export class BlackboardNotepad extends Component {
       this.realblackboard.current &&
       this.realblackboard.current.state.cursor &&
       this.realblackboard.current.state.cursor.mode !== 'picture' &&
-      this.realblackboard.current.state.cursor.mode !== 'menu'
+      this.realblackboard.current.state.cursor.mode !== 'menu' &&
+      this.realblackboard.current.state.cursor.mode !== 'normal'
     )
       this.beforepictcursor = this.realblackboard.current.state.cursor
   }
@@ -2793,7 +3346,7 @@ export class BlackboardNotepad extends Component {
   }
 
   okButtonPressed() {
-    if (this.addpictmode !== 0) {
+    if (this.addformpictmode !== 0) {
       this.setblocked(false)
       this.objnum++
       // eslint-disable-next-line dot-notation
@@ -2801,46 +3354,80 @@ export class BlackboardNotepad extends Component {
 
       const objid = this.calcObjId('picture')
       // todo report about new picture
-      this.props.outgoingsink.addPicture(
-        null,
-        objid,
-        null,
-        this.state.addpictposx,
-        this.state.addpictposy,
-        this.state.addpictwidth,
-        this.state.addpictheight,
-        this.state.addpictuuid
-      )
-      this.addUndo(objid, Math.floor(this.state.addpictposy))
+      if (this.state.addformpictformtype) {
+        this.props.outgoingsink.addForm(
+          undefined,
+          objid,
+          undefined,
+          this.state.addformpictposx,
+          this.state.addformpictposy,
+          this.state.addformpictwidth,
+          this.state.addformpictheight,
+          this.state.addformpictformtype,
+          ToRGBANumber(this.state.addformpictbColor),
+          ToRGBANumber(this.state.addformpictfColor),
+          this.state.addformpictlw / this.svgscale
+        )
+      } else {
+        this.props.outgoingsink.addPicture(
+          undefined,
+          objid,
+          undefined,
+          this.state.addformpictposx,
+          this.state.addformpictposy,
+          this.state.addformpictwidth,
+          this.state.addformpictheight,
+          this.state.addformpictuuid
+        )
+      }
+      if (this.toolbox())
+        this.toolbox().reportDrawPos(
+          this.state.addformpictposx + 0.01,
+          this.state.addformpictposy + 0.01 - this.getCurScrollPos()
+        )
+      this.addUndo(objid, Math.floor(this.state.addformpictposy))
 
       this.setState({
-        addpictuuid: null,
-        addpicturl: null,
-        addpictheight: null,
-        addpictwidth: null,
-        addpictmode: 0
+        addformpictuuid: undefined,
+        addformpicturl: undefined,
+        addformpictposx: undefined,
+        addformpictposy: undefined,
+        addformpictheight: undefined,
+        addformpictwidth: undefined,
+        addformpictformtype: undefined,
+        addformpictmode: 0
       })
-      this.addpictmode = 0
+      this.addformpictmode = 0
       this.restoreLastCursorState()
+      this.deactivateUtilBoxes()
       this.reactivateToolBox()
     }
   }
 
   cancelButtonPressed() {
-    if (this.addpictmode !== 0) {
+    if (this.addformpictmode !== 0) {
       this.setblocked(false)
       this.setState({
-        addpictuuid: null,
-        addpicturl: null,
-        addpictheight: null,
-        addpictwidth: null,
-        addpictmode: 0
+        addformpictuuid: undefined,
+        addformpicturl: undefined,
+        addformpictheight: undefined,
+        addformpictwidth: undefined,
+        addformpictposx: undefined,
+        addformpictposy: undefined,
+        addformpictformtype: undefined,
+        addformpictmode: 0
       })
       // todo report about new picture
-      this.addpictmode = 0
+      this.addformpictmode = 0
       this.restoreLastCursorState()
+      this.deactivateUtilBoxes()
       this.reactivateToolBox()
     }
+  }
+
+  deactivateUtilBoxes() {
+    if (this.confirmbox()) this.confirmbox().deactivate()
+    if (this.originbox()) this.originbox().deactivate()
   }
 
   reactivateToolBox() {
@@ -2849,34 +3436,21 @@ export class BlackboardNotepad extends Component {
   }
 
   enterAddPictureMode(uuid, url) {
-    this.addpictmode = 4 // stage of adding picture
+    this.addformpictmode = 4 // stage of adding picture
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
         mode: 'normal'
       })
     this.setState({
-      addpictuuid: uuid,
-      addpicturl: url,
-      addpictheight: null,
-      addpictwidth: 0.1,
-      addpictmode: 4
+      addformpictuuid: uuid,
+      addformpicturl: url,
+      addformpictposx: 0.3,
+      addformpictposy: 0.3 + this.getCurScrollPos(),
+      addformpictheight: null,
+      addformpictwidth: 0.1,
+      addformpictmode: 4,
+      addformpictformtype: undefined
     })
-    // this.addpictsprite=PIXI.Sprite.fromImage((url));
-
-    // this.addChild(this.addpictsprite);
-  }
-
-  receiveData(data) {
-    if (typeof data.timeSet !== 'undefined') {
-      if (data.timeSet) {
-        // console.log('initialscroll', data)
-        if (this.props.outgoingsink)
-          this.props.outgoingsink.setTimeandScrollPos(data.time)
-      }
-    }
-    // console.log("rcD",data);
-    if (this.realblackboard && this.realblackboard.current)
-      this.realblackboard.current.receiveData(data)
   }
 
   receivePictInfo(data) {
@@ -2889,19 +3463,6 @@ export class BlackboardNotepad extends Component {
       this.realblackboard.current.receiveBgpdfInfo(data)
   }
 
-  replaceData(data) {
-    const callback = (cs) => {
-      if (this.props.outgoingsink)
-        this.props.outgoingsink.setTimeandScrollPos(
-          cs.time,
-          cs.scrollx,
-          cs.scrolly
-        )
-    }
-    if (this.realblackboard && this.realblackboard.current)
-      this.realblackboard.current.replaceData(data, callback)
-  }
-
   getStartScrollboardTB() {
     if (this.realblackboard && this.realblackboard.current)
       return this.realblackboard.current.getCurScrollPos()
@@ -2912,9 +3473,9 @@ export class BlackboardNotepad extends Component {
       return this.realblackboard.current.getCurScrollPos()
   }
 
-  calcCurpos() {
+  calcCurpos(curscrollpos) {
     if (this.realblackboard && this.realblackboard.current)
-      return this.realblackboard.current.calcCurpos()
+      return this.realblackboard.current.calcCurpos(curscrollpos)
   }
 
   doRedraw(data) {
@@ -2922,32 +3483,35 @@ export class BlackboardNotepad extends Component {
       return this.realblackboard.current.doRedraw()
   }
 
-  receiveFoG(data) {
-    if (this.realblackboard && this.realblackboard.current)
-      return this.realblackboard.current.receiveFoG(data)
-  }
-
   render() {
-    let addpict = null
-    if (this.state.addpictuuid) {
-      addpict = {
-        uuid: this.state.addpictuuid,
-        url: this.state.addpicturl,
-        posx: this.state.addpictposx,
-        posy: this.state.addpictposy,
-        width: this.state.addpictwidth,
-        height: this.state.addpictheight
+    let addformpict
+    if (this.state.addformpictuuid || this.state.addformpictformtype) {
+      addformpict = {
+        uuid: this.state.addformpictuuid,
+        formType: this.state.addformpictformtype,
+        lw: (this.state.addformpictlw * this.props.bbwidth) / this.svgscale,
+        url: this.state.addformpicturl,
+        posx: this.state.addformpictposx,
+        posy: this.state.addformpictposy,
+        width: this.state.addformpictwidth,
+        height: this.state.addformpictheight
+      }
+      if (this.state.addformpictbColor) {
+        addformpict.bColor = ToRGBANumber(this.state.addformpictbColor)
+      }
+      if (this.state.addformpictfColor) {
+        addformpict.fColor = ToRGBANumber(this.state.addformpictfColor)
       }
     } else {
-      addpict = null
+      addformpict = undefined
     }
-    const addpictmessstyle = {
+    const addformpictmessstyle = {
       position: 'absolute',
       top: '5px',
       left: '20px',
       color: 'red',
       textShadow: '0 0 3px #FF0000',
-      zIndex: 200
+      zIndex: 1202
     }
     return (
       <div
@@ -2959,21 +3523,24 @@ export class BlackboardNotepad extends Component {
         onPointerLeave={this.pointerup}
         onWheel={this.wheel}
       >
-        {this.state.addpictmode === 4 && (
-          <div style={addpictmessstyle}>
+        {this.state.addformpictmode === 4 && (
+          <div style={addformpictmessstyle}>
             <h3> Select upper left corner of picture </h3>
           </div>
         )}
-        {this.state.addpictmode === 3 && (
-          <div style={addpictmessstyle}>
+        {this.state.addformpictmode === 3 && (
+          <div style={addformpictmessstyle}>
             <h3> Select lower right corner of picture</h3>
           </div>
         )}
         <Blackboard
           backcolor={this.props.backcolor}
           backclass={this.props.backclass}
+          bbchannel={this.props.bbchannel}
+          outgodispatcher={this.outgodispatcher}
+          reportDrawPosCB={this.props.reportDrawPosCB}
           bbwidth={this.props.bbwidth}
-          addpict={addpict}
+          addformpict={addformpict}
           bbheight={this.props.bbheight}
           storage={this.props.storage}
           ref={this.realblackboard}
@@ -2983,6 +3550,7 @@ export class BlackboardNotepad extends Component {
           notesmode={this.props.notesmode}
           pageoffset={this.props.pageoffset}
           pageoffsetabsolute={this.props.pageoffsetabsolute}
+          scrollposListener={this.scrollposListener}
         ></Blackboard>
       </div>
     )
