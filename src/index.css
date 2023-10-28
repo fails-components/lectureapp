@@ -99,6 +99,13 @@ code {
   border-style: dashed;
 }
 
+.selectedForm {
+  animation: dash 60s linear infinite;
+  stroke: #33ffff;
+  stroke-dasharray: 3, 3;
+  stroke-width: 3;
+}
+
 .blackboardBlackNote {
   background-color: #505050;
   opacity: 1.0;
