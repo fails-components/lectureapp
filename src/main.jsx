@@ -1848,8 +1848,16 @@ export class FailsBoard extends FailsBasis {
     this.setState({ pictbuttondialog: false })
     if (this.noteref) {
       const pict = this.state.pictures[this.state.pictIndex]
-      this.noteref.receivePictInfo({ uuid: pict.id, url: pict.itemImageSrc })
-      this.noteref.enterAddPictureMode(pict.id, pict.itemImageSrc /* URL */)
+      this.noteref.receivePictInfo({
+        uuid: pict.id,
+        url: pict.itemImageSrc,
+        thumburl: pict.thumbnailImageSrc
+      })
+      this.noteref.enterAddPictureMode(
+        pict.id,
+        pict.itemImageSrc /* URL */,
+        pict.thumbnailImageSrc
+      )
     }
   }
 
@@ -1896,17 +1904,23 @@ export class FailsBoard extends FailsBasis {
   }
 
   itemGalleriaTemplate(item) {
+    if (!item) {
+      return <div>No valid picture selected!</div>
+    }
     return (
-      <div>
+      <div key={item.itemImageSrc + 'IMG'}>
         <img
           src={item.itemImageSrc}
+          key={item.itemImageSrc + 'IMGBody'}
           alt={item.alt}
+          loading='lazy'
           style={{
             width: 'auto',
-            height: 'auto',
+            height: '50vh',
             display: 'block',
-            maxHeight: '50vh',
-            maxWidth: '75vw'
+            maxWidth: '75vw',
+            backgroundImage: 'url(' + item.thumbnailImageSrc + ')',
+            backgroundSize: 'contain'
           }}
         />
         <span
@@ -2128,8 +2142,14 @@ export class FailsBoard extends FailsBasis {
                   item={this.itemGalleriaTemplate}
                   thumbnail={this.thumbnailGalleriaTemplate}
                   activeIndex={this.state.pictIndex}
-                  changeItemOnIndicatorHover={true}
-                  onItemChange={(e) => this.setState({ pictIndex: e.index })}
+                  onItemChange={(e) => {
+                    if (
+                      !this.state.pictures ||
+                      e.index >= this.state.pictures.length
+                    )
+                      return
+                    this.setState({ pictIndex: e.index })
+                  }}
                 ></Galleria>
               </div>
               <div className='p-col-6'>
