@@ -677,6 +677,7 @@ class SocketWorker {
             data: {
               uuid: el.sha,
               url: el.url,
+              urlthumb: el.urlthumb,
               mimetype: el.mimetype
             }
           })

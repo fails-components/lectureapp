@@ -627,7 +627,9 @@ export class ImageHelper extends Component {
       top: y + 'px',
       userSelect: 'none',
       pointerEvents: 'none',
-      transform
+      transform,
+      backgroundImage: 'url(' + this.props.urlthumb + ')',
+      backgroundSize: 'contain'
     }
 
     if (width) style.width = Math.abs(width) + 'px'
@@ -1310,7 +1312,8 @@ export class Blackboard extends Component {
         height,
         uuid,
         pictinfo.url,
-        pictinfo.mimetype
+        pictinfo.mimetype,
+        pictinfo.urlthumb
       )
 
       this.work.objects.push(addpict)
@@ -1847,6 +1850,7 @@ export class Blackboard extends Component {
             width={el.width * this.props.bbwidth}
             height={el.height * this.props.bbwidth}
             url={el.url}
+            urlthumb={el.urlthumb}
             uuid={el.uuid}
             key={key}
           ></ImageHelper>
@@ -3092,6 +3096,7 @@ export class BlackboardNotepad extends Component {
       this.setState({
         addformpictuuid: undefined,
         addformpicturl: undefined,
+        addformpicturlthumb: undefined,
         addformpictmode: 0,
         addformpictformtype: undefined
       })
@@ -3245,6 +3250,7 @@ export class BlackboardNotepad extends Component {
         addformpictlw: lw,
         addformpictuuid: undefined,
         addformpicturl: undefined,
+        addformpicturlthumb: undefined,
         addformpictposx: posx,
         addformpictposy: posy,
         addformpictheight: height,
@@ -3390,6 +3396,7 @@ export class BlackboardNotepad extends Component {
       this.setState({
         addformpictuuid: undefined,
         addformpicturl: undefined,
+        addformpicturlthumb: undefined,
         addformpictposx: undefined,
         addformpictposy: undefined,
         addformpictheight: undefined,
@@ -3410,6 +3417,7 @@ export class BlackboardNotepad extends Component {
       this.setState({
         addformpictuuid: undefined,
         addformpicturl: undefined,
+        addformpicturlthumb: undefined,
         addformpictheight: undefined,
         addformpictwidth: undefined,
         addformpictposx: undefined,
@@ -3435,7 +3443,7 @@ export class BlackboardNotepad extends Component {
     if (this.toolbox()) this.toolbox().reactivate()
   }
 
-  enterAddPictureMode(uuid, url) {
+  enterAddPictureMode(uuid, url, urlthumb) {
     this.addformpictmode = 4 // stage of adding picture
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setcursor({
@@ -3444,6 +3452,7 @@ export class BlackboardNotepad extends Component {
     this.setState({
       addformpictuuid: uuid,
       addformpicturl: url,
+      addformpicturlthumb: urlthumb,
       addformpictposx: 0.3,
       addformpictposy: 0.3 + this.getCurScrollPos(),
       addformpictheight: null,
@@ -3491,6 +3500,7 @@ export class BlackboardNotepad extends Component {
         formType: this.state.addformpictformtype,
         lw: (this.state.addformpictlw * this.props.bbwidth) / this.svgscale,
         url: this.state.addformpicturl,
+        urlthumb: this.state.addformpicturlthumb,
         posx: this.state.addformpictposx,
         posy: this.state.addformpictposy,
         width: this.state.addformpictwidth,

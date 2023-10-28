@@ -405,9 +405,9 @@ export class NoteScreenBase extends Component {
       this.blackboard.current.receiveBgpdfInfo(data)
   }
 
-  enterAddPictureMode(uuid, url) {
+  enterAddPictureMode(uuid, url, urlthumb) {
     if (this.blackboard && this.blackboard.current)
-      this.blackboard.current.enterAddPictureMode(uuid, url)
+      this.blackboard.current.enterAddPictureMode(uuid, url, urlthumb)
   }
 
   onKeyDown(key) {
