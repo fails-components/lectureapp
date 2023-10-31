@@ -1908,19 +1908,20 @@ export class FailsBoard extends FailsBasis {
       return <div>No valid picture selected!</div>
     }
     return (
-      <div key={item.itemImageSrc + 'IMG'}>
+      <div key={item.itemImageSrc + 'IMG'} style={{ height: '50vh' }}>
         <img
           src={item.itemImageSrc}
           key={item.itemImageSrc + 'IMGBody'}
           alt={item.alt}
           loading='lazy'
           style={{
-            width: 'auto',
-            height: '50vh',
-            display: 'block',
-            maxWidth: '75vw',
+            objectFit: 'contain',
+            width: '100%',
+            height: '100%',
             backgroundImage: 'url(' + item.thumbnailImageSrc + ')',
-            backgroundSize: 'contain'
+            backgroundSize: 'contain',
+            backgroundRepeat: 'no-repeat',
+            backgroundPositionY: 'center'
           }}
         />
         <span
@@ -1943,7 +1944,13 @@ export class FailsBoard extends FailsBasis {
       <img
         src={item.thumbnailImageSrc}
         alt={item.alt}
-        style={{ height: '40px', display: 'block' }}
+        style={{
+          maxHeight: '90%',
+          maxWidth: '90%',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          display: 'block'
+        }}
       />
     )
   }
