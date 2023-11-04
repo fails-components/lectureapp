@@ -21,7 +21,6 @@ import React, { Component } from 'react'
 import { Dialog } from 'primereact/dialog'
 import { Checkbox } from 'primereact/checkbox'
 import { Button } from 'primereact/button'
-import { Galleria } from 'primereact/galleria'
 import { Menu } from 'primereact/menu'
 import { Sidebar } from 'primereact/sidebar'
 import { InputText } from 'primereact/inputtext'
@@ -82,6 +81,7 @@ import { VideoControl, FloatingVideo, SpeakerSet } from './audiovideoctrl'
 import { SocketInterface } from './socketinterface'
 import { AVInterface } from './avinterface'
 import { KeyStore } from './keystore'
+import { PictureSelect } from './pictureselect'
 
 class ChannelEdit extends Component {
   constructor(props) {
@@ -1490,8 +1490,6 @@ export class FailsBoard extends FailsBasis {
     this.onNewWriting = this.onNewWriting.bind(this)
     this.arrangebuttonCallback = this.arrangebuttonCallback.bind(this)
     this.pictbuttonCallback = this.pictbuttonCallback.bind(this)
-    this.itemGalleriaTemplate = this.itemGalleriaTemplate.bind(this)
-    this.thumbnailGalleriaTemplate = this.thumbnailGalleriaTemplate.bind(this)
     this.pollTemplate = this.pollTemplate.bind(this)
     this.blockChat = this.blockChat.bind(this)
     this.allowVideoquestion = this.allowVideoquestion.bind(this)
@@ -1903,58 +1901,6 @@ export class FailsBoard extends FailsBasis {
     })
   }
 
-  itemGalleriaTemplate(item) {
-    if (!item) {
-      return <div>No valid picture selected!</div>
-    }
-    return (
-      <div key={item.itemImageSrc + 'IMG'} style={{ height: '50vh' }}>
-        <img
-          src={item.itemImageSrc}
-          key={item.itemImageSrc + 'IMGBody'}
-          alt={item.alt}
-          loading='lazy'
-          style={{
-            objectFit: 'contain',
-            width: '100%',
-            height: '100%',
-            backgroundImage: 'url(' + item.thumbnailImageSrc + ')',
-            backgroundSize: 'contain',
-            backgroundRepeat: 'no-repeat',
-            backgroundPositionY: 'center'
-          }}
-        />
-        <span
-          style={{
-            right: 0,
-            bottom: 0,
-            position: 'absolute',
-            color: '#2196F3'
-          }}
-        >
-          {' '}
-          {item.alt}
-        </span>
-      </div>
-    )
-  }
-
-  thumbnailGalleriaTemplate(item) {
-    return (
-      <img
-        src={item.thumbnailImageSrc}
-        alt={item.alt}
-        style={{
-          maxHeight: '90%',
-          maxWidth: '90%',
-          marginLeft: 'auto',
-          marginRight: 'auto',
-          display: 'block'
-        }}
-      />
-    )
-  }
-
   pollTemplate(item) {
     console.log('itemlog', item)
     let childlist = []
@@ -2144,10 +2090,8 @@ export class FailsBoard extends FailsBasis {
           {this.state.pictures && this.state.pictures.length !== 0 && (
             <div className='p-grid'>
               <div className='p-col-12'>
-                <Galleria
+                <PictureSelect
                   value={this.state.pictures}
-                  item={this.itemGalleriaTemplate}
-                  thumbnail={this.thumbnailGalleriaTemplate}
                   activeIndex={this.state.pictIndex}
                   onItemChange={(e) => {
                     if (
@@ -2157,7 +2101,7 @@ export class FailsBoard extends FailsBasis {
                       return
                     this.setState({ pictIndex: e.index })
                   }}
-                ></Galleria>
+                />
               </div>
               <div className='p-col-6'>
                 <Button
