@@ -1072,8 +1072,7 @@ export class ToolBox extends ToolHandling {
           }
         }
       }
-      const beamborder =
-        -0.5 * (this.divwidth / this.props.bbwidth) + this.tbx - 0.02
+      const beamborder = -0.6 * (this.divwidth / this.props.bbwidth) + this.tbx
       if (
         ((finaly < y && state.posy > y) || (finaly > y && state.posy < y)) &&
         x > beamborder
