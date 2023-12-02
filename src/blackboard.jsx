@@ -2570,6 +2570,11 @@ export class BlackboardNotepad extends Component {
             if (ny > 0) ny = anx / aspectratio
             else ny = -anx / aspectratio
           }
+          if (nx > 1.0) {
+            const rescale = nx > 1.2 ? 0.8 / nx : 1.0 / nx
+            nx *= rescale
+            ny *= rescale
+          }
         }
         return { addformpictwidth: nx, addformpictheight: ny }
       }
