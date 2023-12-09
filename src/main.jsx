@@ -3007,6 +3007,7 @@ export class FailsNotes extends FailsBasis {
             addclass='p-m-2 fadeMenu'
             bbwidth={window.innerWidth}
             devicePixelRatio={window.devicePixelRatio}
+            updateSizes={this.updateSizes}
           />
         )}
 
