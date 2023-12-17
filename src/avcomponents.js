@@ -52,15 +52,17 @@ const loadPolyfills = async () => {
   if (decoderPoly || encoderPoly) {
     if (!globalThis.LibAV)
       globalThis.LibAV = { /* getFiles, */ nolibavworker: true } // the imported lib needs this
-    LibAVlib = await import('../node_modules/libav.js/libav-3.11.6.0-opus.js')
+    LibAVlib = await import(
+      '../node_modules/libav.js/dist/libav-4.8.6.0.1-opus.js'
+    )
     console.log('LibAV loaded', LibAVlib, globalThis.LibAV)
     const target = globalThis.LibAV.target()
     globalThis.LibAV.wasmurl = new URL(
-      `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.wasm`,
+      `../node_modules/libav.js/dist/libav-${globalThis.LibAV.VER}-opus.${target}.wasm`,
       import.meta.url
     ).href
     globalThis.LibAV.toImport = new URL(
-      `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
+      `../node_modules/libav.js/dist/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
       import.meta.url
     ).href
     /* globalThis.LibAV.importedjs = await import(
@@ -69,7 +71,7 @@ const loadPolyfills = async () => {
     globalThis.LibAV.importedjs = await import(
       /* @vite-ignore */
       new URL(
-        `../node_modules/libav.js/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
+        `../node_modules/libav.js/dist/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
         import.meta.url
       ).href
     )
