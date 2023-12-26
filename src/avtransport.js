@@ -58,12 +58,8 @@ export class AVTransport {
   async startConnection() {
     try {
       console.log('startconnection')
-      let forcewebsocket = true // for debugging set to true
+      const forcewebsocket = false // for debugging set to true
       const preventwebsocket = false // for debugging set to true
-      if (typeof globalThis.WebTransport === 'undefined') {
-        console.log('Browser has no WebTransport support fall back to ponyfill')
-        forcewebsocket = true
-      }
       // WebTransportWS
       while (true) {
         if (this.statuscb) this.statuscb({ status: 'connecting' })
