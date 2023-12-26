@@ -648,8 +648,10 @@ export class VideoControl extends Component {
           {ts.status === 'connected' && (
             <i className='coninfoicon pi pi-check'></i>
           )}
-          {ts.type === 'webtransport' && <React.Fragment> WT </React.Fragment>}
-          {ts.type === 'websocket' && <React.Fragment> WS </React.Fragment>}
+          {ts.type === 'reliable-only' && <React.Fragment> RO </React.Fragment>}
+          {ts.type === 'supports-unreliable' && (
+            <React.Fragment> SU </React.Fragment>
+          )}
           {ts.type === undefined && <React.Fragment> NO </React.Fragment>}
         </React.Fragment>
       )

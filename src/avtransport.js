@@ -16,7 +16,10 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-import { WebTransport as WebTransportWS } from '@fails-components/webtransport-ponyfill-websocket'
+import {
+  WebTransportPolyfill,
+  WebTransportPonyfill
+} from '@fails-components/webtransport'
 import { serialize as BSONserialize } from 'bson'
 
 export class AVTransport {
@@ -55,7 +58,7 @@ export class AVTransport {
   async startConnection() {
     try {
       console.log('startconnection')
-      let forcewebsocket = false // for debugging set to true
+      let forcewebsocket = true // for debugging set to true
       const preventwebsocket = false // for debugging set to true
       if (typeof globalThis.WebTransport === 'undefined') {
         console.log('Browser has no WebTransport support fall back to ponyfill')
@@ -63,8 +66,7 @@ export class AVTransport {
       }
       // WebTransportWS
       while (true) {
-        let type
-        if (this.statuscb) this.statuscb({ status: 'connecting', type })
+        if (this.statuscb) this.statuscb({ status: 'connecting' })
         const hinfo = await this.hostinfocb()
         if (!hinfo) {
           await new Promise((resolve) => {
@@ -73,7 +75,7 @@ export class AVTransport {
           continue
         }
         const url = hinfo.url // 'https://' + this.hostname + ':' + this.port + '/avfails'
-        const wsurl = hinfo.wsurl
+        // const wsurl = hinfo.wsurl
         // eslint-disable-next-line no-useless-concat
         // 'ws://' + /* this.hostname */ 'localhost' + ':' + this.port + '/avfails'
         const spki = hinfo.spki
@@ -89,78 +91,57 @@ export class AVTransport {
         ]
 
         let webtransport = false
-        if (!forcewebsocket) {
-          try {
-            type = 'webtransport'
-            if (this.statuscb) this.statuscb({ status: 'connecting', type })
+        try {
+          if (this.statuscb) this.statuscb({ status: 'connecting' })
+          // eslint-disable-next-line no-undef
+          if (forcewebsocket) {
+            this.transport = new WebTransportPonyfill(url, {
+              serverCertificateHashes
+            })
             // eslint-disable-next-line no-undef
-            this.transport = new WebTransport(url, { serverCertificateHashes })
-            this.transport.closed
-              .then(() => {
-                console.log(
-                  'The HTTP/3 connection to ',
-                  url,
-                  'closed gracefully.'
-                )
-              })
-              .catch((error) => {
-                console.error(
-                  'The HTTP/3 connection to',
-                  url,
-                  'closed due to ',
-                  error,
-                  '.'
-                )
-              })
-            await this.transport.ready
-            webtransport = true
-            console.log('webtransport is ready' /*, this.transport */)
-          } catch (error) {
-            console.log('webtransport connection or closed failed', error)
+          } else if (
+            preventwebsocket &&
+            typeof globalThis.WebTransport !== 'undefined'
+          ) {
+            // eslint-disable-next-line no-undef
+            this.transport = new WebTransport(url, {
+              serverCertificateHashes
+            })
+          } else {
+            this.transport = new WebTransportPolyfill(url, {
+              serverCertificateHashes
+            })
           }
-        }
-        if (!webtransport) {
-          if (!forcewebsocket)
-            console.log('Fallback to websocket due to webtransport failure')
-          // this.connectedrej('no websocket' + wsurl) // fall back
-          type = 'websocket'
-          if (this.statuscb) this.statuscb({ status: 'connecting', type })
-          try {
-            if (preventwebsocket)
-              throw new Error('WebSocket creation prevented by debug flag')
-            this.transport = new WebTransportWS(wsurl)
-            this.transport.closed
-              .then(() => {
-                console.log(
-                  'The Websocket connection to ',
-                  url,
-                  'closed gracefully.'
-                )
-              })
-              .catch((error) => {
-                console.error(
-                  'The Websocket connection to',
-                  url,
-                  'closed due to ',
-                  error,
-                  '.'
-                )
-              })
-            await this.transport.ready
-            webtransport = true
-            console.log('webtransport over websocket is ready', this.transport)
-          } catch (error) {
-            console.log(
-              'webtransport over websocket connection or closed failed',
-              error
-            )
-            // also the fallback did not work
-            this.connectedrej(error)
-          }
+          this.transport.closed
+            .then(() => {
+              console.log('The connection to ', url, 'closed gracefully.')
+            })
+            .catch((error) => {
+              console.error(
+                'The connection to',
+                url,
+                'closed due to ',
+                error,
+                '.'
+              )
+            })
+          await this.transport.ready
+          webtransport = true
+          console.log('webtransport is ready' /*, this.transport */)
+        } catch (error) {
+          console.log('webtransport connection or closed failed', error)
+          this.connectedrej(error)
         }
 
         if (webtransport) {
-          if (this.statuscb) this.statuscb({ status: 'authenticating', type })
+          if (this.statuscb)
+            this.statuscb({
+              status: 'authenticating',
+              type:
+                this.transport.reliability === 'reliable-only'
+                  ? 'reliable-only'
+                  : 'supports-unreliable'
+            })
           // do authentification
           console.log('webtransport start auth')
           let authfailed = false
@@ -195,7 +176,14 @@ export class AVTransport {
           if (!authfailed) {
             console.log('webtransport auth send')
             try {
-              if (this.statuscb) this.statuscb({ status: 'connected', type })
+              if (this.statuscb)
+                this.statuscb({
+                  status: 'connected',
+                  type:
+                    this.transport.reliability === 'reliable-only'
+                      ? 'reliable-only'
+                      : 'supports-unreliable'
+                })
               await this.transport.closed
               console.log('webtransport closed go to restart')
               if (this.statuscb) this.statuscb({ status: 'closed' })
@@ -203,10 +191,10 @@ export class AVTransport {
               console.log('Webtransport was closed with', error)
             }
           } else {
-            if (this.statuscb) this.statuscb({ status: 'failed', type })
+            if (this.statuscb) this.statuscb({ status: 'failed' })
             console.log('webtransport auth failed')
           }
-        } else if (this.statuscb) this.statuscb({ status: 'failed', type })
+        } else if (this.statuscb) this.statuscb({ status: 'failed' })
         // if we failed wait sometime, before we renew, we should wait in any case
         await new Promise((resolve) => setTimeout(resolve, 2000))
         console.log('webtransport renew connection')
