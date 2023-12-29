@@ -757,6 +757,11 @@ export class FailsBasis extends Component {
     return exp
   }
 
+  features() {
+    const token = this.decodedToken()
+    return token?.features || []
+  }
+
   loadDataDialog() {
     return (
       <Dialog
@@ -857,8 +862,7 @@ export class FailsBasis extends Component {
         rejectClassName: 'hiddenButton'
       })
     }
-    // we support it for a period of time only on the experimental branch
-    const expmedia = this.experimental()
+    const expmedia = this.features().includes('avbroadcast')
     const supportedMedia = AVInterface.queryMediaSupported()
     this.setState({ supportedMedia })
     this.hasMedia =
@@ -2038,6 +2042,7 @@ export class FailsBoard extends FailsBasis {
           showscreennumber={this.state.showscreennumber}
           identobj={this.state.identobj}
           experimental={this.experimental()}
+          features={this.features()}
           startUpAVBroadcast={
             this.state.avinterfaceStarted || !this.hasMedia
               ? undefined
@@ -2513,6 +2518,7 @@ export class FailsScreen extends FailsBasis {
           noteref={this.getNoteRef}
           updateSizes={this.updateSizes}
           experimental={this.experimental()}
+          features={this.features()}
         ></NoteScreenBase>
         <Sidebar
           visible={!this.state.casttoscreens}
@@ -3237,6 +3243,7 @@ export class FailsNotes extends FailsBasis {
           hidden={!this.state.casttoscreens}
           informDraw={this.informDraw}
           experimental={this.experimental()}
+          features={this.features()}
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div
