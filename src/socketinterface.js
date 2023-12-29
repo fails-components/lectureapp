@@ -47,6 +47,10 @@ export class SocketInterface {
     this.handlers = {}
   }
 
+  setInitialDecodedToken(decodedToken) {
+    this.decodedtoken = decodedToken
+  }
+
   static createSocketInterface(args) {
     if (SocketInterface.interf !== null) return SocketInterface.interf
     const interf = (SocketInterface.interf = new SocketInterface(args))

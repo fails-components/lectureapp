@@ -28,6 +28,8 @@ import './index.css'
 import { FailsConfig } from '@fails-components/config'
 import { Welcome } from './welcome.jsx'
 import { SocketInterface } from './socketinterface'
+// eslint-disable-next-line camelcase
+import jwt_decode from 'jwt-decode'
 
 const cfg = new FailsConfig({ react: true })
 
@@ -63,6 +65,9 @@ window.addEventListener(
       sessionStorage.setItem('failspurpose', event.data.purpose)
       sessionStorage.setItem('failstoken', event.data.token)
       console.log('purpose', event.data.purpose)
+      SocketInterface.getInterface().setInitialDecodedToken(
+        jwt_decode(event.data.token)
+      )
       purposesetter(event.data.purpose)
       if (event.source) {
         event.source.postMessage({ failsTokenOk: true })
