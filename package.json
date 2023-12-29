@@ -21,7 +21,7 @@
   "dependencies": {
     "@fails-components/config": "^1.5.4",
     "@fails-components/data": "^1.2.1",
-    "@fails-components/webtransport": "https://gitpkg.now.sh/fails-components/webtransport/main?http2",
+    "@fails-components/webtransport": "^1.0.1",
     "@fortawesome/fontawesome-svg-core": "^6.2.1",
     "@fortawesome/free-solid-svg-icons": "^6.2.1",
     "@fortawesome/react-fontawesome": "^0.2.0",
