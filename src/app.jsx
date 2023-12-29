@@ -65,9 +65,6 @@ window.addEventListener(
       sessionStorage.setItem('failspurpose', event.data.purpose)
       sessionStorage.setItem('failstoken', event.data.token)
       console.log('purpose', event.data.purpose)
-      SocketInterface.getInterface().setInitialDecodedToken(
-        jwt_decode(event.data.token)
-      )
       purposesetter(event.data.purpose)
       if (event.source) {
         event.source.postMessage({ failsTokenOk: true })
@@ -79,6 +76,13 @@ window.addEventListener(
 
 const App = () => {
   const [purpose, setPurpose] = useState(sessionStorage.getItem('failspurpose'))
+
+  if (purpose) {
+    const token = sessionStorage.getItem('failstoken')
+    if (token) {
+      SocketInterface.getInterface().setInitialDecodedToken(jwt_decode(token))
+    }
+  }
 
   purposesetter = setPurpose
 
