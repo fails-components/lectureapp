@@ -2104,7 +2104,7 @@ export class UtilBox extends Component {
   }
 }
 
-export class DeleteBox extends Component {
+export class CopyDeleteBox extends Component {
   constructor(props) {
     super(props)
 
@@ -2151,6 +2151,10 @@ export class DeleteBox extends Component {
     this.setState({ activated: false })
   }
 
+  copyButtonPressed() {
+    this.blackboard().copyMagicButtonPressed()
+  }
+
   render() {
     let buttons = []
 
@@ -2159,6 +2163,22 @@ export class DeleteBox extends Component {
       position: 'top',
       showDelay: 1000
     }
+
+    const copybutton = (
+      <Button
+        icon='pi pi-copy'
+        key={1}
+        tooltip='Copy selected objects'
+        tooltipOptions={ttopts}
+        onClick={(e) => {
+          if (Date.now() - this.state.activationTime > 500)
+            this.copyButtonPressed()
+        }}
+        className='p-button-raised p-button-rounded tbChild'
+      />
+    )
+
+    buttons.push(copybutton)
 
     const deletebutton = (
       <Button

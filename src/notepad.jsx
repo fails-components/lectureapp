@@ -19,7 +19,7 @@
 
 import React, { Component, Fragment } from 'react'
 import { Blackboard, BlackboardNotepad } from './blackboard.jsx'
-import { ToolBox, UtilBox, DeleteBox } from './toolbox.jsx'
+import { ToolBox, UtilBox, CopyDeleteBox } from './toolbox.jsx'
 import {
   Dispatcher,
   Collection,
@@ -139,7 +139,7 @@ export class NoteScreenBase extends Component {
     this.toolbox = React.createRef()
     this.confirmbox = React.createRef()
     this.originbox = React.createRef()
-    this.deletebox = React.createRef()
+    this.copydeletebox = React.createRef()
 
     this.storage = new StorageHandler()
     this.storage.addNetworkSupport()
@@ -591,8 +591,8 @@ export class NoteScreenBase extends Component {
           />
         )}
         {(this.props.isnotepad || this.props.notesmode) && (
-          <DeleteBox
-            ref={this.deletebox}
+          <CopyDeleteBox
+            ref={this.copydeletebox}
             bbwidth={this.state.bbwidth}
             bbheight={this.state.bbheight}
             notepad={this}

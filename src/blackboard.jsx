@@ -210,6 +210,22 @@ export class MagicObject {
     }))
   }
 
+  copyObjsAndSelect() {
+    const oldSelectedObjs = this.selectedObj
+    const shift = { x: 0.01, y: 0.01 }
+    this.selectedObj = oldSelectedObjs.map((el) => {
+      return el.copyAndDeselect(this.datatarget, shift)
+    })
+
+    this.spx += ((this.preshift?.x ?? 0) + shift.x) * this.svgscale
+    this.spy += ((this.preshift?.y ?? 0) + shift.y) * this.svgscale
+    this.preshift = null
+    this.pathdirty = true
+
+    this.changemagic()
+    return this.selectedObj
+  }
+
   cleanup() {
     this.selectedObj.forEach((el) => el.deselect())
 
@@ -307,7 +323,7 @@ export class MagicObject {
     this.pathdirty = false
   }
 
-  findDeleteBoxPos() {
+  findCopyDeleteBoxPos() {
     // first identify, the area of the right edge
     if (this.points.length === 0) return null
     let left = this.points[0].x
@@ -1099,6 +1115,7 @@ export class Blackboard extends Component {
 
     this.work = {} // handles drawing, now only objects
     this.work.objects = []
+    this.copyobjts = [] // storage for objects during copying
     this.workobj = {}
 
     this.preworkobj = {}
@@ -1174,7 +1191,7 @@ export class Blackboard extends Component {
   changeMagic() {
     this.isdirty = true
     if (this.magicobject) {
-      const deletepos = this.magicobject.findDeleteBoxPos()
+      const deletepos = this.magicobject.findCopyDeleteBoxPos()
       if (deletepos && this.currentSetDeletePos)
         this.currentSetDeletePos(deletepos)
     }
@@ -1187,7 +1204,7 @@ export class Blackboard extends Component {
     }
     if (this.objdirty) {
       this.setState({
-        objects: this.work.objects.concat()
+        objects: this.work.objects.concat(this.copyobjts)
       })
       this.objdirty = false
     }
@@ -1359,6 +1376,8 @@ export class Blackboard extends Component {
       this.magicobject.cleanup()
       // TODO cleanup magicobject
       delete this.magicobject
+      this.copyobjts = []
+      this.objdirty = true
     }
   }
 
@@ -1417,7 +1436,7 @@ export class Blackboard extends Component {
             selected = magicobj.testAndSelectDrawObject(obj) || selected
           }
           if (selected) {
-            const deletepos = magicobj.findDeleteBoxPos()
+            const deletepos = magicobj.findCopyDeleteBoxPos()
             this.currentSetDeletePos = setdeletepos
             if (deletepos) setdeletepos(deletepos)
             magicobj.activateMove()
@@ -1428,6 +1447,14 @@ export class Blackboard extends Component {
         this.isdirty = true
       }, 0)
       // delete this.magicobject
+    }
+  }
+
+  copyMagic() {
+    if (this.magicobject) {
+      const magicobj = this.magicobject
+      this.copyobjts = magicobj.copyObjsAndSelect()
+      this.objdirty = true
     }
   }
 
@@ -2175,9 +2202,9 @@ export class BlackboardNotepad extends Component {
     return null
   }
 
-  deletebox() {
-    if (this.props.notepadscreen && this.props.notepadscreen.deletebox)
-      return this.props.notepadscreen.deletebox.current
+  copydeletebox() {
+    if (this.props.notepadscreen && this.props.notepadscreen.copydeletebox)
+      return this.props.notepadscreen.copydeletebox.current
     return null
   }
 
@@ -2402,7 +2429,7 @@ export class BlackboardNotepad extends Component {
       )
       if (this.props.informDraw) this.props.informDraw()
       this.magicpointerid = event.pointerId
-      if (this.deletebox()) this.deletebox().deactivate()
+      if (this.copydeletebox()) this.copydeletebox().deactivate()
       const nt = this.notetools()
       if (nt) {
         nt.setCanTooltip(false)
@@ -2423,7 +2450,7 @@ export class BlackboardNotepad extends Component {
               if (this.realblackboard && this.realblackboard.current)
                 this.realblackboard.current.turnOffMagic()
 
-              if (this.deletebox()) this.deletebox().deactivate()
+              if (this.copydeletebox()) this.copydeletebox().deactivate()
             }
           }
         )
@@ -2927,8 +2954,8 @@ export class BlackboardNotepad extends Component {
       delete this.magicpointerid
       if (this.realblackboard && this.realblackboard.current) {
         await this.realblackboard.current.finishMagic((pos) => {
-          if (this.deletebox())
-            this.deletebox().reactivate({
+          if (this.copydeletebox())
+            this.copydeletebox().reactivate({
               x: pos.x,
               y: pos.y - this.calcCurpos()
             })
@@ -3095,7 +3122,7 @@ export class BlackboardNotepad extends Component {
   deselectOldTool() {
     if (this.magictool && this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.turnOffMagic()
-    if (this.deletebox()) this.deletebox().deactivate()
+    if (this.copydeletebox()) this.copydeletebox().deactivate()
     if (this.addformpictmode > 0) {
       this.addformpictmode = 0
       this.setState({
@@ -3125,12 +3152,12 @@ export class BlackboardNotepad extends Component {
       this.realblackboard.current.turnOffMagic()
       for (let pos = 0; pos < magicobjids.length; pos++) {
         const element = magicobjids[pos]
-        console.log(
+        /* console.log(
           'delete request',
           element.objid,
           element.storagenum,
           element
-        )
+        ) */
         this.props.outgoingsink.deleteObject(
           null,
           element.objid,
@@ -3138,6 +3165,12 @@ export class BlackboardNotepad extends Component {
           element.storagenum
         )
       }
+    }
+  }
+
+  copyMagicButtonPressed() {
+    if (this.magictool && this.realblackboard && this.realblackboard.current) {
+      this.realblackboard.current.copyMagic()
     }
   }
 
