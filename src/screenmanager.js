@@ -109,6 +109,24 @@ export class ScreenManager {
     if (this.informScreenChange) this.informScreenChange()
   }
 
+  async queryExtended() {
+    await this.initializeScreenInfo()
+    if (!window.screen.isExtended) {
+      return { status: 'onescreen' }
+    }
+    const cur = this.screens.currentScreen
+
+    const retobj = {
+      screens: this.screens.screens.map((el, index) => ({
+        screen: el,
+        isCurrent: el === cur,
+        number: index
+      })),
+      status: 'selector'
+    }
+    return retobj
+  }
+
   async toggleFullscreen() {
     if (this.isFullscreen()) {
       await this.exitFullscreen()

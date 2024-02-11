@@ -43,7 +43,8 @@ import {
   faFilePen,
   faLock,
   faTv,
-  faVolumeXmark
+  faVolumeXmark,
+  faWindowMaximize
 } from '@fortawesome/free-solid-svg-icons'
 import failsLogo from './logo/logo2.svg'
 import failsLogoLong from './logo/logo1.svg'
@@ -236,8 +237,8 @@ class ChannelEdit extends Component {
                 label='Screen'
                 icon={fiAddScreen}
                 className='p-button-rounded p-button-text p-button-sm'
-                onClick={() => {
-                  this.props.app.onOpenNewScreen()
+                onClick={(event) => {
+                  this.props.app.onOpenNewScreen(event)
                 }}
               ></Button>
             </div>
@@ -800,9 +801,7 @@ export class FailsBasis extends Component {
 
   async toggleFullscreen(event) {
     const ret = await this.screenm.toggleFullscreen()
-    console.log('ret screenmanager', ret, this.opScreens)
     if (ret.status === 'selector' && this.opScreens) {
-      console.log('screenmanager setstate')
       this.setState({ screensToSel: ret.screens })
       this.opScreens.toggle(event)
     }
@@ -835,6 +834,114 @@ export class FailsBasis extends Component {
         }}
       >
         <h3> Fullscreen on </h3>
+        {screenbuttons}
+      </OverlayPanel>
+    )
+  }
+
+  whereToOpen({ typename, event }) {
+    if (this.whereToPromRej) {
+      delete this.whereToPromRes
+      const rej = this.whereToPromRej
+      delete this.whereToPromRej
+      rej()
+    }
+    return new Promise((resolve, reject) => {
+      this.whereToPromRes = resolve
+      this.whereToPromRej = reject
+
+      this.screenm
+        .queryExtended()
+        .then((ret) => {
+          if (ret.status === 'selector' && this.opNoteScreenOpen) {
+            this.setState({ screensToSel: ret.screens })
+            console.log('Notepadscreen event', event)
+            this.setState({ typeNoteScreenOpening: typename })
+            if (event.target) {
+              if (typeof event.target.offsetHeight === 'undefined') {
+                event.target.offsetHeight = 0 // fixes isssue in prime react
+              }
+            }
+            this.opNoteScreenOpen.toggle(event)
+          } else {
+            resolve('')
+            delete this.whereToPromRes
+            delete this.whereToPromRej
+          }
+        })
+        .catch((error) => {
+          console.log('Problem in whereToOpen', error)
+          delete this.whereToPromRes
+          delete this.whereToPromRej
+          reject(error)
+        })
+    })
+  }
+
+  // Overlay to choose, if the notepad or screen should be opened
+  // on another screen
+  openNotepadScreenOverlay() {
+    const selOption = (openoption) => {
+      if (this.whereToPromRes) {
+        const res = this.whereToPromRes
+        delete this.whereToPromRes
+        delete this.whereToPromRej
+        res(openoption)
+      }
+    }
+    const screenbuttons = this.state.screensToSel.map((el) => (
+      <Button
+        className={
+          !el.isCurrent
+            ? 'p-button-primary  p-button-rounded p-m-2'
+            : 'p-button-secondary p-button-rounded p-m-2'
+        }
+        key={el.number}
+        icon={<FontAwesomeIcon icon={faDesktop} className='p-m-1' />}
+        label={
+          'Fullscreen ' +
+          (el.number + 1) +
+          (el.isCurrent ? ' (current)' : ' (other)')
+        }
+        onClick={(event) => {
+          this.opNoteScreenOpen.hide()
+          // TODO get info
+          const openoption = `,left=${el?.screen?.availLeft},top=${el?.screen?.availTop},width=${el?.screen?.availWidth},height=${el?.screen?.availHeight},fullscreen`
+          this.setState({ typeNoteScreenOpening: undefined })
+          selOption(openoption)
+        }}
+      />
+    ))
+    screenbuttons.unshift(
+      <Button
+        className='p-button-secondary p-button-rounded p-m-2'
+        key='Window'
+        icon={<FontAwesomeIcon icon={faWindowMaximize} className='p-m-1' />}
+        label='Window'
+        onClick={(event) => {
+          this.opNoteScreenOpen.hide()
+          const openoption = ''
+          this.setState({ typeNoteScreenOpening: undefined })
+          selOption(openoption)
+        }}
+      />
+    )
+
+    return (
+      <OverlayPanel
+        ref={(el) => {
+          this.opNoteScreenOpen = el
+        }}
+        onHide={() => {
+          if (this.whereToPromRej) {
+            delete this.whereToPromRes
+            const rej = this.whereToPromRej
+            delete this.whereToPromRej
+            rej()
+          }
+        }}
+      >
+        <h3> Open {this.state.typeNoteScreenOpening} as</h3>
         {screenbuttons}
       </OverlayPanel>
     )
@@ -1022,9 +1129,7 @@ class ShortcutsMessage extends React.Component {
                 icon={fiAddScreen}
                 id='bt-screen'
                 className='p-button-primary p-button-outlined p-button-rounded p-m-2'
-                onClick={(event) => {
-                  this.props.parent.onOpenNewScreen()
-                }}
+                onClick={this.props.parent.onOpenNewScreen}
               ></Button>
             </div>
           </div>
@@ -1035,9 +1140,7 @@ class ShortcutsMessage extends React.Component {
                 icon={fiAddNotepad}
                 id='bt-notepad'
                 className='p-button-primary p-button-outlined p-button-rounded p-m-2'
-                onClick={(event) => {
-                  this.props.parent.onOpenNewNotepad()
-                }}
+                onClick={this.props.parent.onOpenNewNotepad}
               ></Button>
             </div>
           </div>
@@ -1491,6 +1594,7 @@ export class FailsBoard extends FailsBasis {
     this.onHidePictDialog = this.onHidePictDialog.bind(this)
     this.onAddPicture = this.onAddPicture.bind(this)
     this.onOpenNewScreen = this.onOpenNewScreen.bind(this)
+    this.onOpenNewNotepad = this.onOpenNewNotepad.bind(this)
     this.onNewWriting = this.onNewWriting.bind(this)
     this.arrangebuttonCallback = this.arrangebuttonCallback.bind(this)
     this.pictbuttonCallback = this.pictbuttonCallback.bind(this)
@@ -1692,9 +1796,14 @@ export class FailsBoard extends FailsBasis {
     }
   }
 
-  async onOpenNewScreen() {
+  async onOpenNewScreen(event) {
     try {
       const authtoken = sessionStorage.getItem('failstoken')
+      const fullscreenopts = await this.whereToOpen({
+        typename: 'screen',
+        event
+      })
+
       const ret = await this.socket.createScreen()
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
@@ -1712,7 +1821,8 @@ export class FailsBoard extends FailsBasis {
       const newscreen = window.open(
         targeturl,
         uuidv4(),
-        'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
+        'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes' +
+          fullscreenopts
       )
       sessionStorage.setItem('failstoken', authtoken)
       sessionStorage.setItem('failspurpose', 'lecture')
@@ -1741,9 +1851,14 @@ export class FailsBoard extends FailsBasis {
     }
   }
 
-  async onOpenNewNotepad() {
+  async onOpenNewNotepad(event) {
     try {
       const authtoken = this.myauthtoken
+      const fullscreenopts = await this.whereToOpen({
+        typename: 'notepad',
+        event
+      })
+
       const ret = await this.socket.createNotepad()
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
@@ -1761,7 +1876,8 @@ export class FailsBoard extends FailsBasis {
       const newnotepad = window.open(
         targeturl,
         uuidv4(),
-        'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
+        'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes' +
+          fullscreenopts
       )
       sessionStorage.setItem('failstoken', authtoken)
       sessionStorage.setItem('failspurpose', 'lecture')
@@ -2002,6 +2118,7 @@ export class FailsBoard extends FailsBasis {
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
         {this.screenOverlay()}
+        {this.openNotepadScreenOverlay()}
         {!this.state.tokenexpired && this.loadDataDialog()}
         {this.expiredTokenDialog()}
         <NoteScreenBase
