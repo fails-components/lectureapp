@@ -83,11 +83,13 @@ import { SocketInterface } from './socketinterface'
 import { AVInterface } from './avinterface'
 import { KeyStore } from './keystore'
 import { PictureSelect } from './pictureselect'
+import { AVVideoRender } from './avvideorender.jsx'
 
 class ChannelEdit extends Component {
   constructor(props) {
     super(props)
     this.availscreensmenu = React.createRef()
+    this.availscreensmenuScreenshare = React.createRef()
   }
 
   render() {
@@ -103,10 +105,19 @@ class ChannelEdit extends Component {
           console.log('channel uuid', el.channel, el.uuid)
           return {
             label: ind + 1 + '. ' + purpose,
+            purpose,
             command: () =>
               this.props.app.addNotescreenToChannel(this.selchannel, el.uuid)
           }
         })
+      }
+    ]
+    const availscreensitemsScreenshare = [
+      {
+        label: 'Move/add to top',
+        items: availscreensitems[0].items.filter(
+          (el) => el.purpose !== 'Notepad'
+        )
       }
     ]
 
@@ -123,68 +134,82 @@ class ChannelEdit extends Component {
 
     if (!this.props.channelinfo)
       return <React.Fragment>Waiting for data...</React.Fragment>
-    const channels = this.props.channelinfo.map((el, ind) => {
-      let type = 'Unknown'
-      if (el.type === 'notebooks') type = 'Room'
-      const notescreens = el.notescreens.map((el2) => {
-        const index = this.props.availscreens.findIndex(
-          (el3) => el3.uuid === el2.uuid
-        )
-        let purpose = 'Unknown'
-        if (el2.purpose === 'notepad') purpose = 'Notepad'
-        else if (el2.purpose === 'screen') purpose = 'Screen'
+    const channels = this.props.channelinfo
+      .filter(
+        (el) =>
+          el.type !== 'screenshare' ||
+          this.props.availscreenchannels[el.channeluuid]
+      )
+      .map((el, ind) => {
+        let type = 'Unknown'
+        if (el.type === 'notebooks') type = 'Room'
+        if (el.type === 'screenshare') type = 'Screencast'
+        const notescreens = el.notescreens.map((el2) => {
+          const index = this.props.availscreens.findIndex(
+            (el3) => el3.uuid === el2.uuid
+          )
+          let purpose = 'Unknown'
+          if (el2.purpose === 'notepad') purpose = 'Notepad'
+          else if (el2.purpose === 'screen') purpose = 'Screen'
+
+          return (
+            <div className='p-m-2 p-shadow-1 p-p-2' key={el2.uuid}>
+              {' '}
+              {index + 1 + '. ' + purpose}{' '}
+            </div>
+          )
+        })
+        console.log('notescreen', el)
+        console.log('avail screens', this.props.availscreens)
+        notescreens.reverse()
 
         return (
-          <div className='p-m-2 p-shadow-1 p-p-2' key={el2.uuid}>
-            {' '}
-            {index + 1 + '. ' + purpose}{' '}
+          <div className='p-mr-2 p-shadow-1'>
+            <div className='p-d-flex p-flex-column p-jc-center'>
+              <div className='p-m-2 p-p-1' key='haeding'>
+                <h3>
+                  {ind + 1 + '. ' + type}
+                  {ind !== 0 &&
+                    el.notescreens.length === 0 &&
+                    el.type !== 'screenshare' && (
+                      <Button
+                        icon='pi pi-trash'
+                        className='p-button-rounded p-button-text p-button-sm'
+                        onClick={() =>
+                          this.props.app.onRemoveChannel(el.channeluuid)
+                        }
+                      ></Button>
+                    )}
+                </h3>
+              </div>
+              <div className='p-m-2 p-p-2' key='header'>
+                <div className='p-d-flex'>
+                  <div className='p-mr-2'>
+                    <Button
+                      icon={fiMoveToTop}
+                      label={'Move to top'}
+                      className='p-button-rounded p-button-text p-button-sm'
+                      onClick={(event) => {
+                        this.selchannel = el.channeluuid
+                        this.availscreensmenu.current.hide(event)
+                        this.availscreensmenuScreenshare.current.hide(event)
+                        if (el.type !== 'screenshare') {
+                          this.availscreensmenu.current.show(event)
+                        } else {
+                          this.availscreensmenuScreenshare.current.show(event)
+                        }
+                      }}
+                      aria-controls='availscreen_menu'
+                      aria-haspopup
+                    ></Button>
+                  </div>
+                </div>
+              </div>
+              {notescreens}
+            </div>
           </div>
         )
       })
-      console.log('notescreen', el)
-      console.log('avail screens', this.props.availscreens)
-      notescreens.reverse()
-
-      return (
-        <div className='p-mr-2 p-shadow-1'>
-          <div className='p-d-flex p-flex-column p-jc-center'>
-            <div className='p-m-2 p-p-1' key='haeding'>
-              <h3>
-                {ind + 1 + '. ' + type}
-                {ind !== 0 && el.notescreens.length === 0 && (
-                  <Button
-                    icon='pi pi-trash'
-                    className='p-button-rounded p-button-text p-button-sm'
-                    onClick={() =>
-                      this.props.app.onRemoveChannel(el.channeluuid)
-                    }
-                  ></Button>
-                )}
-              </h3>
-            </div>
-            <div className='p-m-2 p-p-2' key='header'>
-              <div className='p-d-flex'>
-                <div className='p-mr-2'>
-                  <Button
-                    icon={fiMoveToTop}
-                    label={'Move to top'}
-                    className='p-button-rounded p-button-text p-button-sm'
-                    onClick={(event) => {
-                      this.selchannel = el.channeluuid
-                      this.availscreensmenu.current.hide(event)
-                      this.availscreensmenu.current.show(event)
-                    }}
-                    aria-controls='availscreen_menu'
-                    aria-haspopup
-                  ></Button>
-                </div>
-              </div>
-            </div>
-            {notescreens}
-          </div>
-        </div>
-      )
-    })
 
     channels.push(
       <div className='p-mr-2 p-shadow-1' key='newwriting'>
@@ -215,6 +240,13 @@ class ChannelEdit extends Component {
               popup
               baseZIndex={3000}
               ref={this.availscreensmenu}
+              id='availscreen_menu'
+            />
+            <Menu
+              model={availscreensitemsScreenshare}
+              popup
+              baseZIndex={3000}
+              ref={this.availscreensmenuScreenshare}
               id='availscreen_menu'
             />
             {channels}
@@ -285,6 +317,7 @@ export class FailsBasis extends Component {
     this.state.reloading = true
     this.state.identobj = { idents: [], masterdigest: 'no masterdigest' }
     this.state.avinterfaceStarted = false
+    this.state.avinterfaceHidden = true
     this.state.supportedMedia = {}
     this.state.gotavstuff = false
 
@@ -328,15 +361,26 @@ export class FailsBasis extends Component {
 
     this.keystore = KeyStore.getKeyStore()
 
+    this.availscreenchannels = {}
+
     // TODO add purpose stuff
   }
 
-  startUpAVinterface() {
+  startUpAVinterface({ hidden = false } = {}) {
     if (!AVInterface.getInterface()) {
       AVInterface.createAVInterface()
       this.avinterf = AVInterface.getInterface() // please hold a reference for the gargabe collector
       AVInterface.setNetworkControl(this.avchannel)
-      this.setState({ avinterfaceStarted: true })
+    }
+    if (
+      AVInterface.getInterface() &&
+      (!this.state.avinterfaceStarted ||
+        (this.state.avinterfaceHidden && !hidden))
+    ) {
+      this.setState({
+        avinterfaceStarted: true,
+        avinterfaceHidden: hidden
+      })
     }
   }
 
@@ -394,7 +438,11 @@ export class FailsBasis extends Component {
   initializeCommonSocket(commonsocket) {
     commonsocket.on('avoffer', (data) => {
       if (data.id && data.type && data.type in this.avoffers) {
-        this.avoffers[data.type][data.id] = { time: Date.now(), db: data.db }
+        this.avoffers[data.type][data.id] = {
+          time: Date.now(),
+          db: data.db,
+          channelid: data.channelid
+        }
       }
       if (this.processAVoffers) this.processAVoffers()
       if (!this.state.gotavstuff) this.setState({ gotavstuff: true })
@@ -411,7 +459,11 @@ export class FailsBasis extends Component {
         data.offers.forEach((el) => {
           if (el.time && Number(el.time) > now - 60 * 1000) {
             if (el.id && el.type && el.type in newoffers)
-              newoffers[el.type][el.id] = { time: Number(el.time), db: el.db }
+              newoffers[el.type][el.id] = {
+                time: Number(el.time),
+                db: el.db,
+                channelid: data.channelid
+              }
           }
         })
         this.avoffers = newoffers
@@ -523,24 +575,32 @@ export class FailsBasis extends Component {
         )
         let scrolloffset = 0
         if (channel) {
-          let notepos = 0
-          let curpos = 0
-          for (let i = 0; i < channel.notescreens.length; i++) {
-            const cur = channel.notescreens[i]
-            curpos += parseFloat(cur.scrollheight)
-            if (cur.purpose === 'notepad') notepos = curpos
-          }
-          if (notepos === 0) notepos = curpos // if there is no notepad, then treat the lonely screen(s), all as a notepad
-          for (let i = 0; i < channel.notescreens.length; i++) {
-            const cur = channel.notescreens[i]
-            // console.log('scrolloffsets', cur.scrollheight, cur.uuid)
+          if (channel.type === 'screenshare') {
+            setstate.channeltype = 'screenshare'
+            setstate.screenshareSourceId = channel.channeluuid
+            this.startUpAVinterface({ hidden: true })
+          } else {
+            setstate.channeltype = 'notebooks'
+            setstate.screenshareSourceId = undefined
+            let notepos = 0
+            let curpos = 0
+            for (let i = 0; i < channel.notescreens.length; i++) {
+              const cur = channel.notescreens[i]
+              curpos += parseFloat(cur.scrollheight)
+              if (cur.purpose === 'notepad') notepos = curpos
+            }
+            if (notepos === 0) notepos = curpos // if there is no notepad, then treat the lonely screen(s), all as a notepad
+            for (let i = 0; i < channel.notescreens.length; i++) {
+              const cur = channel.notescreens[i]
+              // console.log('scrolloffsets', cur.scrollheight, cur.uuid)
 
-            if (cur.scrollheight) scrolloffset -= parseFloat(cur.scrollheight)
-            if (cur.uuid === notescreenuuid) break
+              if (cur.scrollheight) scrolloffset -= parseFloat(cur.scrollheight)
+              if (cur.uuid === notescreenuuid) break
+            }
+            scrolloffset += notepos
+            // console.log('Final screen scrolloffset', scrolloffset, this.noteref)
+            if (this.noteref) this.noteref.setScrollOffset(scrolloffset)
           }
-          scrolloffset += notepos
-          // console.log('Final screen scrolloffset', scrolloffset, this.noteref)
-          if (this.noteref) this.noteref.setScrollOffset(scrolloffset)
         }
       }
       // console.log('monitor setstate', setstate, data)
@@ -597,7 +657,8 @@ export class FailsBasis extends Component {
     // ok we have an update, we only process it, if we are doing video stuff
     // TODO add test for video stuff
     if (
-      this.state.avinterfaceStarted /* &&
+      this.state.avinterfaceStarted &&
+      !this.state.avinterfaceHidden /* &&
       (this.state.avstate?.playback?.audio ||
         this.state.avstate?.playback?.video) */
     ) {
@@ -653,6 +714,7 @@ export class FailsBasis extends Component {
 
     const audio = this.avoffers.audio
     const video = this.avoffers.video
+    const screen = this.avoffers.screen
     const selaudio = new Set()
 
     let selaid
@@ -731,6 +793,27 @@ export class FailsBasis extends Component {
         console.log('problem speakerset', error)
       })
     }
+    const availscreenchannels = {}
+    // screentime
+    // TODO
+
+    for (const sid in screen) {
+      if (screen[sid].time > Date.now() - 30 * 1000 && screen[sid].channelid) {
+        availscreenchannels[screen[sid].channelid] = {
+          id: sid
+          // may be add other stuff later
+        }
+      }
+    }
+    let screenshareSourceAVId
+    if (this.state.screenshareSourceId) {
+      screenshareSourceAVId =
+        availscreenchannels[this.state.screenshareSourceId]?.id
+    }
+    if (screenshareSourceAVId !== this.state.screenshareSourceAVId) {
+      this.setState({ screenshareSourceAVId })
+    }
+    this.availscreenchannels = availscreenchannels
   }
 
   servererrorhandler(code, message, type) {
@@ -1145,7 +1228,8 @@ class ShortcutsMessage extends React.Component {
             </div>
           </div>
           {!(
-            this.props.parent?.state?.avinterfaceStarted ||
+            (this.props.parent?.state?.avinterfaceStarted &&
+              !this.props.parent?.state?.avinterfaceHidden) ||
             this.state.avinterfaceStarted
           ) &&
             this.props.hasMedia && (
@@ -1420,6 +1504,7 @@ class VideoChatSender extends React.Component {
               id={this.props.id}
               videoid={this.props.id}
               sendOnly={true}
+              noScreencast={true}
             ></VideoControl>
           </div>
           <div className='p-grid p-align-center'>
@@ -1724,6 +1809,7 @@ export class FailsBoard extends FailsBasis {
           allowVideoquestion={this.allowVideoquestion}
           videoQuestion={
             this.state.avinterfaceStarted &&
+            !this.state.avinterfaceHidden &&
             data?.videoquestion &&
             this.hasMediaSend
           }
@@ -2161,7 +2247,8 @@ export class FailsBoard extends FailsBasis {
           experimental={this.experimental()}
           features={this.features()}
           startUpAVBroadcast={
-            this.state.avinterfaceStarted || !this.hasMedia
+            (this.state.avinterfaceStarted && !this.state.avinterfaceHidden) ||
+            !this.hasMedia
               ? undefined
               : () => {
                   this.startUpAVinterface()
@@ -2190,7 +2277,7 @@ export class FailsBoard extends FailsBasis {
             />
           </div>
         )}
-        {this.state.avinterfaceStarted && (
+        {this.state.avinterfaceStarted && !this.state.avinterfaceHidden && (
           <FloatingVideo ref={this.floatvideo}>
             <VideoControl
               videoid={this.state.dispvideo}
@@ -2248,6 +2335,7 @@ export class FailsBoard extends FailsBasis {
             <ChannelEdit
               channelinfo={this.state.channelinfo}
               availscreens={this.state.availscreens}
+              availscreenchannels={this.availscreenchannels}
               app={this}
             ></ChannelEdit>
           </div>
@@ -2625,6 +2713,7 @@ export class FailsScreen extends FailsBasis {
               ? 'blackboardBlack'
               : 'blackboardWhite'
           }
+          hidden={this.state.channeltype !== 'notebooks'}
           screennumbercolor={
             this.state.blackbackground && this.state.casttoscreens
               ? '#FFFFFF'
@@ -2637,6 +2726,31 @@ export class FailsScreen extends FailsBasis {
           experimental={this.experimental()}
           features={this.features()}
         ></NoteScreenBase>
+        <div
+          style={{
+            display: this.state.channeltype !== 'screenshare' ? 'none' : 'grid',
+            placeItems: 'center'
+          }}
+        >
+          {(!this.state.supportedMedia.videoin ||
+            !this.state.avinterfaceStarted) && (
+            <h3>
+              Your browser does not support receiving screencasts! <br />
+              Here should appear a screencast {
+                this.state.screenshareSourceAVId
+              }{' '}
+              for channel {this.state.screenshareSourceId}.
+            </h3>
+          )}
+          {this.state.supportedMedia.videoin &&
+            this.state.avinterfaceStarted && (
+              <AVVideoRender
+                screenshareid={this.state.screenshareSourceAVId}
+                screenshare={true}
+                width={100}
+              ></AVVideoRender>
+            )}
+        </div>
         <Sidebar
           visible={!this.state.casttoscreens}
           position='top'
@@ -2646,7 +2760,7 @@ export class FailsScreen extends FailsBasis {
         >
           {this.state.screenmode && this.renderScreenText()}
         </Sidebar>
-        {this.state.avinterfaceStarted && (
+        {this.state.avinterfaceStarted && !this.state.avinterfaceHidden && (
           <FloatingVideo ref={this.floatvideo}>
             <VideoControl
               videoid={this.state.dispvideo}
@@ -2663,7 +2777,9 @@ export class FailsScreen extends FailsBasis {
         )}
         {this.state.lastpointermove !== 0 && (
           <div style={buttonstyle}>
-            {!this.state.avinterfaceStarted && (
+            {!(
+              this.state.avinterfaceStarted && !this.state.avinterfaceHidden
+            ) && (
               <Button
                 icon={fiBroadcastStart}
                 tooltip='Startup audio/video broadcast'
@@ -3087,7 +3203,7 @@ export class FailsNotes extends FailsBasis {
           aria-haspopup
           aria-controls='overlay_panel'
         />
-        {!this.state.avinterfaceStarted &&
+        {!(this.state.avinterfaceStarted && !this.state.avinterfaceHidden) &&
           this.state.gotavstuff &&
           this.state.casttoscreens && (
             <Button
@@ -3158,28 +3274,29 @@ export class FailsNotes extends FailsBasis {
             </div>
             <div className='p-col'>
               <div className='p-d-flex p-flex-column p-jc-center'>
-                {this.state.avinterfaceStarted && (
-                  <div className='p-m-1' key='audiovideo'>
-                    <Button
-                      icon={
-                        this.state.videoquestion
-                          ? fiVideoQuestionOn
-                          : fiVideoQuestionOff
-                      }
-                      id='bt-broadcast'
-                      className={
-                        this.state.videoquestion
-                          ? 'p-button-raised p-button-rounded p-m-2'
-                          : 'p-button-secondary p-button-raised p-button-rounded p-m-2'
-                      }
-                      onClick={(event) => {
-                        this.setState({
-                          videoquestion: !this.state.videoquestion
-                        })
-                      }}
-                    ></Button>
-                  </div>
-                )}
+                {this.state.avinterfaceStarted &&
+                  !this.state.avinterfaceHidden && (
+                    <div className='p-m-1' key='audiovideo'>
+                      <Button
+                        icon={
+                          this.state.videoquestion
+                            ? fiVideoQuestionOn
+                            : fiVideoQuestionOff
+                        }
+                        id='bt-broadcast'
+                        className={
+                          this.state.videoquestion
+                            ? 'p-button-raised p-button-rounded p-m-2'
+                            : 'p-button-secondary p-button-raised p-button-rounded p-m-2'
+                        }
+                        onClick={(event) => {
+                          this.setState({
+                            videoquestion: !this.state.videoquestion
+                          })
+                        }}
+                      ></Button>
+                    </div>
+                  )}
                 <div className='p-m-1' key='sendmessage'>
                   <Button
                     icon={'pi pi-send'}
@@ -3311,7 +3428,7 @@ export class FailsNotes extends FailsBasis {
             </React.Fragment>
           )}
         </OverlayPanel>
-        {this.state.avinterfaceStarted && (
+        {this.state.avinterfaceStarted && !this.state.avinterfaceHidden && (
           <FloatingVideo ref={this.floatvideo}>
             <VideoControl
               videoid={this.state.dispvideo}

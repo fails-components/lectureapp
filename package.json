@@ -21,9 +21,10 @@
   "dependencies": {
     "@fails-components/config": "^1.5.4",
     "@fails-components/data": "^1.3.0",
-    "@fails-components/webtransport": "^1.0.8",
-    "@fortawesome/fontawesome-svg-core": "^6.2.1",
-    "@fortawesome/free-solid-svg-icons": "^6.2.1",
+    "@fails-components/webtransport": "^1.0.9",
+    "@fortawesome/fontawesome-svg-core": "^6.5.1",
+    "@fortawesome/free-solid-svg-icons": "^6.5.1",
+    "@fortawesome/free-brands-svg-icons": "^6.5.1",
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@vitejs/plugin-react": "^4.0.0",
     "bson": "^4.6.3",

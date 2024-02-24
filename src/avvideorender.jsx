@@ -38,8 +38,17 @@ export class AVVideoRender extends Component {
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
-    if (prevProps.videoid !== this.props.videoid && this.state.output) {
-      this.state.output.setSrcId(this.props.videoid)
+    if (!this.props.screenshare) {
+      if (prevProps.videoid !== this.props.videoid && this.state.output) {
+        this.state.output.setSrcId(this.props.videoid)
+      }
+    } else {
+      if (
+        prevProps.screenshareid !== this.props.screenshareid &&
+        this.state.output
+      ) {
+        this.state.output.setSrcId(this.props.screenshareid)
+      }
     }
     if (!prevState || prevState.output !== this.state.output) {
       this.state.output.setOutputRender(this)
@@ -71,7 +80,9 @@ export class AVVideoRender extends Component {
   async outputStart() {
     try {
       const avinterf = AVInterface.getInterface()
-      const outputobj = avinterf.openVideoOutput()
+      const outputobj = avinterf.openVideoOutput({
+        screenshare: this.props.screenshare
+      })
 
       let output = outputobj
       output = await output
@@ -110,7 +121,12 @@ export class AVVideoRender extends Component {
     return (
       <canvas
         ref={this.videoref}
-        style={{ display: 'block', background: 'black' }}
+        style={{
+          display: 'block',
+          background: 'black',
+          maxWidth: '100vw',
+          maxHeight: '100vh'
+        }}
       ></canvas>
     )
   }

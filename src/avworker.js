@@ -34,6 +34,63 @@ import {
 import { KeyStore } from './keystore'
 import { receiveReadableStream } from './transferable-stream-of-transferables'
 
+const videoQualities = [
+  {
+    width: 160,
+    bitrate: 150_000,
+    framerate: 25
+  },
+  {
+    width: 320,
+    bitrate: 250_000,
+    framerate: 25
+  },
+  {
+    width: 640,
+    bitrate: 500_000,
+    framerate: 25
+  },
+  {
+    width: 848,
+    bitrate: 1000_000,
+    framerate: 25
+  },
+  {
+    width: 848,
+    bitrate: 1750_000,
+    framerate: 25
+  },
+  {
+    width: 1280,
+    bitrate: 2000_000,
+    framerate: 25
+  },
+  {
+    width: 1280,
+    bitrate: 3600_000,
+    framerate: 25
+  },
+  {
+    width: 1920,
+    bitrate: 4800_000,
+    framerate: 25
+  }
+]
+
+const screenQualities = [
+  {
+    width: 1280,
+    bitrate: 2000_000,
+    framerate: 15
+  }
+]
+
+const audioQualities = [
+  { bitrate: 15_000 },
+  { bitrate: 64_000 },
+  { bitrate: 128_000 }
+]
+
 class AVVideoRenderInt {
   constructor(args) {
     this.webworkid = args.webworkid
@@ -449,7 +506,7 @@ class AVInputProcessor extends AVProcessor {
   }
 
   initPipeline() {
-    for (const qual in this.qualities) {
+    for (const qual of this.qualities) {
       this.encrypt[qual] = new AVEncrypt({ keyStore: KeyStore.getKeyStore() })
       this.framer[qual] = new AVFramer({ type: this.datatype })
       this.outputctrldeframer[qual] = new BsonDeFramer()
@@ -460,7 +517,7 @@ class AVInputProcessor extends AVProcessor {
     if (this.adOutgoing) clearInterval(this.adOutgoing)
     this.running = false
     if (this.closePipes) this.closePipes()
-    for (const qual in this.qualities) {
+    for (const qual of this.qualities) {
       const codec = this.encoder[qual]
       if (codec) {
         codec.close()
@@ -483,7 +540,7 @@ class AVInputProcessor extends AVProcessor {
     if (this.qualmax > 0) {
       this.qualmax--
       this.multscaler.setMaxOutputLevel(this.qualmax)
-      this.framer[oldqualmax].sendBson({
+      this.framer[this.qualities[oldqualmax]].sendBson({
         task: 'suspendQuality'
       })
     }
@@ -498,6 +555,7 @@ class AVInputProcessor extends AVProcessor {
   }
 
   skipframe(quality) {
+    if (!this.skipedFrames) this.skipedFrames = {}
     if (!this.skipedFrames[quality]) this.skipedFrames[quality] = 0
     this.skipedFrames[quality]++
   }
@@ -528,14 +586,19 @@ class AVInputProcessor extends AVProcessor {
     const now = Date.now()
     let problem = false
     let upgrade = true
+    const notscreen = this.datatype !== 'screen'
     for (const quality in this.qcs) {
       const curqual = this.qcs[quality]
-      if (curqual.framesPerSecond < this.minimalframerate) problem = true
-      if (curqual.jitter / qualinfo.timePerFrame > 0.8) problem = true
+      if (curqual.framesPerSecond < this.minimalframerate && notscreen)
+        problem = true
+      if (curqual.jitter / qualinfo.timePerFrame > 0.8 && notscreen)
+        problem = true
       if (curqual.skipedFrames > this.maxSkippedFrames) problem = true
 
-      if (curqual.framesPerSecond < this.lowerframerate) upgrade = false
-      if (curqual.jitter / qualinfo.timePerFrame > 0.04) upgrade = false
+      if (curqual.framesPerSecond < this.lowerframerate && notscreen)
+        upgrade = false
+      if (curqual.jitter / qualinfo.timePerFrame > 0.04 && notscreen)
+        upgrade = false
       if (curqual.skipedFrames > 0) upgrade = false
     }
     if (problem) {
@@ -639,7 +702,8 @@ class AVInputProcessor extends AVProcessor {
         preventAbort: true
       })
       this.initialconnect = []
-      for (const qual in this.qualities) {
+      for (const qualid in this.qualities) {
+        const qual = this.qualities[qualid]
         this.streamDest[qual] = new Promise((resolve) => {
           this.streamDestRes[qual] = resolve
         })
@@ -657,7 +721,7 @@ class AVInputProcessor extends AVProcessor {
           console.log('Problem in pipetos buildOutgoingPipeline', error)
         })
         curstream = this.framer[qual].readable
-        const pipesMaker = (quality) => {
+        const pipesMaker = (quality, qualid) => {
           this.bidiStreamToLoop({
             bidiStream: async () => {
               const avtransport = AVTransport.getInterface()
@@ -715,7 +779,7 @@ class AVInputProcessor extends AVProcessor {
                   command: 'configure',
                   dir: 'incoming', // routers perspective
                   tickets,
-                  quality,
+                  quality: qualid,
                   type: this.datatype
                 })
                 console.log('RECONNECT OUTPUT 3', tag)
@@ -737,7 +801,7 @@ class AVInputProcessor extends AVProcessor {
             console.log('AVIP ', qual, 'Bidi prob:', error)
           })
         }
-        pipesMaker(qual)
+        pipesMaker(qual, qualid)
         // quality control
         this.qualityControlLoop(qual)
       }
@@ -841,7 +905,7 @@ class AVInputProcessor extends AVProcessor {
     this.destid = id
     try {
       const reconprom = []
-      for (const qual in this.qualities) {
+      for (const qual of this.qualities) {
         console.log('setDestId reconnect', qual, id)
         reconprom.push(this.reconnect(qual))
       }
@@ -856,22 +920,29 @@ class AVVideoInputProcessor extends AVInputProcessor {
   constructor(args) {
     super(args)
 
-    this.qualities = [1, 4]
     this.qualmax = 0
-    this.datatype = 'video'
-    this.lowerframerate = 14
-    this.minimalframerate = 10
-    this.maxSkippedFrames = 5 // video should tolerate this
+    if (!args.screenshare) {
+      this.qualities = [1, 2]
+      this.datatype = 'video'
+      this.lowerframerate = 14
+      this.minimalframerate = 10
+      this.maxSkippedFrames = 5 // video should tolerate this
+    } else {
+      this.qualities = [0] // here are skipped frames the right way
+      this.datatype = 'screen'
+      this.lowerframerate = 14
+      this.minimalframerate = 5
+      this.maxSkippedFrames = 10 // screen should tolerate this
+    }
 
     this.initPipeline()
   }
 
   changeOff(off) {
-    console.log('multscaler peak', this.multscaler, this.multscaler.changeOff)
     this.multscaler.changeOff(off)
   }
 
-  switchVideoCamera(args) {
+  switchVideoInput(args) {
     this.inputstream
       .cancel()
       .catch((error) => console.log('Error cancel videoinpustream:', error))
@@ -884,17 +955,24 @@ class AVVideoInputProcessor extends AVInputProcessor {
 
   initPipeline() {
     super.initPipeline()
+    const outputwidth = {}
+    const qualities =
+      this.datatype === 'screen' ? screenQualities : videoQualities
+    this.qualities.forEach((el) => (outputwidth[el] = qualities[el].width))
     this.multscaler = new AVOneFrameToManyScaler({
       outputlevel: this.qualities,
-      outputlevelmain: this.qualities[0] // the blocking one
+      outputlevelmain: 0, // the blocking one
+      outputwidth
     })
 
     this.multscaler.setMaxOutputLevel(this.qualmax /* best quality is 1 */)
     this.multscaler.setSkipframeCallback(this.skipframe)
 
-    for (const qual in this.qualities) {
-      const outputlevel = qual
-      this.encoder[qual] = new AVVideoEncoder({ outputlevel })
+    for (const qual of this.qualities) {
+      this.encoder[qual] = new AVVideoEncoder({
+        bitrate: qualities[qual].bitrate,
+        framerate: qualities[qual].framerate
+      })
     }
   }
 }
@@ -941,9 +1019,10 @@ class AVAudioInputProcessor extends AVInputProcessor {
 
     this.multscaler.setMaxOutputLevel(this.qualmax /* best quality is 1 */)
 
-    for (const qual in this.qualities) {
-      const outputlevel = qual
-      this.encoder[qual] = new AVAudioEncoder({ outputlevel })
+    for (const qual of this.qualities) {
+      this.encoder[qual] = new AVAudioEncoder({
+        bitrate: audioQualities[qual].bitrate
+      })
     }
   }
 
@@ -1098,12 +1177,15 @@ class AVOutputProcessor extends AVProcessor {
     const now = Date.now()
     let problem = false
     let upgrade = true
+    const notscreen = this.datatype !== 'screen'
     const curqual = this.qcs
-    if (curqual.framesPerSecond < 10) problem = true
-    if (curqual.jitter / qualinfo.timePerFrame > 0.8) problem = true
+    if (curqual.framesPerSecond < 10 && notscreen) problem = true
+    if (curqual.jitter / qualinfo.timePerFrame > 0.8 && notscreen)
+      problem = true
 
-    if (curqual.framesPerSecond < 14) upgrade = false
-    if (curqual.jitter / qualinfo.timePerFrame > 0.04) upgrade = false
+    if (curqual.framesPerSecond < 14 && notscreen) upgrade = false
+    if (curqual.jitter / qualinfo.timePerFrame > 0.04 && notscreen)
+      upgrade = false
 
     if (problem) {
       delete this.lastqualityUpgrade
@@ -1343,7 +1425,11 @@ class AVVideoOutputProcessor extends AVOutputProcessor {
   // Output means output to screen
   constructor(args) {
     super(args)
-    this.datatype = 'video'
+    if (!args.screenshare) {
+      this.datatype = 'video'
+    } else {
+      this.datatype = 'screen'
+    }
 
     this.writeframe = this.writeframe.bind(this)
 
@@ -1493,11 +1579,12 @@ class AVWorker {
       console.log('got event with task', task)
     }
     switch (task) {
-      case 'openVideoCamera':
+      case 'openVideoInput':
         {
           const newobj = new AVVideoInputProcessor({
             webworkid: event.data.webworkid,
-            inputstream: receiveReadableStream(event.data.readable)
+            inputstream: receiveReadableStream(event.data.readable),
+            screenshare: event.data.screenshare
           })
           this.objects[event.data.webworkid] = newobj
         }
@@ -1514,7 +1601,8 @@ class AVWorker {
       case 'openVideoDisplay':
         {
           const newobj = new AVVideoOutputProcessor({
-            webworkid: event.data.webworkid
+            webworkid: event.data.webworkid,
+            screenshare: event.data.screenshare
           })
           this.objects[event.data.webworkid] = newobj
         }
@@ -1529,10 +1617,10 @@ class AVWorker {
           this.objects[event.data.webworkid] = newobj
         }
         break
-      case 'switchVideoCamera':
+      case 'switchVideoInput':
         {
           const object = this.objects[event.data.webworkid]
-          object.switchVideoCamera({
+          object.switchVideoInput({
             inputstream: receiveReadableStream(event.data.readable)
           })
         }
@@ -1551,7 +1639,7 @@ class AVWorker {
           object.changeMute(event.data.muted)
         }
         break
-      case 'offChangeCam':
+      case 'offChange':
         {
           const object = this.objects[event.data.webworkid]
           object.changeOff(event.data.off)

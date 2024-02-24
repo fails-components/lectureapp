@@ -271,17 +271,13 @@ class AVEncoder extends AVCodec {
 }
 
 export class AVVideoEncoder extends AVEncoder {
-  // static levelwidth= [160, 320, 640, 848, 848, 1280, 1280, 1920]
-  static levelbitrate = [
-    150_000, 250_000, 500_000, 1000_000, 1750_000, 2000_000, 3600_000, 4800_000
-  ]
-
   constructor(args) {
     super(args)
 
     this.type = 'video'
 
-    this.outputlevel = args.outputlevel
+    this.bitrate = args.bitrate
+    this.framerate = args.framerate
     this.output = this.output.bind(this)
     this.recreateCodec().catch((error) => {
       console.log('Problem loading VideoDecoder', error)
@@ -330,13 +326,13 @@ export class AVVideoEncoder extends AVEncoder {
       this.codec.configure({
         codec: this.curcodec /* 'avc1.420034' */, // aka h264, maybe add profile
         avc: { format: 'annexb' },
-        framerate: 25,
+        framerate: this.framerate,
         displayWidth: chunk.displayWidth,
         displayHeight: chunk.displayHeight,
         width: chunk.displayWidth,
         height: chunk.displayHeight,
         // hardwareAcceleration: 'prefer-hardware',
-        bitrate: AVVideoEncoder.levelbitrate[this.outputlevel],
+        bitrate: this.bitrate,
         scalabilityMode: 'L1T3',
         latencyMode: 'realtime'
       })
@@ -351,13 +347,11 @@ export class AVVideoEncoder extends AVEncoder {
 }
 
 export class AVAudioEncoder extends AVEncoder {
-  static levelbitrate = [15_000, 64_000, 128_000]
-
   constructor(args) {
     super(args)
     this.type = 'audio'
 
-    this.outputlevel = args.outputlevel
+    this.bitrate = args.bitrate
 
     this.output = this.output.bind(this)
     this.recreateCodec().catch((error) => {
@@ -395,7 +389,7 @@ export class AVAudioEncoder extends AVEncoder {
         format: 'opus',
         sampleRate: chunk.sampleRate,
         numberOfChannels: chunk.numberOfChannels,
-        bitrate: AVAudioEncoder.levelbitrate[this.outputlevel],
+        bitrate: this.bitrate,
         latencyMode: 'realtime'
       })
       console.log('audio codec state', this.codec.state)
@@ -564,7 +558,7 @@ export class AVTransformStream {
       const oldreadableController = this.readableController
       this.readable = {}
       this.readableController = {}
-      for (const out in this.outputs) {
+      for (const out of this.outputs) {
         this.readable[out] = new ReadableStream(
           {
             start: (controller) => this.startReadable(controller, out),
@@ -573,7 +567,7 @@ export class AVTransformStream {
           { highWaterMark: this.highWaterMarkReadable }
         )
       }
-      for (const out in this.outputs) {
+      for (const out of this.outputs) {
         if (oldreadableController && oldreadableController[out]) {
           try {
             oldreadableController[out].close()
@@ -625,10 +619,10 @@ export class AVTransformStream {
         this.readableController.enqueue(finalchunk)
       }
     } else {
-      for (const out in this.outputs) {
+      for (const out of this.outputs) {
         const curchunk = finalchunk[out]
         if (
-          this.readableController[out].desiredSite <= 0 &&
+          this.readableController[out].desiredSize <= 0 &&
           out !== this.outputmain
         ) {
           // console.log('skip output ', out)
@@ -663,7 +657,7 @@ export class AVTransformStream {
   }
 
   startReadable(controller, out) {
-    if (!out) this.readableController = controller
+    if (typeof out === 'undefined') this.readableController = controller
     else this.readableController[out] = controller
   }
 
@@ -684,23 +678,21 @@ export class AVOneToMany extends AVTransformStream {
       outputs: args.outputlevel,
       outputmain: args.outputlevelmain
     })
-    this.outputlevel = args.outputlevel
     this.outputlevelmain = args.outputlevelmain
-    this.outputlevelmax = this.outputlevel.length - 1
+    this.outputlevelmax = args.outputlevel[args.outputlevel.length - 1]
   }
 
   setMaxOutputLevel(outputlevelmax) {
     if (outputlevelmax >= 0 || outputlevelmax <= this.outputlevel.length - 1) {
-      this.outputlevelmax = outputlevelmax
+      this.outputlevelmax = this.outputs[outputlevelmax]
     }
   }
 }
 
 export class AVOneFrameToManyScaler extends AVOneToMany {
-  static levelwidth = [160, 320, 640, 848, 848, 1280, 1280, 1920]
-
   constructor(args) {
     super(args)
+    this.outputwidth = args.outputwidth
     this.off = true
   }
 
@@ -727,19 +719,16 @@ export class AVOneFrameToManyScaler extends AVOneToMany {
       frame.close()
       return resframe
     }
-    for (const out in this.outputlevel) {
+    for (const out of this.outputs) {
       if (out > this.outputlevelmax) continue // outlevel seems to be suspended
       // ok now we do the math and scale the frame
-      const targetwidth = Math.min(
-        AVOneFrameToManyScaler.levelwidth[out],
-        frame.displayWidth
-      )
+      const targetwidth = Math.min(this.outputwidth[out], frame.displayWidth)
 
       // eslint-disable-next-line no-undef
       resframe[out] = new VideoFrame(frame, {
         visibleRect,
         displayWidth: targetwidth,
-        displayHeight: targetwidth * targetinvaspect
+        displayHeight: ((targetwidth * targetinvaspect) >> 1) << 1
       })
     }
     frame.close()
@@ -761,7 +750,7 @@ export class AVOneToManyCopy extends AVOneToMany {
     const resframe = {}
     if (this.muted) return resframe
 
-    for (const out in this.outputlevel) {
+    for (const out of this.outputs) {
       if (out > this.outputlevelmax) continue // outlevel seems to be suspended
       // ok now we do the math and scale the frame
 

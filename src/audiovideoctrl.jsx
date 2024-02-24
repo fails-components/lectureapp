@@ -33,6 +33,7 @@ import {
   faVideo,
   faVideoSlash
 } from '@fortawesome/free-solid-svg-icons'
+import { faChromecast as faScreencast } from '@fortawesome/free-brands-svg-icons'
 
 export class SpeakerSet {
   constructor(args) {
@@ -257,11 +258,14 @@ export class VideoControl extends Component {
       micmuted: true,
       cameramuted: true,
       tvoff: true,
+      screencastMute: true,
       supportedMedia: {
         videoin: false,
         videoout: false,
         audioin: false,
-        audioout: false
+        audioout: false,
+        screencastout: false,
+        screencastin: false
       }
     }
     this.devicesChanged = this.devicesChanged.bind(this)
@@ -269,6 +273,7 @@ export class VideoControl extends Component {
     this.vophid = true
     this.aophid = true
     this.aopohid = true
+    this.scophid = true
   }
 
   transportStateUpdate(state) {
@@ -334,14 +339,14 @@ export class VideoControl extends Component {
   camToggle() {
     if (this.state.camera) {
       const cammuted = this.state.cameramuted
-      if (cammuted) this.state.camera.camOn()
-      else this.state.camera.camOff()
+      if (cammuted) this.state.camera.videoOn()
+      else this.state.camera.videoOff()
       this.setState({ cameramuted: !cammuted })
     } else if (this.state.cameramuted) {
       if (!this.props.receiveOnly) {
         this.cameraStart()
           .then((camera) => {
-            camera.camOn()
+            camera.videoOn()
             this.setState({ cameramuted: false })
           })
           .catch((error) => console.log('Problem with camera start', error))
@@ -499,6 +504,13 @@ export class VideoControl extends Component {
           this.setVideoSrc(viddev[0].deviceId, true)
         }
       }
+      // screenshare
+      const scind = devices.findIndex(
+        (el) => this.state.screencastid === el.deviceId
+      )
+      if (scind === -1) {
+        this.setState({ screencastid: undefined })
+      }
       // audio
       const audind = devices.findIndex(
         (el) => this.state.audioid === el.deviceId
@@ -548,6 +560,47 @@ export class VideoControl extends Component {
       console.log('cameraStart failed', error)
     }
     return cam
+  }
+
+  startScreencast({ desktopElement, videoDevice }) {
+    try {
+      const avinterf =
+        this.avinterf || (this.avinterf = AVInterface.getInterface())
+      const supported = AVInterface.queryMediaSupported()
+      if (!supported.screencastin) {
+        return null
+      }
+      if (!this.state.screencast) {
+        avinterf
+          .openScreenCast({ desktopElement, videoDevice })
+          .then((screencastobj) => {
+            screencastobj.buildOutgoingPipeline()
+            screencastobj.videoOn()
+            if (this.props.id) screencastobj.setDestId(this.props.id)
+            this.setState({ screencast: screencastobj, screencastMute: false })
+          })
+          .catch((error) => {
+            console.log('Problem opening screencast', error)
+          })
+      } else {
+        this.state.screencast.switchScreencast({ desktopElement, videoDevice })
+        this.state.screencast.videoOn()
+        this.setState({ screencastMute: false })
+      }
+    } catch (error) {
+      console.log('startScreencast failed', error)
+    }
+  }
+
+  stopScreencast() {
+    try {
+      if (this.state.screencast) {
+        this.state.screencast.videoOff()
+        this.setState({ screencastMute: true })
+      }
+    } catch (error) {
+      console.log('stopScreencast failed', error)
+    }
   }
 
   async microphoneStart() {
@@ -745,6 +798,34 @@ export class VideoControl extends Component {
             }}
           ></Button>
         )}
+        {suppMedia.screencastin && !this.props.noScreencast && (
+          <Button
+            icon={<FontAwesomeIcon icon={faScreencast} />}
+            id='bt-screencast'
+            className={
+              !this.state.screencast || this.state.screencastMute
+                ? deselbuttonCls
+                : selbuttonCls
+            }
+            onClick={(e) => {
+              if (this.scophid) {
+                this.screencastop.show(e)
+                if (this.screencastopclean) clearTimeout(this.screencastopclean)
+                this.screencastopclean = setTimeout(() => {
+                  clearTimeout(this.screencastopclean)
+                  if (!this.scophid) this.screencastop.hide(e)
+                }, 10000)
+                const avinterf =
+                  this.avinterf || (this.avinterf = AVInterface.getInterface())
+                avinterf
+                  .getAVDevices()
+                  .then((avdevices) => this.setState({ avdevices }))
+                  .catch((error) => console.log('Problem getavdevices', error))
+              }
+              // TODO if (!this.scophid || this.state.cameramuted?) this.camToggle()
+            }}
+          ></Button>
+        )}
       </React.Fragment>
     )
     return (
@@ -848,6 +929,65 @@ export class VideoControl extends Component {
             placeholder='Select an audio output'
             style={{ maxWidth: '10vw' }}
           />
+        </OverlayPanel>
+        <OverlayPanel
+          ref={(el) => (this.screencastop = el)}
+          onShow={() => (this.scophid = false)}
+          onHide={() => {
+            if (this.screencastopclean) clearTimeout(this.screencastopclean)
+            this.scophid = true
+          }}
+        >
+          {this.state.screencastMute && (
+            <React.Fragment>
+              <Button
+                className='p-button-primary p-button-rounded p-m-2'
+                key='bt-camera-share'
+                icon={<FontAwesomeIcon icon={faVideo} className='p-m-1' />}
+                label='Cast video'
+                onClick={(event) => {
+                  this.screencastop.hide()
+                  this.startScreencast({
+                    videoDevice: this.state.screencastid
+                  })
+                }}
+                disabled={!this.state.screencastid}
+              />
+              <Button
+                className='p-button-primary p-button-rounded p-m-2'
+                key='bt-screen-share'
+                icon={<FontAwesomeIcon icon={faScreencast} className='p-m-1' />}
+                label='Select source'
+                onClick={(event) => {
+                  this.screencastop.hide()
+                  this.startScreencast({ desktopElement: true })
+                }}
+              />{' '}
+              <br />
+              Video source:
+              <Dropdown
+                optionLabel='label'
+                optionValue='deviceId'
+                value={this.state.screencastid}
+                options={videosrc}
+                onChange={(e) => this.setState({ screencastid: e.value })}
+                placeholder='Select a video source'
+                style={{ maxWidth: '10vw' }}
+              />
+            </React.Fragment>
+          )}
+          {!this.state.screencastMute && (
+            <Button
+              className='p-button-primary p-button-rounded p-m-2'
+              key='bt-screen-share'
+              icon={<FontAwesomeIcon icon={faScreencast} className='p-m-1' />}
+              label='Stop casting'
+              onClick={(event) => {
+                this.screencastop.hide()
+                this.stopScreencast()
+              }}
+            />
+          )}
         </OverlayPanel>
       </React.Fragment>
     )

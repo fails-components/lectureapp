@@ -73,31 +73,31 @@ export class AVDeviceInputStream extends AVStream {
   }
 }
 
-export class AVCameraStream extends AVDeviceInputStream {
+export class AVVideoInputStream extends AVDeviceInputStream {
   // eslint-disable-next-line no-useless-constructor
   constructor(args) {
     super(args)
     this.off = true
   }
 
-  camOff() {
+  videoOff() {
     if (this.track && !this.off) {
       this.track.enabled = false
       this.off = true
       AVInterface.worker.postMessage({
-        task: 'offChangeCam',
+        task: 'offChange',
         webworkid: this.webworkid,
         off: this.off
       })
     }
   }
 
-  camOn() {
+  videoOn() {
     if (this.track && this.off) {
       this.track.enabled = true
       this.off = false
       AVInterface.worker.postMessage({
-        task: 'offChangeCam',
+        task: 'offChange',
         webworkid: this.webworkid,
         off: this.off
       })
@@ -130,6 +130,49 @@ export class AVCameraStream extends AVDeviceInputStream {
     })
     console.log('track settings after', track.getSettings())
 
+    this.switchTrack({ track, screenshare: false })
+  }
+
+  async switchScreencast({ desktopElement, videoDevice }) {
+    if (this.track) this.track.stop()
+
+    let mstream
+    if (videoDevice) {
+      mstream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: { exact: videoDevice.deviceId },
+          width: 1280,
+          height: 720,
+          aspectRatio: { ideal: 16 / 9 }
+        }
+      })
+      this.deviceId = videoDevice
+    } else if (desktopElement) {
+      mstream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        monitorTypeSurfaces: 'include',
+        preferCurrentTab: false,
+        selfBrowserSurface: 'exclude',
+        surfaceSwitching: 'exclude',
+        systemAudio: 'exclude'
+      })
+    } else {
+      throw new Error('Screencast is neither video nor desktop element')
+    }
+    console.log('mstream object', mstream)
+
+    const track = mstream.getTracks()[0]
+    console.log('mtrackobject', track)
+    console.log('track settings', track.getSettings())
+    await track.applyConstraints({
+      frameRate: 15.0,
+      cursor: 'motion'
+    })
+    console.log('track settings after', track.getSettings())
+    this.switchTrack({ track, screenshare: true })
+  }
+
+  switchTrack({ track, screenshare }) {
     // eslint-disable-next-line no-undef
     const trackprocessor = new MediaStreamTrackProcessor({
       track,
@@ -139,8 +182,9 @@ export class AVCameraStream extends AVDeviceInputStream {
       // now we will drop the track to the worker
       AVInterface.worker.postMessage(
         {
-          task: 'openVideoCamera',
+          task: 'openVideoInput',
           webworkid: this.webworkid,
+          screenshare,
           readable: transferReadableStream(
             trackprocessor.readable,
             trackprocessor.isPolyfill
@@ -156,7 +200,8 @@ export class AVCameraStream extends AVDeviceInputStream {
     } else {
       AVInterface.worker.postMessage(
         {
-          task: 'switchVideoCamera',
+          task: 'switchVideoInput',
+          screenshare,
           webworkid: this.webworkid,
           readable: transferReadableStream(
             trackprocessor.readable,
@@ -423,7 +468,8 @@ export class AVRenderStream extends AVInputStream {
 
     AVInterface.worker.postMessage({
       task: 'openVideoDisplay',
-      webworkid: this.webworkid
+      webworkid: this.webworkid,
+      screenshare: args.screenshare
     })
   }
 
@@ -516,7 +562,9 @@ export class AVInterface {
       videoin: true,
       videoout: true,
       audioin: true,
-      audioout: true
+      audioout: true,
+      screencastout: true,
+      screencastin: true
     }
     AVInterface.mediadevicesupported = true
     // here we check if media capabilites are here
@@ -532,12 +580,16 @@ export class AVInterface {
       supported.videoin = false
       AVInterface.mediadevicesupported = false
     }
+    if (!navigator.mediaDevices.getDisplayMedia) {
+      supported.screenin = false
+    }
     if (!('AudioDecoder' in globalThis)) {
       console.log('AudioDecoder unsupported! We will failback to polyfill!')
     }
     if (!('VideoDecoder' in globalThis)) {
       console.log('VideoDecoder unsupported!')
       supported.videoout = false
+      supported.screencastout = false
     }
     if (!('AudioEncoder' in globalThis)) {
       console.log('AudioEncoder unsupported! We will failback to polyfill!')
@@ -545,6 +597,7 @@ export class AVInterface {
     if (!('VideoEncoder' in globalThis)) {
       console.log('VideoEncoder unsupported!')
       supported.videoin = false
+      supported.screenin = false
     }
     return supported
   }
@@ -698,12 +751,45 @@ export class AVInterface {
       console.log('video device', device)
       const webworkid = this.getNewId()
 
-      const avobj = new AVCameraStream({
+      const avobj = new AVVideoInputStream({
         webworkid
       })
       this.registerForFinal(avobj, webworkid)
 
       await avobj.switchCamera(device.deviceId)
+
+      return avobj
+    } catch (error) {
+      console.log('error opening video device', error)
+    }
+  }
+
+  async openScreenCast({ desktopElement, videoDevice }) {
+    // TODO rewrite
+    if (!AVInterface.mediadevicesupported) return
+    try {
+      let device
+      if (videoDevice) {
+        if (!this.devices) await this.getAVDevices()
+        const devices = this.devices.filter((el) => el.kind === 'videoinput')
+        if (devices.length < 1) throw new Error('no Video devices available')
+        const seldevices = devices.filter((el) => el.deviceId === videoDevice)
+
+        if (seldevices.length > 0) device = seldevices[0]
+        if (!seldevices) device = devices[0]
+        // ok now we have one we can finally open the video stuff
+        console.log('screen share video device', device)
+      }
+      const webworkid = this.getNewId()
+
+      // TODO change obj?
+      const avobj = new AVVideoInputStream({
+        webworkid,
+        screenshare: true
+      })
+      this.registerForFinal(avobj, webworkid)
+
+      await avobj.switchScreencast({ desktopElement, videoDevice: device })
 
       return avobj
     } catch (error) {
@@ -744,7 +830,8 @@ export class AVInterface {
       const webworkid = this.getNewId()
 
       const avobj = new AVRenderStream({
-        webworkid
+        webworkid,
+        screenshare: args.screenshare
       })
       this.registerForFinal(avobj, webworkid)
 
