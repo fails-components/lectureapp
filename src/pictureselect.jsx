@@ -3,11 +3,14 @@ import React, { Component } from 'react'
 export class PictureSelect extends Component {
   itemPictTemplate(item) {
     return (
-      <div key={item.itemImageSrc + 'IMG'} style={{ height: '40vh' }}>
+      <div
+        key={item.itemImageSrc + 'IMG'}
+        style={{ height: '25vh', top: '0px', position: 'relative' }}
+      >
         <img
           src={item.itemImageSrc}
           key={item.itemImageSrc + 'IMGBody'}
-          alt={item.title}
+          alt={item.title || item.alt}
           style={{
             width: 'auto',
             height: 'auto',
@@ -29,7 +32,7 @@ export class PictureSelect extends Component {
           }}
         >
           {' '}
-          {item.title}
+          {item.title || item.alt}
         </span>
       </div>
     )
