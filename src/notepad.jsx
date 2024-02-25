@@ -515,6 +515,7 @@ export class NoteScreenBase extends Component {
                 this.state.bbwidth
               }
               pageoffsetabsolute={this.props.pageoffsetabsolute}
+              drawActivityMonitor={this.props.drawActivityMonitor}
             ></Blackboard>
             {this.props.notesmode && (
               <BlackboardNotepad
@@ -551,6 +552,7 @@ export class NoteScreenBase extends Component {
             reportDrawPosCB={this.props.reportDrawPosCB}
             devicePixelRatio={this.state.devicePixelRatio}
             informDraw={this.props.informDraw}
+            drawActivityMonitor={this.props.drawActivityMonitor}
           ></BlackboardNotepad>
         )}
         {this.props.isnotepad && (

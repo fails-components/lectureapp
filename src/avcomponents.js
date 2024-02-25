@@ -506,6 +506,128 @@ export class AVAudioDecoder extends AVDecoder {
   }
 }
 
+export class AVSink {
+  constructor(args) {
+    this.write = this.write.bind(this)
+    this.closeWritable = this.closeWritable.bind(this)
+
+    this.highWaterMarkWritable = args?.highWaterMarkWritable || 2
+
+    this.writable = new WritableStream(
+      {
+        start(controller) {},
+        write: this.write,
+        close: this.closeWritable,
+        abort(reason) {}
+      },
+      { highWaterMark: this.highWaterMarkWritable }
+    )
+  }
+
+  async closeWritable(controller) {
+    if (this.close) await this.close()
+  }
+
+  async write(chunk) {
+    if (!chunk) return
+    await this.process(chunk)
+  }
+}
+
+export class AVFrameSceneChange extends AVSink {
+  constructor(args) {
+    super(args)
+    // TODO add detection parameters
+    this.lastRefFrame = new Uint8Array(0)
+    this.workCanvas = new OffscreenCanvas(160, 120)
+    this.workContext = this.workCanvas.getContext('2d', {
+      alpha: false,
+      willReadFrequently: true
+    })
+    const now = Date.now()
+    this.lastMinorReport = now
+    this.lastMajorReport = now
+  }
+
+  async process(frame) {
+    if (
+      frame.displayWidth !== this.workCanvas.width ||
+      frame.displayHeight !== this.workCanvas.height
+    ) {
+      this.workCanvas.width = frame.displayWidth
+      this.workCanvas.height = frame.displayHeight
+    }
+    this.workContext.drawImage(
+      frame,
+      0,
+      0,
+      frame.displayWidth,
+      frame.displayHeight
+    )
+    frame.close()
+    // scaling!
+    const imagdata = this.workContext.getImageData(
+      0,
+      0,
+      this.workCanvas.width,
+      this.workCanvas.height
+    )
+
+    this.lastFrame = this.workFrame
+
+    this.workFrame = imagdata.data
+    if (this.lastRefFrame.byteLength !== this.workFrame.byteLength) {
+      await this.majorChange()
+      return
+    }
+
+    const { deviation } = this.calcChanges(this.lastRefFrame, this.workFrame)
+    if (deviation > 0.05) this.majorChange()
+    const { deviation: lastframedeviation, maxdeviation } = this.calcChanges(
+      this.lastFrame,
+      this.workFrame
+    )
+    if (lastframedeviation > 0.02 || maxdeviation > 0.1)
+      this.reportMinorChange()
+  }
+
+  majorChange() {
+    this.lastRefFrame = this.workFrame
+    this.workFrame = undefined
+    const now = Date.now()
+    if (now - this.lastMajorReport < 8000) return // only record sheets, sitting for more than 8 s
+    this.lastMajorReport = now
+    // TODO clone the picture and convert to picture
+  }
+
+  reportMinorChange() {
+    const now = Date.now()
+    this.lastMinorReport = now
+    // TODO implement
+  }
+
+  get minorReportTime() {
+    return this.lastMinorReport
+  }
+
+  calcChanges(frame1, frame2) {
+    if (!frame1 || !frame2) return { deviation: undefined }
+    let sqrs = 0
+    let max = 0
+    for (let i = 0; i < frame1.byteLength; i++) {
+      const diff = frame1[i] - frame2[i]
+      sqrs += diff * diff
+      max = Math.max(max, Math.abs(diff))
+    }
+    return {
+      deviation: Math.sqrt(sqrs) / frame1.byteLength,
+      maxdeviation: max / 255
+    }
+  }
+
+  async close() {}
+}
+
 export class AVTransformStream {
   // note actually a transform stream would be more suitable, but it is not available in firefox
   constructor(args) {
@@ -720,7 +842,7 @@ export class AVOneFrameToManyScaler extends AVOneToMany {
       return resframe
     }
     for (const out of this.outputs) {
-      if (out > this.outputlevelmax) continue // outlevel seems to be suspended
+      if (typeof out === 'number' && out > this.outputlevelmax) continue // outlevel seems to be suspended
       // ok now we do the math and scale the frame
       const targetwidth = Math.min(this.outputwidth[out], frame.displayWidth)
 

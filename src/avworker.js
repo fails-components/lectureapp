@@ -29,7 +29,8 @@ import {
   AVAudioEncoder,
   AVOneToManyCopy,
   AVOneFrameToManyScaler,
-  createEncodedAudioChunk
+  createEncodedAudioChunk,
+  AVFrameSceneChange
 } from './avcomponents'
 import { KeyStore } from './keystore'
 import { receiveReadableStream } from './transferable-stream-of-transferables'
@@ -434,6 +435,7 @@ class AVProcessor {
   }
 
   async getTickets({ id, dir }) {
+    if (!id) throw new Error('id is not defined')
     if (!AVWorker.isNetworkOn()) {
       await AVWorker.waitForNetwork()
     }
@@ -933,6 +935,7 @@ class AVVideoInputProcessor extends AVInputProcessor {
       this.lowerframerate = 14
       this.minimalframerate = 5
       this.maxSkippedFrames = 10 // screen should tolerate this
+      this.sceneDetect = true
     }
 
     this.initPipeline()
@@ -959,9 +962,17 @@ class AVVideoInputProcessor extends AVInputProcessor {
     const qualities =
       this.datatype === 'screen' ? screenQualities : videoQualities
     this.qualities.forEach((el) => (outputwidth[el] = qualities[el].width))
+    const outputlevel = [...this.qualities]
+    let outputlevelmain = 0
+    if (this.sceneDetect) {
+      outputlevel.unshift('scene') // scene detector
+      // eslint-disable-next-line dot-notation
+      outputwidth['scene'] = 160
+      outputlevelmain++
+    }
     this.multscaler = new AVOneFrameToManyScaler({
-      outputlevel: this.qualities,
-      outputlevelmain: 0, // the blocking one
+      outputlevel,
+      outputlevelmain, // the blocking one
       outputwidth
     })
 
@@ -972,6 +983,38 @@ class AVVideoInputProcessor extends AVInputProcessor {
       this.encoder[qual] = new AVVideoEncoder({
         bitrate: qualities[qual].bitrate,
         framerate: qualities[qual].framerate
+      })
+    }
+    if (this.sceneDetect) {
+      this.sceneDetector = new AVFrameSceneChange()
+    }
+  }
+
+  async offerStatus() {
+    if (this.sceneDetector) {
+      const now = Date.now()
+      if (
+        now - this.sceneDetector.minorReportTime < 4000 &&
+        now - this.lastoffersend > 5000
+      ) {
+        return { miScChg: true }
+      } else {
+        return undefined
+      }
+    }
+    return {}
+  }
+
+  buildOutgoingPipeline() {
+    super.buildOutgoingPipeline()
+    if (this.sceneDetect) {
+      // eslint-disable-next-line dot-notation
+      const curstream = this.multscaler.readable['scene']
+      // encoder
+      const pipeTos = []
+      pipeTos.push(curstream.pipeTo(this.sceneDetector.writable))
+      Promise.all(pipeTos).catch((error) => {
+        console.log('Problem in pipetos buildOutgoingPipeline AVIP', error)
       })
     }
   }

@@ -1237,12 +1237,14 @@ export class Blackboard extends Component {
           }
         }
         this.networkreceive.receiveData(data.data)
+        if (this.props.drawActivityMonitor) this.props.drawActivityMonitor()
         break
       case 'receivePictInfo':
         this.receivePictInfo(data.data)
         break
       case 'receiveFoG':
         this.receiveFoG(data.data)
+        if (this.props.drawActivityMonitor) this.props.drawActivityMonitor()
         break
       default:
         throw new Error('Unknown bbchannel type ' + type)
@@ -3599,6 +3601,7 @@ export class BlackboardNotepad extends Component {
           pageoffset={this.props.pageoffset}
           pageoffsetabsolute={this.props.pageoffsetabsolute}
           scrollposListener={this.scrollposListener}
+          drawActivityMonitor={this.props.drawActivityMonitor}
         ></Blackboard>
       </div>
     )

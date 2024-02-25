@@ -69,7 +69,9 @@ import {
   fiReceiveStart,
   fiVideoQuestionPermit,
   fiVideoQuestionOn,
-  fiVideoQuestionOff
+  fiVideoQuestionOff,
+  fiScreenCast,
+  fiNotes
 } from './icons/icons.jsx'
 import { NoteScreenBase } from './notepad.jsx'
 import { NoteTools } from './toolbox'
@@ -441,6 +443,7 @@ export class FailsBasis extends Component {
         this.avoffers[data.type][data.id] = {
           time: Date.now(),
           db: data.db,
+          miScChg: data.miScChg,
           channelid: data.channelid
         }
       }
@@ -462,6 +465,7 @@ export class FailsBasis extends Component {
               newoffers[el.type][el.id] = {
                 time: Number(el.time),
                 db: el.db,
+                miScChg: data.miScChg,
                 channelid: data.channelid
               }
           }
@@ -803,6 +807,10 @@ export class FailsBasis extends Component {
           id: sid
           // may be add other stuff later
         }
+      }
+      if (screen[sid].miScChg && screen[sid].time > Date.now() - 5 * 1000) {
+        // ok, activity on the screen share...
+        if (this.screenShareActivity) this.screenShareActivity(sid)
       }
     }
     let screenshareSourceAVId
@@ -2833,6 +2841,8 @@ export class FailsNotes extends FailsBasis {
     this.state.chattext = ''
     this.state.videoquestion = false
 
+    this.state.presActivity = 'draw'
+
     this.notepaduuid = null
     this.notetools = React.createRef()
 
@@ -2841,6 +2851,9 @@ export class FailsNotes extends FailsBasis {
     this.onVoteSel = this.onVoteSel.bind(this)
     this.onCastvote = this.onCastvote.bind(this)
     this.informDraw = this.informDraw.bind(this)
+
+    this.drawActivityMonitor = this.drawActivityMonitor.bind(this)
+    this.screenShareActivity = this.screenShareActivity.bind(this)
   }
 
   componentDidMount() {
@@ -2928,6 +2941,24 @@ export class FailsNotes extends FailsBasis {
     }
   }
 
+  drawActivityMonitor() {
+    if (this.state.presActivity !== 'draw') {
+      this.setState({ presActivity: 'draw' })
+    }
+  }
+
+  screenShareActivity(sid) {
+    if (!this.state.avinterfaceStarted || !this.state.supportedMedia.videoin)
+      return
+    // screen should only work, if audio/video screen sharing is activated
+    if (this.state.presActivity !== 'screen') {
+      this.setState({ presActivity: 'screen', screenshareScreenAVId: sid })
+    } else {
+      if (this.state.screenshareScreenAVId !== sid)
+        this.setState({ screenshareScreenAVId: sid })
+    }
+  }
+
   toggleScrollUnlock() {
     const curoffset = this.noteref.calcCurpos()
 
@@ -2935,7 +2966,11 @@ export class FailsNotes extends FailsBasis {
       if (state.scrollunlock) {
         return { scrollunlock: !state.scrollunlock, pageoffset: 0 }
       } else {
-        return { scrollunlock: !state.scrollunlock, pageoffset: curoffset }
+        return {
+          scrollunlock: !state.scrollunlock,
+          pageoffset: curoffset,
+          unlockPresActivity: state.presActivity
+        }
       }
     })
   }
@@ -3154,46 +3189,76 @@ export class FailsNotes extends FailsBasis {
       position: 'top',
       showDelay: 1000
     }
+    const drawmode =
+      (this.state.presActivity === 'draw' && !this.state.scrollunlock) ||
+      (this.state.unlockPresActivity === 'draw' && this.state.scrollunlock)
     return (
       <div>
         <Button
           icon={this.state.scrollunlock ? 'pi pi-lock-open' : 'pi pi-lock'}
           className='p-button-raised p-button-rounded p-m-2'
-          tooltip='Lock/unlock scrolling to lecturer'
+          tooltip='Lock/unlock scrolling screencast switching to follow lecturer'
           tooltipOptions={ttopts}
           onClick={this.toggleScrollUnlock}
         />
-        <Button
-          icon='pi pi-arrow-up'
-          className='p-button-raised p-button-rounded p-m-2'
-          tooltip='Scroll up'
-          tooltipOptions={ttopts}
-          onClick={() =>
-            this.setState((state) => ({
-              pageoffset: state.scrollunlock
-                ? Math.max(0, state.pageoffset - 0.5)
-                : state.pageoffset - 0.5
-            }))
-          }
-        />
-        <InputText
-          value={this.state.pageoffset}
-          disabled
-          style={{ width: '40px' }}
-          className='p-inputtext-sm p-m-2'
-        />
+        {drawmode && (
+          <React.Fragment>
+            <Button
+              icon='pi pi-arrow-up'
+              className='p-button-raised p-button-rounded p-m-2'
+              tooltip='Scroll up'
+              tooltipOptions={ttopts}
+              onClick={() =>
+                this.setState((state) => ({
+                  pageoffset: state.scrollunlock
+                    ? Math.max(0, state.pageoffset - 0.5)
+                    : state.pageoffset - 0.5
+                }))
+              }
+            />
+            <InputText
+              value={this.state.pageoffset}
+              disabled
+              style={{ width: '40px' }}
+              className='p-inputtext-sm p-m-2'
+            />
 
-        <Button
-          icon='pi pi-arrow-down'
-          className='p-button-raised p-button-rounded p-m-2'
-          tooltip='Scroll down'
-          tooltipOptions={ttopts}
-          onClick={() =>
-            this.setState((state) => ({
-              pageoffset: state.pageoffset + 0.5
-            }))
-          }
-        />
+            <Button
+              icon='pi pi-arrow-down'
+              className='p-button-raised p-button-rounded p-m-2'
+              tooltip='Scroll down'
+              tooltipOptions={ttopts}
+              onClick={() =>
+                this.setState((state) => ({
+                  pageoffset: state.pageoffset + 0.5
+                }))
+              }
+            />
+          </React.Fragment>
+        )}
+        {this.state.scrollunlock &&
+          (this.state.unlockPresActivity !== 'draw' ||
+            this.state.screenshareScreenAVId) && (
+            <Button
+              icon={
+                this.state.unlockPresActivity !== 'screen'
+                  ? fiScreenCast
+                  : fiNotes
+              }
+              className='p-button-raised p-button-rounded p-m-2'
+              tooltip='Switch between notes and screenshare'
+              tooltipOptions={ttopts}
+              key={18}
+              onClick={() => {
+                this.setState({
+                  unlockPresActivity:
+                    this.state.unlockPresActivity === 'screen'
+                      ? 'draw'
+                      : 'screen'
+                })
+              }}
+            />
+          )}
         <Button
           icon='pi pi-comment'
           className='p-button-raised p-button-rounded p-m-2'
@@ -3217,18 +3282,20 @@ export class FailsNotes extends FailsBasis {
               className='p-button-raised p-button-rounded p-m-2'
             />
           )}
-        <Button
-          icon={<FontAwesomeIcon icon={faFilePen} />}
-          className={
-            this.state.notesmode
-              ? 'p-button-raised p-button-rounded p-m-2'
-              : 'p-button-secondary p-button-raised p-button-rounded p-m-2'
-          }
-          tooltip='Annotate the lecture'
-          tooltipOptions={ttopts}
-          key={5}
-          onClick={() => this.onNotesmodeToggle()}
-        />
+        {drawmode && (
+          <Button
+            icon={<FontAwesomeIcon icon={faFilePen} />}
+            className={
+              this.state.notesmode
+                ? 'p-button-raised p-button-rounded p-m-2'
+                : 'p-button-secondary p-button-raised p-button-rounded p-m-2'
+            }
+            tooltip='Annotate the lecture'
+            tooltipOptions={ttopts}
+            key={5}
+            onClick={() => this.onNotesmodeToggle()}
+          />
+        )}
         <Button
           icon={fiFailsLogo}
           key={4}
@@ -3369,6 +3436,14 @@ export class FailsNotes extends FailsBasis {
       ))
     }
 
+    const drawmode =
+      (this.state.presActivity === 'draw' && !this.state.scrollunlock) ||
+      (this.state.unlockPresActivity === 'draw' && this.state.scrollunlock)
+
+    const screenmode =
+      (this.state.presActivity === 'screen' && !this.state.scrollunlock) ||
+      (this.state.unlockPresActivity === 'screen' && this.state.scrollunlock)
+
     return (
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
@@ -3474,11 +3549,37 @@ export class FailsNotes extends FailsBasis {
           height={this.props.height}
           noteref={this.getNoteRef}
           updateSizes={this.updateSizes}
-          hidden={!this.state.casttoscreens}
+          hidden={!this.state.casttoscreens || !drawmode}
           informDraw={this.informDraw}
           experimental={this.experimental()}
           features={this.features()}
+          drawActivityMonitor={this.drawActivityMonitor}
         ></NoteScreenBase>
+        <div
+          style={{
+            display: !this.state.casttoscreens || !screenmode ? 'none' : 'grid',
+            placeItems: 'center'
+          }}
+        >
+          {(!this.state.supportedMedia.videoin ||
+            !this.state.avinterfaceStarted) && (
+            <h3>
+              Your browser does not support receiving screencasts! <br />
+              Here should appear a screencast {
+                this.state.screenshareScreenAVId
+              }{' '}
+              .
+            </h3>
+          )}
+          {this.state.supportedMedia.videoin &&
+            this.state.avinterfaceStarted && (
+              <AVVideoRender
+                screenshareid={this.state.screenshareScreenAVId}
+                screenshare={true}
+                width={100}
+              ></AVVideoRender>
+            )}
+        </div>
         {!this.state.casttoscreens && (
           <div
             className='p-d-flex p-jc-center p-ai-center'

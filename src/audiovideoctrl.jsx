@@ -949,7 +949,7 @@ export class VideoControl extends Component {
               <Button
                 className='p-button-primary p-button-rounded p-m-2'
                 key='bt-camera-share'
-                icon={<FontAwesomeIcon icon={faVideo} className='p-m-1' />}
+                icon={<FontAwesomeIcon icon={faVideo} />}
                 label='Cast video'
                 onClick={(event) => {
                   this.screencastop.hide()
