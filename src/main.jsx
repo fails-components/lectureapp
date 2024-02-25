@@ -3574,7 +3574,9 @@ export class FailsNotes extends FailsBasis {
           {this.state.supportedMedia.videoin &&
             this.state.avinterfaceStarted && (
               <AVVideoRender
-                screenshareid={this.state.screenshareScreenAVId}
+                screenshareid={
+                  screenmode ? this.state.screenshareScreenAVId : undefined
+                }
                 screenshare={true}
                 width={100}
               ></AVVideoRender>
