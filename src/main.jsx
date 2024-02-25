@@ -2737,7 +2737,9 @@ export class FailsScreen extends FailsBasis {
         <div
           style={{
             display: this.state.channeltype !== 'screenshare' ? 'none' : 'grid',
-            placeItems: 'center'
+            placeItems: 'center',
+            backgroundColor: 'black',
+            height: '100vh'
           }}
         >
           {(!this.state.supportedMedia.videoin ||
@@ -3558,7 +3560,9 @@ export class FailsNotes extends FailsBasis {
         <div
           style={{
             display: !this.state.casttoscreens || !screenmode ? 'none' : 'grid',
-            placeItems: 'center'
+            placeItems: 'center',
+            backgroundColor: 'black',
+            height: '100vh'
           }}
         >
           {(!this.state.supportedMedia.videoin ||
