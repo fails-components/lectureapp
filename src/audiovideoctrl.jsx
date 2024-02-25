@@ -33,7 +33,7 @@ import {
   faVideo,
   faVideoSlash
 } from '@fortawesome/free-solid-svg-icons'
-import { faChromecast as faScreencast } from '@fortawesome/free-brands-svg-icons'
+import { fiScreenCast } from './icons/icons.jsx'
 
 export class SpeakerSet {
   constructor(args) {
@@ -798,34 +798,40 @@ export class VideoControl extends Component {
             }}
           ></Button>
         )}
-        {suppMedia.screencastin && !this.props.noScreencast && (
-          <Button
-            icon={<FontAwesomeIcon icon={faScreencast} />}
-            id='bt-screencast'
-            className={
-              !this.state.screencast || this.state.screencastMute
-                ? deselbuttonCls
-                : selbuttonCls
-            }
-            onClick={(e) => {
-              if (this.scophid) {
-                this.screencastop.show(e)
-                if (this.screencastopclean) clearTimeout(this.screencastopclean)
-                this.screencastopclean = setTimeout(() => {
-                  clearTimeout(this.screencastopclean)
-                  if (!this.scophid) this.screencastop.hide(e)
-                }, 10000)
-                const avinterf =
-                  this.avinterf || (this.avinterf = AVInterface.getInterface())
-                avinterf
-                  .getAVDevices()
-                  .then((avdevices) => this.setState({ avdevices }))
-                  .catch((error) => console.log('Problem getavdevices', error))
+        {suppMedia.screencastin &&
+          !this.props.noScreencast &&
+          !this.props.receiveOnly && (
+            <Button
+              icon={fiScreenCast}
+              id='bt-screencast'
+              className={
+                !this.state.screencast || this.state.screencastMute
+                  ? deselbuttonCls
+                  : selbuttonCls
               }
-              // TODO if (!this.scophid || this.state.cameramuted?) this.camToggle()
-            }}
-          ></Button>
-        )}
+              onClick={(e) => {
+                if (this.scophid) {
+                  this.screencastop.show(e)
+                  if (this.screencastopclean)
+                    clearTimeout(this.screencastopclean)
+                  this.screencastopclean = setTimeout(() => {
+                    clearTimeout(this.screencastopclean)
+                    if (!this.scophid) this.screencastop.hide(e)
+                  }, 10000)
+                  const avinterf =
+                    this.avinterf ||
+                    (this.avinterf = AVInterface.getInterface())
+                  avinterf
+                    .getAVDevices()
+                    .then((avdevices) => this.setState({ avdevices }))
+                    .catch((error) =>
+                      console.log('Problem getavdevices', error)
+                    )
+                }
+                // TODO if (!this.scophid || this.state.cameramuted?) this.camToggle()
+              }}
+            ></Button>
+          )}
       </React.Fragment>
     )
     return (
@@ -956,7 +962,7 @@ export class VideoControl extends Component {
               <Button
                 className='p-button-primary p-button-rounded p-m-2'
                 key='bt-screen-share'
-                icon={<FontAwesomeIcon icon={faScreencast} className='p-m-1' />}
+                icon={fiScreenCast}
                 label='Select source'
                 onClick={(event) => {
                   this.screencastop.hide()
@@ -980,7 +986,7 @@ export class VideoControl extends Component {
             <Button
               className='p-button-primary p-button-rounded p-m-2'
               key='bt-screen-share'
-              icon={<FontAwesomeIcon icon={faScreencast} className='p-m-1' />}
+              icon={fiScreenCast}
               label='Stop casting'
               onClick={(event) => {
                 this.screencastop.hide()

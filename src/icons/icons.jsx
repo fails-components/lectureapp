@@ -1727,6 +1727,53 @@ export const fiAddLineIcon = ({ borderColor, fillColor }) =>
     size: '28px'
   })
 
+// inlined icons by Marten Richter
+
+const screenCastIcon = (
+  <React.Fragment>
+    <path
+      fill='none'
+      stroke='currentColor'
+      strokeWidth='16.84'
+      strokeLinecap='round'
+      d='m 14.242714,29.309291 v 53.259754 a 92.609656,92.238481 0 0 1 87.557376,85.747315 h 83.83282 V 29.309291 Z'
+    />
+    <path
+      fill='none'
+      stroke='currentColor'
+      strokeWidth='16.84'
+      strokeLinecap='round'
+      d='m 13.981907,113.1336 a 55.665901,55.442799 0 0 1 55.665901,55.4428'
+    />
+    <path
+      fill='node'
+      stroke='currentColor'
+      strokeWidth='16.84'
+      strokeLinecap='round'
+      d='m 15.145685,142.62067 a 25.384514,25.282774 0 0 1 25.384514,25.28277'
+    />
+    <path
+      fill='currentColor'
+      stroke='currentColor'
+      strokeWidth='16.84'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      d='m 14.242714,82.569045 c 46.750662,2.432538 84.326623,39.231695 87.557376,85.747315 m 0,0 h 83.83282 V 29.309291 H 14.242714 v 53.259754'
+    />
+    <ellipse
+      fill='currentColor'
+      cx='14.701151'
+      cy='168.39371'
+      rx='7.5427713'
+      ry='7.2563357'
+    />
+  </React.Fragment>
+)
+
+export const fiScreenCast = iconMakerInl(screenCastIcon, 'Screencast', {
+  size: '20px'
+})
+
 // the FAILS logo is not covered by AGPL 3.0
 
 const failsIcon = (
