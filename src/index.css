@@ -204,3 +204,8 @@ code {
 .coninfoicon {
   font-size: small !important;
 }
+
+.bgColorPicker > input {
+  height: 5px;
+  width: 5px;
+}

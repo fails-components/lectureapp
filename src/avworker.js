@@ -945,6 +945,10 @@ class AVVideoInputProcessor extends AVInputProcessor {
     this.multscaler.changeOff(off)
   }
 
+  changeBackgroundRemover({ off, color, type }) {
+    this.multscaler.changeBackgroundRemover({ off, color, type })
+  }
+
   switchVideoInput(args) {
     this.inputstream
       .cancel()
@@ -1686,6 +1690,13 @@ class AVWorker {
         {
           const object = this.objects[event.data.webworkid]
           object.changeOff(event.data.off)
+        }
+        break
+      case 'changeBackgroundRemover':
+        {
+          const object = this.objects[event.data.webworkid]
+          const { off, color, type } = event.data
+          object.changeBackgroundRemover({ off, color, type })
         }
         break
       case 'close':

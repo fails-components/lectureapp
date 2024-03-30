@@ -102,6 +102,82 @@ export const createAudioData = (input) => {
   return new AudioData(input)
 }
 
+class AVMediaPipe {
+  static workerInternal_
+  static finalReg_
+  static mpworkid = 0
+  static reqid = 0
+  static requests = {}
+
+  static get worker() {
+    if (!AVMediaPipe.workerInternal_) {
+      AVMediaPipe.workerInternal_ = new Worker(
+        new URL('./avmediapipeworker.js', import.meta.url),
+        {
+          type: 'module'
+        }
+      )
+      AVMediaPipe.workerInternal_.addEventListener(
+        'message',
+        AVMediaPipe.onMessage
+      )
+      AVMediaPipe.finalReg_ = new FinalizationRegistry((mpworkid) => {
+        AVMediaPipe.worker.postMessage({
+          task: 'cleanUpObject',
+          mpworkid
+        })
+      })
+    }
+    return AVMediaPipe.workerInternal_
+  }
+
+  static onMessage({ data }) {
+    const { requestid, frame } = data
+    const request = AVMediaPipe.requests[requestid]
+    if (request) {
+      request({ frame })
+      delete AVMediaPipe.requests[requestid]
+    } else {
+      console.log('MEDIA PIPE unknown request', requestid, AVMediaPipe.requests)
+    }
+  }
+
+  static getNewBackgroundRemover() {
+    const worker = AVMediaPipe.worker
+    AVMediaPipe.mpworkid++
+    const mpworkid = AVMediaPipe.mpworkid
+    worker.postMessage({
+      task: 'openAVBackgroundRemover',
+      mpworkid
+    })
+    const backgroundRemover = (frame) => {
+      const requestid = AVMediaPipe.reqid++ + '_' + mpworkid
+      worker.postMessage(
+        {
+          task: 'processFrame',
+          frame,
+          mpworkid,
+          requestid
+        },
+        [frame]
+      )
+      return new Promise((resolve) => {
+        AVMediaPipe.requests[requestid] = resolve
+      })
+    }
+    const backgroundRemoverConfig = ({ color, type }) => {
+      worker.postMessage({
+        task: 'changeConfig',
+        color,
+        mpworkid,
+        type
+      })
+    }
+    AVMediaPipe.finalReg_.register(backgroundRemover, mpworkid)
+    return { backgroundRemover, backgroundRemoverConfig }
+  }
+}
+
 class AVCodec {
   constructor(args) {
     this.write = this.write.bind(this)
@@ -816,10 +892,25 @@ export class AVOneFrameToManyScaler extends AVOneToMany {
     super(args)
     this.outputwidth = args.outputwidth
     this.off = true
+    this.backgroundOff = true
   }
 
   changeOff(off) {
     this.off = off
+  }
+
+  changeBackgroundRemover({ off, color, type }) {
+    // TODO color
+    this.backgroundOff = off
+    if (!off) {
+      if (!this.backgroundRemover) {
+        const { backgroundRemover, backgroundRemoverConfig } =
+          AVMediaPipe.getNewBackgroundRemover()
+        this.backgroundRemover = backgroundRemover
+        this.backgroundRemoverConfig = backgroundRemoverConfig
+      }
+      this.backgroundRemoverConfig({ color, type })
+    }
   }
 
   async transform(frame) {
@@ -840,6 +931,12 @@ export class AVOneFrameToManyScaler extends AVOneToMany {
     if (this.off) {
       frame.close()
       return resframe
+    }
+    if (!this.backgroundOff) {
+      const oldframe = frame
+      const { frame: newframe } = await this.backgroundRemover(oldframe)
+      frame = newframe
+      // oldframe.close() // the object is transfered and closed
     }
     for (const out of this.outputs) {
       if (typeof out === 'number' && out > this.outputlevelmax) continue // outlevel seems to be suspended

@@ -18,6 +18,7 @@
 
 import { MediaStreamTrackProcessor as MediaStreamTrackProcessorPolyfill } from './webcodecs-ponyfills.js'
 import { transferReadableStream } from './transferable-stream-of-transferables'
+import Color from 'color'
 
 // install polyfills, if required
 let MediaStreamTrackProcessor
@@ -78,6 +79,16 @@ export class AVVideoInputStream extends AVDeviceInputStream {
   constructor(args) {
     super(args)
     this.off = true
+  }
+
+  changeBackgroundRemover({ off, color, type }) {
+    AVInterface.worker.postMessage({
+      task: 'changeBackgroundRemover',
+      webworkid: this.webworkid,
+      off,
+      color: Color(color).object(),
+      type
+    })
   }
 
   videoOff() {

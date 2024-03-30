@@ -23,6 +23,8 @@ import React, { Component } from 'react'
 import { AVInterface } from './avinterface'
 import { AVVideoRender } from './avvideorender.jsx'
 import { Dropdown } from 'primereact/dropdown'
+import { SelectButton } from 'primereact/selectbutton'
+import { ColorPicker } from 'primereact/colorpicker'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faTv,
@@ -34,6 +36,7 @@ import {
   faVideoSlash
 } from '@fortawesome/free-solid-svg-icons'
 import { fiScreenCast } from './icons/icons.jsx'
+import Color from 'color'
 
 export class SpeakerSet {
   constructor(args) {
@@ -257,6 +260,9 @@ export class VideoControl extends Component {
       spkmuted: false,
       micmuted: true,
       cameramuted: true,
+      camBackgroundRemOff: true,
+      camBackgroundRemColor: '#caf0f8',
+      camBackgroundRemType: 'blur', // can be 'blur' or color
       tvoff: true,
       screencastMute: true,
       supportedMedia: {
@@ -268,6 +274,27 @@ export class VideoControl extends Component {
         screencastin: false
       }
     }
+
+    const bgPropsStr = localStorage.getItem('failsbackgroundremoveprops')
+    if (bgPropsStr) {
+      try {
+        const {
+          off = true,
+          color = '#caf0f8',
+          type = 'blur'
+        } = JSON.parse(bgPropsStr)
+
+        this.state.camBackgroundRemOff = off
+        this.state.camBackgroundRemColor = color
+        this.state.camBackgroundRemType = type
+      } catch (error) {
+        console.log(
+          'localStorage failsbackgroundremoveprops broken:',
+          bgPropsStr
+        )
+      }
+    }
+
     this.devicesChanged = this.devicesChanged.bind(this)
     this.transportStateUpdate = this.transportStateUpdate.bind(this)
     this.vophid = true
@@ -292,6 +319,20 @@ export class VideoControl extends Component {
       const micmuted = this.state.microphone.muted()
       if (micmuted !== this.state.micmuted) this.setState({ micmuted })
     }
+  }
+
+  backgroundRemSync() {
+    if (this.state.camera) {
+      const off = this.state.camBackgroundRemOff
+      const color = this.state.camBackgroundRemColor
+      const type = this.state.camBackgroundRemType
+      this.state.camera.changeBackgroundRemover({ off, color, type }) // TODO maybe convert color
+      localStorage.setItem(
+        'failsbackgroundremoveprops',
+        JSON.stringify({ off, color, type })
+      )
+    }
+    // do nothing otherwise
   }
 
   speakerToggle() {
@@ -485,6 +526,12 @@ export class VideoControl extends Component {
         if (this.props.avStateHook) this.props.avStateHook(this.avstate)
       }
     }
+    if (
+      prevState.camBackgroundRemColor !== this.state.camBackgroundRemColor ||
+      prevState.camBackgroundRemOff !== this.state.camBackgroundRemOff ||
+      prevState.camBackgroundRemType !== this.state.camBackgroundRemType
+    )
+      this.backgroundRemSync()
   }
 
   async devicesChanged(event) {
@@ -556,6 +603,7 @@ export class VideoControl extends Component {
       // if (this.props.videoid) cam.setSrcId(this.props.videoid)
       this.setState({ camera: cam, videoid: cam.getDeviceId() })
       this.setState({ avdevices: await avinterf.getAVDevices() })
+      this.backgroundRemSync()
     } catch (error) {
       console.log('cameraStart failed', error)
     }
@@ -683,6 +731,32 @@ export class VideoControl extends Component {
       .map((el) => ({ label: el.label, deviceId: el.deviceId }))
     console.log('audioout', audioout, devices)
     console.log('audiooutid', this.state.audiooutid)
+
+    const backgroundRemove = this.state.camBackgroundRemOff
+      ? 'off'
+      : this.state.camBackgroundRemType
+    const backRemOptions = [
+      { label: 'Off', value: 'off' },
+      { label: 'Blur', value: 'blur' },
+      { label: 'Color', value: 'color' }
+    ]
+
+    const backgroundRemoveTemplate = (option) => {
+      if (option.value === 'color')
+        return (
+          <ColorPicker
+            className='p-m-r-2 bgColorPicker'
+            value={Color(this.state.camBackgroundRemColor).object()}
+            format='rgb'
+            onChange={(e) =>
+              this.setState({
+                camBackgroundRemColor: Color(e.value).string()
+              })
+            }
+          />
+        )
+      return <span className='p-button-label p-c'>{option.label} </span>
+    }
 
     let coninfo
     if (this.state.transportstate) {
@@ -896,6 +970,27 @@ export class VideoControl extends Component {
             onChange={(e) => this.setVideoSrc(e.value)}
             placeholder='Select a video source'
             style={{ maxWidth: '10vw' }}
+          />{' '}
+          <br />
+          Remove background:
+          <SelectButton
+            value={backgroundRemove}
+            itemTemplate={backgroundRemoveTemplate}
+            onChange={(e) => {
+              if (e.value === 'off')
+                this.setState({ camBackgroundRemOff: true })
+              else if (e.value === 'color')
+                this.setState({
+                  camBackgroundRemOff: false,
+                  camBackgroundRemType: 'color'
+                })
+              else if (e.value === 'blur')
+                this.setState({
+                  camBackgroundRemOff: false,
+                  camBackgroundRemType: 'blur'
+                })
+            }}
+            options={backRemOptions}
           />
         </OverlayPanel>
         <OverlayPanel
