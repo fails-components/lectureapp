@@ -758,6 +758,8 @@ export class VideoControl extends Component {
       return <span className='p-button-label p-c'>{option.label} </span>
     }
 
+    const removeBackgroundActivated = false // deactivate as long as upstrean MediaPipe is broken
+
     let coninfo
     if (this.state.transportstate) {
       const ts = this.state.transportstate
@@ -972,26 +974,30 @@ export class VideoControl extends Component {
             style={{ maxWidth: '10vw' }}
           />{' '}
           <br />
-          Remove background:
-          <SelectButton
-            value={backgroundRemove}
-            itemTemplate={backgroundRemoveTemplate}
-            onChange={(e) => {
-              if (e.value === 'off')
-                this.setState({ camBackgroundRemOff: true })
-              else if (e.value === 'color')
-                this.setState({
-                  camBackgroundRemOff: false,
-                  camBackgroundRemType: 'color'
-                })
-              else if (e.value === 'blur')
-                this.setState({
-                  camBackgroundRemOff: false,
-                  camBackgroundRemType: 'blur'
-                })
-            }}
-            options={backRemOptions}
-          />
+          {removeBackgroundActivated && (
+            <React.Fragment>
+              Remove background:
+              <SelectButton
+                value={backgroundRemove}
+                itemTemplate={backgroundRemoveTemplate}
+                onChange={(e) => {
+                  if (e.value === 'off')
+                    this.setState({ camBackgroundRemOff: true })
+                  else if (e.value === 'color')
+                    this.setState({
+                      camBackgroundRemOff: false,
+                      camBackgroundRemType: 'color'
+                    })
+                  else if (e.value === 'blur')
+                    this.setState({
+                      camBackgroundRemOff: false,
+                      camBackgroundRemType: 'blur'
+                    })
+                }}
+                options={backRemOptions}
+              />
+            </React.Fragment>
+          )}
         </OverlayPanel>
         <OverlayPanel
           ref={(el) => (this.audioop = el)}

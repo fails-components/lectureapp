@@ -287,7 +287,6 @@ class AVBackgroundRemover {
               gl.activeTexture(gl.TEXTURE1)
               const myMask = confidenceMasks[0]
               if (myMask.hasWebGLTexture()) {
-                console.log('WEBGL Texture')
                 gl.bindTexture(gl.TEXTURE_2D, myMask.getAsWebGLTexture())
               } else if (myMask.hasUint8Array()) {
                 gl.bindTexture(gl.TEXTURE_2D, this.texturemask)
