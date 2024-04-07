@@ -90,6 +90,61 @@ const loadPolyfills = async () => {
   }
 }
 
+let scalabilityModeSupported = false
+const scalabilityModes = []
+// eslint-disable-next-line no-undef
+VideoEncoder.isConfigSupported({
+  codec: 'avc1.420034', // aka h264, maybe add profile
+  avc: {
+    format: 'annexb'
+  },
+  framerate: 25,
+  displayWidth: 1280,
+  displayHeight: 720,
+  width: 1280,
+  height: 720,
+  // hardwareAcceleration: 'prefer-hardware',
+  bitrate: 2000000,
+  scalabilityMode: 'L1T3',
+  latencyMode: 'realtime'
+})
+  .then(({ supported, config }) => {
+    console.log('L1T3 mode supported', supported)
+    if (supported) {
+      scalabilityModeSupported = true
+      scalabilityModes.push('L1T3')
+    }
+  })
+  .catch((error) => {
+    console.log('Testing encoder properties failed', error)
+  })
+// eslint-disable-next-line no-undef
+VideoEncoder.isConfigSupported({
+  codec: 'avc1.420034', // aka h264, maybe add profile
+  avc: {
+    format: 'annexb'
+  },
+  framerate: 25,
+  displayWidth: 1280,
+  displayHeight: 720,
+  width: 1280,
+  height: 720,
+  // hardwareAcceleration: 'prefer-hardware',
+  bitrate: 2000000,
+  scalabilityMode: 'L1T2',
+  latencyMode: 'realtime'
+})
+  .then(({ supported, config }) => {
+    console.log('L1T2 mode supported', supported)
+    if (supported) {
+      scalabilityModeSupported = true
+      scalabilityModes.push('L1T2')
+    }
+  })
+  .catch((error) => {
+    console.log('Testing encoder properties failed', error)
+  })
+
 const AVComponentsLoaded = loadPolyfills().catch((error) => {
   console.log('Problem loading AV polyfills', error)
 })
@@ -399,7 +454,7 @@ export class AVVideoEncoder extends AVEncoder {
       chunk.codedWidth !== this.cur.width
     ) {
       this.curcodec = 'avc1.42402A'
-      this.codec.configure({
+      const config = {
         codec: this.curcodec /* 'avc1.420034' */, // aka h264, maybe add profile
         avc: { format: 'annexb' },
         framerate: this.framerate,
@@ -409,9 +464,14 @@ export class AVVideoEncoder extends AVEncoder {
         height: chunk.displayHeight,
         // hardwareAcceleration: 'prefer-hardware',
         bitrate: this.bitrate,
-        scalabilityMode: 'L1T3',
         latencyMode: 'realtime'
-      })
+      }
+      if (scalabilityModeSupported) {
+        if (scalabilityModes.includes('L1T3')) config.scalabilityMode = 'L1T3'
+        else if (scalabilityModes.includes('L1T2'))
+          config.scalabilityMode = 'L1T2'
+      }
+      this.codec.configure(config)
       this.lastDecConf = null
       console.log('codec state', this.codec.state)
       this.cur.displayHeight = chunk.displayHeight
