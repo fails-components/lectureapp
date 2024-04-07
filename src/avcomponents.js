@@ -356,7 +356,7 @@ export class AVVideoEncoder extends AVEncoder {
     this.framerate = args.framerate
     this.output = this.output.bind(this)
     this.recreateCodec().catch((error) => {
-      console.log('Problem loading VideoDecoder', error)
+      console.log('Problem loading VideoEncoder', error)
     })
   }
 
