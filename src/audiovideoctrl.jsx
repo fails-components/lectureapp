@@ -1047,40 +1047,44 @@ export class VideoControl extends Component {
         >
           {this.state.screencastMute && (
             <React.Fragment>
-              <Button
-                className='p-button-primary p-button-rounded p-m-2'
-                key='bt-camera-share'
-                icon={<FontAwesomeIcon icon={faVideo} />}
-                label='Cast video'
-                onClick={(event) => {
-                  this.screencastop.hide()
-                  this.startScreencast({
-                    videoDevice: this.state.screencastid
-                  })
-                }}
-                disabled={!this.state.screencastid}
-              />
-              <Button
-                className='p-button-primary p-button-rounded p-m-2'
-                key='bt-screen-share'
-                icon={fiScreenCast}
-                label='Select source'
-                onClick={(event) => {
-                  this.screencastop.hide()
-                  this.startScreencast({ desktopElement: true })
-                }}
-              />{' '}
+              <div className='p-d-flex p-jc-center p-ai-center'>
+                <span style={{ marginRight: '5px' }}>Share your screen:</span>
+                <Button
+                  className='p-button-primary p-button-rounded p-m-2'
+                  key='bt-screen-share'
+                  icon={fiScreenCast}
+                  label='Select source'
+                  onClick={(event) => {
+                    this.screencastop.hide()
+                    this.startScreencast({ desktopElement: true })
+                  }}
+                />
+              </div>
               <br />
-              Video source:
-              <Dropdown
-                optionLabel='label'
-                optionValue='deviceId'
-                value={this.state.screencastid}
-                options={videosrc}
-                onChange={(e) => this.setState({ screencastid: e.value })}
-                placeholder='Select a video source'
-                style={{ maxWidth: '10vw' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Dropdown
+                  optionLabel='label'
+                  optionValue='deviceId'
+                  value={this.state.screencastid}
+                  options={videosrc}
+                  onChange={(e) => this.setState({ screencastid: e.value })}
+                  placeholder='Select a video source'
+                  style={{ maxWidth: '10vw' }}
+                />
+                <Button
+                  className='p-button-primary p-button-rounded p-m-2'
+                  key='bt-camera-share'
+                  icon={<FontAwesomeIcon icon={faVideo} />}
+                  label='Cast video'
+                  onClick={(event) => {
+                    this.screencastop.hide()
+                    this.startScreencast({
+                      videoDevice: this.state.screencastid
+                    })
+                  }}
+                  disabled={!this.state.screencastid}
+                />{' '}
+              </div>
             </React.Fragment>
           )}
           {!this.state.screencastMute && (
