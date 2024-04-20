@@ -1898,31 +1898,31 @@ export class FailsBoard extends FailsBasis {
 
   async onOpenNewScreen(event) {
     try {
-      const authtoken = sessionStorage.getItem('failstoken')
       const fullscreenopts = await this.whereToOpen({
         typename: 'screen',
         event
       })
 
       const ret = await this.socket.createScreen()
+      const authtoken = sessionStorage.getItem('failstoken')
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
 
-      let targeturl = ret.screenurl
-      if (targeturl[0] === '/')
-        targeturl =
-          window.location.protocol +
-          '//' +
-          window.location.hostname +
-          (window.location.port !== '' ? ':' + window.location.port : '') +
-          targeturl
+      const targeturl =
+        window.location.protocol +
+        '//' +
+        window.location.hostname +
+        (window.location.port !== '' ? ':' + window.location.port : '') +
+        window.location.pathname
       console.log('debug target url', targeturl)
 
       const newscreen = window.open(
         targeturl,
         uuidv4(),
-        'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes' +
-          fullscreenopts
+        fullscreenopts
+          ? 'modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes' +
+              fullscreenopts
+          : 'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
       )
       sessionStorage.setItem('failstoken', authtoken)
       sessionStorage.setItem('failspurpose', 'lecture')
@@ -1953,12 +1953,12 @@ export class FailsBoard extends FailsBasis {
 
   async onOpenNewNotepad(event) {
     try {
-      const authtoken = this.myauthtoken
       const fullscreenopts = await this.whereToOpen({
         typename: 'notepad',
         event
       })
 
+      const authtoken = this.myauthtoken
       const ret = await this.socket.createNotepad()
       sessionStorage.removeItem('failspurpose') // workaround for cloning
       sessionStorage.removeItem('failstoken')
@@ -1976,8 +1976,10 @@ export class FailsBoard extends FailsBasis {
       const newnotepad = window.open(
         targeturl,
         uuidv4(),
-        'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes' +
-          fullscreenopts
+        fullscreenopts
+          ? 'modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes' +
+              fullscreenopts
+          : 'height=600,width=1000,modal=yes,alwaysRaised=yes,menubar=yes,toolbar=yes'
       )
       sessionStorage.setItem('failstoken', authtoken)
       sessionStorage.setItem('failspurpose', 'lecture')
