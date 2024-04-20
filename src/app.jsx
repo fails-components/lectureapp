@@ -80,7 +80,11 @@ const App = () => {
   if (purpose) {
     const token = sessionStorage.getItem('failstoken')
     if (token) {
-      SocketInterface.getInterface().setInitialDecodedToken(jwt_decode(token))
+      try {
+        SocketInterface.getInterface().setInitialDecodedToken(jwt_decode(token))
+      } catch (error) {
+        console.log('Problem decoding jwt token', token)
+      }
     }
   }
 
