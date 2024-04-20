@@ -1898,10 +1898,12 @@ export class FailsBoard extends FailsBasis {
 
   async onOpenNewScreen(event) {
     try {
-      const fullscreenopts = await this.whereToOpen({
+      /* const fullscreenopts = await this.whereToOpen({
         typename: 'screen',
         event
-      })
+      }) */
+      const fullscreenopts = '' // for now the feature is obsolete, and another alternative is pursued,
+      // the existing code is deactivated and will be rewritten once the alternative is implemented.
 
       const ret = await this.socket.createScreen()
       const authtoken = sessionStorage.getItem('failstoken')
@@ -1953,10 +1955,12 @@ export class FailsBoard extends FailsBasis {
 
   async onOpenNewNotepad(event) {
     try {
-      const fullscreenopts = await this.whereToOpen({
+      /* const fullscreenopts = await this.whereToOpen({
         typename: 'notepad',
         event
-      })
+      }) */
+      const fullscreenopts = '' // for now the feature is obsolete, and another alternative is pursued,
+      // the existing code is deactivated and will be rewritten once the alternative is implemented.
 
       const authtoken = this.myauthtoken
       const ret = await this.socket.createNotepad()
