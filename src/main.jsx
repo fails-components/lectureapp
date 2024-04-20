@@ -593,7 +593,13 @@ export class FailsBasis extends Component {
               curpos += parseFloat(cur.scrollheight)
               if (cur.purpose === 'notepad') notepos = curpos
             }
-            if (notepos === 0) notepos = curpos // if there is no notepad, then treat the lonely screen(s), all as a notepad
+            if (notepos === 0) {
+              if (channel.notescreens.length > 0) {
+                notepos = parseFloat(channel.notescreens[0].scrollheight)
+              } else {
+                notepos = curpos // if there is no notepad, then treat the lonely screen(s), all as a notepad
+              }
+            }
             for (let i = 0; i < channel.notescreens.length; i++) {
               const cur = channel.notescreens[i]
               // console.log('scrolloffsets', cur.scrollheight, cur.uuid)
