@@ -761,27 +761,34 @@ export class VideoControl extends Component {
     const removeBackgroundActivated = false // deactivate as long as upstrean MediaPipe is broken
 
     let coninfo
-    if (this.state.transportstate) {
+    if (this.state.transportstate || this.props.numUsers) {
       const ts = this.state.transportstate
       coninfo = (
         <React.Fragment>
-          {ts.status === 'connecting' && (
+          {this.props.numUsers > 1 && (
+            <React.Fragment>
+              <i className='coninfoicon pi pi-user'></i> {this.props.numUsers}{' '}
+            </React.Fragment>
+          )}
+          {ts?.status === 'connecting' && (
             <i className='coninfoicon pi pi-spin pi-cog'></i>
           )}
-          {ts.status === 'authenticating' && (
+          {ts?.status === 'authenticating' && (
             <i className='coninfoicon pi pi-key'></i>
           )}
-          {ts.status === 'failed' && (
+          {ts?.status === 'failed' && (
             <i className='coninfoicon pi pi-exclamation-triangle'></i>
           )}
-          {ts.status === 'connected' && (
+          {ts?.status === 'connected' && (
             <i className='coninfoicon pi pi-check'></i>
           )}
-          {ts.type === 'reliable-only' && <React.Fragment> RO </React.Fragment>}
-          {ts.type === 'supports-unreliable' && (
+          {ts?.type === 'reliable-only' && (
+            <React.Fragment> RO </React.Fragment>
+          )}
+          {ts?.type === 'supports-unreliable' && (
             <React.Fragment> SU </React.Fragment>
           )}
-          {ts.type === undefined && <React.Fragment> NO </React.Fragment>}
+          {ts && ts.type === undefined && <React.Fragment> NO </React.Fragment>}
         </React.Fragment>
       )
     }

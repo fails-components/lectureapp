@@ -2306,6 +2306,7 @@ export class FailsBoard extends FailsBasis {
               avStateHook={(avstate) => {
                 this.setState({ avstate })
               }}
+              numUsers={this.state.identobj?.idents?.length}
             ></VideoControl>
           </FloatingVideo>
         )}
