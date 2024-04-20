@@ -147,9 +147,17 @@ export class ScreenManager {
         number: index,
         toggle: () => {
           if (document.documentElement.requestFullscreen)
-            document.documentElement.requestFullscreen({ screen: el })
+            document.documentElement
+              .requestFullscreen({ screen: el })
+              .catch((error) => {
+                console.log('Problem request fullscreen', error)
+              })
           else if (document.documentElement.webkitRequestFullscreen)
-            document.documentElement.webkitRequestFullscree({ screen: el })
+            document.documentElement
+              .webkitRequestFullscree({ screen: el })
+              .catch((error) => {
+                console.log('Problem request fullscreen', error)
+              })
         }
       })),
       status: 'selector'
