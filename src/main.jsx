@@ -1116,7 +1116,9 @@ export class FailsBasis extends Component {
     if (this.noteref) {
       // console.log('checko us', this.noteref.blackboard.current)
       const data = {
-        scrollheight: this.noteref.blackboard.current.scrollheight(),
+        scrollheight: this.noteref?.blackboard?.current
+          ? this.noteref.blackboard.current.scrollheight()
+          : 1,
         // isscreen: this.isscreen,
         /*   backgroundbw: this.state.blackbackground, */
         showscreennumber: this.state.showscreennumber
@@ -3198,15 +3200,17 @@ export class FailsNotes extends FailsBasis {
   }
 
   getButtons() {
-    const notesmode = this.state.notesmode
     const ttopts = {
       className: 'teal-tooltip',
       position: 'top',
       showDelay: 1000
     }
     const drawmode =
-      (this.state.presActivity === 'draw' && !this.state.scrollunlock) ||
-      (this.state.unlockPresActivity === 'draw' && this.state.scrollunlock)
+      (!this.state.scrollunlock && this.state.presActivity === 'draw') ||
+      (this.state.scrollunlock && this.state.unlockPresActivity === 'draw')
+
+    const notesmode =
+      this.state.notesmode && drawmode && this.state.casttoscreens
     return (
       <div>
         <Button
@@ -3451,13 +3455,14 @@ export class FailsNotes extends FailsBasis {
       ))
     }
 
-    const drawmode =
-      (this.state.presActivity === 'draw' && !this.state.scrollunlock) ||
-      (this.state.unlockPresActivity === 'draw' && this.state.scrollunlock)
-
     const screenmode =
-      (this.state.presActivity === 'screen' && !this.state.scrollunlock) ||
-      (this.state.unlockPresActivity === 'screen' && this.state.scrollunlock)
+      (!this.state.scrollunlock && this.state.presActivity === 'screen') ||
+      (this.state.scrollunlock && this.state.unlockPresActivity === 'screen')
+
+    const drawmode =
+      (!this.state.scrollunlock && this.state.presActivity === 'draw') ||
+      (this.state.scrollunlock && this.state.unlockPresActivity === 'draw') ||
+      !screenmode
 
     return (
       <div>
