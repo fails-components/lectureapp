@@ -2952,7 +2952,11 @@ export class FailsNotes extends FailsBasis {
       const curoffset = this.noteref.calcCurpos()
       this.setState((state) => {
         if (!state.scrollunlock) {
-          return { scrollunlock: !state.scrollunlock, pageoffset: curoffset }
+          return {
+            scrollunlock: !state.scrollunlock,
+            pageoffset: curoffset,
+            unlockPresActivity: state.presActivity
+          }
         }
       })
     }
