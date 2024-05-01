@@ -814,7 +814,7 @@ export class VideoControl extends Component {
                 this.videoopclean = setTimeout(() => {
                   clearTimeout(this.videoopclean)
                   if (!this.vophid) this.videoop.hide(e)
-                }, 5000)
+                }, 15000)
               }
               if (!this.vophid || this.state.cameramuted) this.camToggle()
             }}
@@ -848,7 +848,7 @@ export class VideoControl extends Component {
                 this.audioopclean = setTimeout(() => {
                   clearTimeout(this.audioopclean)
                   if (!this.aophid) this.audioop.hide(e)
-                }, 5000)
+                }, 15000)
               }
               if (!this.aophid || this.state.micmuted) this.micToggle()
             }}
@@ -870,7 +870,7 @@ export class VideoControl extends Component {
                 this.audiooutopclean = setTimeout(() => {
                   clearTimeout(this.audiooutopclean)
                   if (!this.aopohid) this.audiooutop.hide(e)
-                }, 5000)
+                }, 15000)
               }
               if (
                 !this.aopohid ||
