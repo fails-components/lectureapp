@@ -20,7 +20,7 @@
 import { Button } from 'primereact/button'
 import { OverlayPanel } from 'primereact/overlaypanel'
 import React, { Component } from 'react'
-import { AVInterface } from './avinterface'
+import { AVInterface, setSetting, getSetting } from './avinterface'
 import { AVVideoRender } from './avvideorender.jsx'
 import { Dropdown } from 'primereact/dropdown'
 import { SelectButton } from 'primereact/selectbutton'
@@ -275,7 +275,7 @@ export class VideoControl extends Component {
       }
     }
 
-    const bgPropsStr = localStorage.getItem('failsbackgroundremoveprops')
+    const bgPropsStr = getSetting('failsbackgroundremoveprops')
     if (bgPropsStr) {
       try {
         const {
@@ -327,7 +327,7 @@ export class VideoControl extends Component {
       const color = this.state.camBackgroundRemColor
       const type = this.state.camBackgroundRemType
       this.state.camera.changeBackgroundRemover({ off, color, type }) // TODO maybe convert color
-      localStorage.setItem(
+      setSetting(
         'failsbackgroundremoveprops',
         JSON.stringify({ off, color, type })
       )

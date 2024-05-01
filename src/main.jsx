@@ -369,8 +369,9 @@ export class FailsBasis extends Component {
   }
 
   startUpAVinterface({ hidden = false } = {}) {
+    const userhash = this.socket.getUserHash()
     if (!AVInterface.getInterface()) {
-      AVInterface.createAVInterface()
+      AVInterface.createAVInterface({ userhash })
       this.avinterf = AVInterface.getInterface() // please hold a reference for the gargabe collector
       AVInterface.setNetworkControl(this.avchannel)
     }

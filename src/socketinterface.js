@@ -121,6 +121,7 @@ export class SocketInterface {
         if (event.data.token)
           sessionStorage.setItem('failstoken', event.data.token)
         this.decodedtoken = event.data.decodedToken
+        this.updateUserHash()
         break
       case 'idinform':
         if (event.data.id) this.id = event.data.id
@@ -143,6 +144,27 @@ export class SocketInterface {
 
   decodedToken() {
     return this.decodedtoken
+  }
+
+  async updateUserHash() {
+    try {
+      const useruuid = this.decodedtoken?.user?.useruuid
+      if (!useruuid) return // no user uuid
+      // now we need unique identifier of the device
+      let deviceuuid = localStorage.getItem('failsdeviceuuid')
+      if (!deviceuuid) {
+        deviceuuid = globalThis.crypto.randomUUID()
+        localStorage.setItem('failsdeviceuuid', deviceuuid)
+      }
+      const data = new TextEncoder().encode(useruuid + ':' + deviceuuid)
+      this.userhash = btoa(await crypto.subtle.digest('SHA-256', data))
+    } catch (error) {
+      console.log('Problem updateUserHash', error)
+    }
+  }
+
+  getUserHash() {
+    return this.userhash
   }
 
   onMessageError(event) {}

@@ -29,6 +29,24 @@ if (!('MediaStreamTrackProcessor' in globalThis)) {
   MediaStreamTrackProcessor = globalThis.MediaStreamTrackProcessor
 }
 
+// storage options
+
+export function getSetting(key) {
+  if (AVInterface.userhash) {
+    // get user value
+    const ret = localStorage.getItem(key + ':' + AVInterface.userhash)
+    if (!ret) return ret
+  } // if it does not exist fall through to default
+  return localStorage.getItem(key)
+}
+
+export function setSetting(key, value) {
+  if (AVInterface.userhash) {
+    localStorage.setItem(key + ':' + AVInterface.userhash, value)
+  }
+  return localStorage.setItem(key, value)
+}
+
 export class AVStream {
   constructor(args) {
     this.webworkid = args.webworkid
@@ -130,7 +148,7 @@ export class AVVideoInputStream extends AVDeviceInputStream {
       }
     })
     this.deviceId = id
-    if (!nosave) localStorage.setItem('failsvideodeviceid', id)
+    if (!nosave) setSetting('failsvideodeviceid', id)
     console.log('mstream object', mstream)
 
     const track = mstream.getTracks()[0]
@@ -326,7 +344,7 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
       }
     })
     this.deviceId = id
-    if (!nosave) localStorage.setItem('failsaudiodeviceid', id)
+    if (!nosave) setSetting('failsaudiodeviceid', id)
     console.log('audio mstream object', mstream)
 
     const track = mstream.getTracks()[0]
@@ -501,6 +519,7 @@ export class AVInterface {
 
   static interf = null
   static mediadevicesupported = false
+  static userhash // unique hash, should be set, so that we can distinguish users, but should be a hash, so that we can not identify!
 
   constructor(
     args // do not call directly
@@ -526,6 +545,7 @@ export class AVInterface {
   static createAVInterface(args) {
     if (AVInterface.interf !== null)
       throw new Error('AV Interface already created')
+    if (args.userhash) AVInterface.userhash = args.userhash
     const interf = (AVInterface.interf = new AVInterface(args))
     AVInterface.worker.addEventListener('message', interf.onMessage)
     AVInterface.worker.addEventListener('error', interf.onError)
@@ -752,7 +772,7 @@ export class AVInterface {
     if (!AVInterface.mediadevicesupported) return
     try {
       if (!this.devices) await this.getAVDevices()
-      const oldid = localStorage.getItem('failsvideodeviceid')
+      const oldid = getSetting('failsvideodeviceid')
       let devices = this.devices.filter((el) => el.kind === 'videoinput')
       if (devices.length < 1) throw new Error('no Video devices available')
       const olddevice = devices.filter((el) => el.deviceId === oldid)
@@ -812,7 +832,7 @@ export class AVInterface {
     if (!AVInterface.mediadevicesupported) return
     try {
       if (!this.devices) await this.getAVDevices()
-      const oldid = localStorage.getItem('failsaudiodeviceid')
+      const oldid = getSetting('failsaudiodeviceid')
       let devices = this.devices.filter((el) => el.kind === 'audioinput')
       if (devices.length < 1) throw new Error('no Audio devices available')
       const olddevice = devices.filter((el) => el.deviceId === oldid)
@@ -859,7 +879,7 @@ export class AVInterface {
   switchSpeaker(deviceId, nosave) {
     this.speakerDeviceId = deviceId
     if (AVInterface.canSwitchSpeaker()) {
-      if (!nosave) localStorage.setItem('failsaudiooutdeviceid', deviceId)
+      if (!nosave) setSetting('failsaudiooutdeviceid', deviceId)
       const ac = this.getAudioContext()
       ac.setSinkId(deviceId)
     }
@@ -873,7 +893,7 @@ export class AVInterface {
     // if (!this.mediadevicesupported) return
     try {
       if (!this.devices) await this.getAVDevices()
-      const oldid = localStorage.getItem('failsaudiooutdeviceid')
+      const oldid = getSetting('failsaudiooutdeviceid')
       let devices = this.devices.filter((el) => el.kind === 'audiooutput')
       // does not work on firefox
       /* if (devices.length < 1)
