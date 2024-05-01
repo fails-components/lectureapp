@@ -214,25 +214,44 @@ class AVBackgroundRemover {
   }
 
   async initSegmenter() {
-    return ImageSegmenter.createFromOptions(
-      await FilesetResolver.forVisionTasks(
-        new URL(`../node_modules/@mediapipe/tasks-vision/wasm`, import.meta.url)
-          .pathname
-      ),
-      {
-        baseOptions: {
-          modelAssetPath: new URL(
-            './models/selfie_segmenter_landscape.tflite',
-            import.meta.url
-          )
-        },
-        canvas: this.canvas,
-        outputCategoryMask: false,
-        outputConfidenceMasks: true,
-        runningMode: 'VIDEO',
-        delegate: 'GPU'
+    let wasmFileSet
+    if (await FilesetResolver.isSimdSupported()) {
+      wasmFileSet = {
+        wasmLoaderPath: new URL(
+          '../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.js',
+          import.meta.url
+        ).pathname,
+        wasmBinaryPath: new URL(
+          '../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.wasm',
+          import.meta.url
+        ).pathname
       }
-    )
+    } else {
+      wasmFileSet = {
+        wasmLoaderPath: new URL(
+          '../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.js',
+          import.meta.url
+        ).pathname,
+        wasmBinaryPath: new URL(
+          '../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.wasm',
+          import.meta.url
+        ).pathname
+      }
+    }
+
+    return ImageSegmenter.createFromOptions(wasmFileSet, {
+      baseOptions: {
+        modelAssetPath: new URL(
+          './models/selfie_segmenter_landscape.tflite',
+          import.meta.url
+        )
+      },
+      canvas: this.canvas,
+      outputCategoryMask: false,
+      outputConfidenceMasks: true,
+      runningMode: 'VIDEO',
+      delegate: 'GPU'
+    })
   }
 
   async processFrame({ frame, requestid }) {
@@ -448,6 +467,7 @@ class AVMediaPipeWorker {
   }
 }
 
+console.log('AVMediaPipeWorker inited')
 const avmpworker = new AVMediaPipeWorker()
 globalThis.addEventListener('message', avmpworker.onMessage)
 console.log('AVMediaPipeWorker started')
