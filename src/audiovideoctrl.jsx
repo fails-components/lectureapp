@@ -758,7 +758,7 @@ export class VideoControl extends Component {
       return <span className='p-button-label p-c'>{option.label} </span>
     }
 
-    const removeBackgroundActivated = false // deactivate as long as upstrean MediaPipe is broken
+    const removeBackgroundActivated = true // deactivate as long as upstrean MediaPipe is broken
 
     let coninfo
     if (this.state.transportstate || this.props.numUsers) {
