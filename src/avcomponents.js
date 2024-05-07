@@ -92,59 +92,60 @@ const loadPolyfills = async () => {
 
 let scalabilityModeSupported = false
 const scalabilityModes = []
-// eslint-disable-next-line no-undef
-VideoEncoder.isConfigSupported({
-  codec: 'avc1.420034', // aka h264, maybe add profile
-  avc: {
-    format: 'annexb'
-  },
-  framerate: 25,
-  displayWidth: 1280,
-  displayHeight: 720,
-  width: 1280,
-  height: 720,
-  // hardwareAcceleration: 'prefer-hardware',
-  bitrate: 2000000,
-  scalabilityMode: 'L1T3',
-  latencyMode: 'realtime'
-})
-  .then(({ supported, config }) => {
-    console.log('L1T3 mode supported', supported)
-    if (supported) {
-      scalabilityModeSupported = true
-      scalabilityModes.push('L1T3')
-    }
+if ('VideoEncoder' in globalThis) {
+  // eslint-disable-next-line no-undef
+  VideoEncoder.isConfigSupported({
+    codec: 'avc1.420034', // aka h264, maybe add profile
+    avc: {
+      format: 'annexb'
+    },
+    framerate: 25,
+    displayWidth: 1280,
+    displayHeight: 720,
+    width: 1280,
+    height: 720,
+    // hardwareAcceleration: 'prefer-hardware',
+    bitrate: 2000000,
+    scalabilityMode: 'L1T3',
+    latencyMode: 'realtime'
   })
-  .catch((error) => {
-    console.log('Testing encoder properties failed', error)
+    .then(({ supported, config }) => {
+      console.log('L1T3 mode supported', supported)
+      if (supported) {
+        scalabilityModeSupported = true
+        scalabilityModes.push('L1T3')
+      }
+    })
+    .catch((error) => {
+      console.log('Testing encoder properties failed', error)
+    })
+  // eslint-disable-next-line no-undef
+  VideoEncoder.isConfigSupported({
+    codec: 'avc1.420034', // aka h264, maybe add profile
+    avc: {
+      format: 'annexb'
+    },
+    framerate: 25,
+    displayWidth: 1280,
+    displayHeight: 720,
+    width: 1280,
+    height: 720,
+    // hardwareAcceleration: 'prefer-hardware',
+    bitrate: 2000000,
+    scalabilityMode: 'L1T2',
+    latencyMode: 'realtime'
   })
-// eslint-disable-next-line no-undef
-VideoEncoder.isConfigSupported({
-  codec: 'avc1.420034', // aka h264, maybe add profile
-  avc: {
-    format: 'annexb'
-  },
-  framerate: 25,
-  displayWidth: 1280,
-  displayHeight: 720,
-  width: 1280,
-  height: 720,
-  // hardwareAcceleration: 'prefer-hardware',
-  bitrate: 2000000,
-  scalabilityMode: 'L1T2',
-  latencyMode: 'realtime'
-})
-  .then(({ supported, config }) => {
-    console.log('L1T2 mode supported', supported)
-    if (supported) {
-      scalabilityModeSupported = true
-      scalabilityModes.push('L1T2')
-    }
-  })
-  .catch((error) => {
-    console.log('Testing encoder properties failed', error)
-  })
-
+    .then(({ supported, config }) => {
+      console.log('L1T2 mode supported', supported)
+      if (supported) {
+        scalabilityModeSupported = true
+        scalabilityModes.push('L1T2')
+      }
+    })
+    .catch((error) => {
+      console.log('Testing encoder properties failed', error)
+    })
+}
 const AVComponentsLoaded = loadPolyfills().catch((error) => {
   console.log('Problem loading AV polyfills', error)
 })
