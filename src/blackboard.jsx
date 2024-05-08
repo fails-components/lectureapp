@@ -29,9 +29,9 @@ import Color from 'color'
 import * as pdfjs from 'pdfjs-dist'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  '../node_modules/pdfjs-dist/build/pdf.worker.min.js',
+  '../node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url
-)
+).href
 
 window.addEventListener('contextmenu', function (e) {
   e.preventDefault()
