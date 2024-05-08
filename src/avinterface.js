@@ -833,9 +833,12 @@ export class AVInterface {
     try {
       if (!this.devices) await this.getAVDevices()
       const oldid = getSetting('failsaudiodeviceid')
+      console.log('audiodebug oldid', oldid)
       let devices = this.devices.filter((el) => el.kind === 'audioinput')
+      console.log('audiodebug old devices', devices)
       if (devices.length < 1) throw new Error('no Audio devices available')
       const olddevice = devices.filter((el) => el.deviceId === oldid)
+      console.log('audiodebug old device', olddevice)
       if (olddevice.length > 0) devices = olddevice
       const device = devices[0]
       // ok now we have one we can finally open the video stuff
