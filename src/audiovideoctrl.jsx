@@ -348,6 +348,18 @@ export class VideoControl extends Component {
         .catch((error) => {
           console.log('Avdevices error:', error)
         })
+      if (!avinterf.getSpeakerDeviceId()) {
+        avinterf
+          .getSpeakerDevice()
+          .then(() => {
+            this.setState({
+              audiooutid: avinterf.getSpeakerDeviceId()
+            })
+          })
+          .catch((error) => {
+            console.log('getSpeakerDevice', error)
+          })
+      }
 
       this.setState({
         spkmuted: !spkmuted,
