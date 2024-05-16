@@ -157,7 +157,11 @@ export class SocketInterface {
         localStorage.setItem('failsdeviceuuid', deviceuuid)
       }
       const data = new TextEncoder().encode(useruuid + ':' + deviceuuid)
-      this.userhash = btoa(await crypto.subtle.digest('SHA-256', data))
+      this.userhash = btoa(
+        String.fromCharCode(
+          ...new Uint8Array(await crypto.subtle.digest('SHA-256', data))
+        )
+      )
     } catch (error) {
       console.log('Problem updateUserHash', error)
     }
