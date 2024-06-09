@@ -555,7 +555,7 @@ export class VideoControl extends Component {
       this.setState({ avdevices: devices })
       // video
       const vidind = devices.findIndex(
-        (el) => this.state.videoid === el.deviceId
+        (el) => this.state.videoid === el.deviceId && el.kind === 'videoinput'
       )
       if (vidind === -1) {
         const viddev = devices.filter((el) => el.kind === 'videoinput')
@@ -565,14 +565,15 @@ export class VideoControl extends Component {
       }
       // screenshare
       const scind = devices.findIndex(
-        (el) => this.state.screencastid === el.deviceId
+        (el) =>
+          this.state.screencastid === el.deviceId && el.kind === 'videoinput'
       )
       if (scind === -1) {
         this.setState({ screencastid: undefined })
       }
       // audio
       const audind = devices.findIndex(
-        (el) => this.state.audioid === el.deviceId
+        (el) => this.state.audioid === el.deviceId && el.kind === 'audioinput'
       )
       if (audind === -1) {
         const auddev = devices.filter((el) => el.kind === 'audioinput')
@@ -581,7 +582,8 @@ export class VideoControl extends Component {
         }
       }
       const audindout = devices.findIndex(
-        (el) => this.state.audiooutid === el.deviceId
+        (el) =>
+          this.state.audiooutid === el.deviceId && el.kind === 'audiooutput'
       )
       if (audindout === -1) {
         const auddev = devices.filter((el) => el.kind === 'audiooutput')
