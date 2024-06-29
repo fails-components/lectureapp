@@ -3579,6 +3579,13 @@ export class FailsNotes extends FailsBasis {
           experimental={this.experimental()}
           features={this.features()}
           drawActivityMonitor={this.drawActivityMonitor}
+          reportScroll={(change) => {
+            this.setState((state) => ({
+              pageoffset: state.scrollunlock
+                ? Math.max(0, state.pageoffset + change)
+                : state.pageoffset + change
+            }))
+          }}
         ></NoteScreenBase>
         <div
           style={{

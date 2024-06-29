@@ -1989,6 +1989,11 @@ export class Blackboard extends Component {
           touchAction: 'none',
           backgroundPosition: '0px ' + stylespan.top
         }}
+        onWheel={(event) => {
+          if (this.props.reportScroll) {
+            this.props.reportScroll(event.deltaY / this.props.bbwidth)
+          }
+        }}
       >
         {this.state.bgpdf && (
           <BackgroundPDF
@@ -3027,6 +3032,9 @@ export class BlackboardNotepad extends Component {
 
   wheel(event) {
     // console.log('wheel', event)
+    if (this.props.reportScroll) {
+      this.props.reportScroll(event.deltaY / this.props.bbwidth)
+    }
     if (event.deltaMode === 0) {
       this.scrollboardKeys(0, event.deltaY / this.props.bbwidth)
     }
