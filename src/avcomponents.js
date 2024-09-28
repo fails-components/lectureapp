@@ -983,9 +983,9 @@ export class AVOneFrameToManyScaler extends AVOneToMany {
       // ok we need to crop
       visibleRect = {
         x: 0,
-        width: frame.displayWidth,
+        width: Math.max(frame.displayWidth, 1),
         y: 0.5 * (frame.displayHeight - frame.displayWidth * targetinvaspect),
-        height: frame.displayWidth * targetinvaspect
+        height: Math.max(frame.displayWidth * targetinvaspect, 1)
       }
     }
     const resframe = {}
@@ -1008,7 +1008,7 @@ export class AVOneFrameToManyScaler extends AVOneToMany {
       resframe[out] = new VideoFrame(frame, {
         visibleRect,
         displayWidth: targetwidth,
-        displayHeight: ((targetwidth * targetinvaspect) >> 1) << 1
+        displayHeight: Math.max(((targetwidth * targetinvaspect) >> 1) << 1, 1)
       })
     }
     frame.close()
