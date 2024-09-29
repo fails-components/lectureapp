@@ -1485,8 +1485,19 @@ class AVVideoOutputProcessor extends AVOutputProcessor {
     })
 
     this.decrypt = new AVDecrypt({
-      // eslint-disable-next-line no-undef
-      chunkMaker: (arg) => new EncodedVideoChunk(arg),
+      chunkMaker: (arg) => {
+        const init = { ...arg, transfer: [] }
+        const data = init.data
+        if (data) {
+          if (data instanceof ArrayBuffer) {
+            init.transfer.push(data)
+          } else if (ArrayBuffer.isView(data)) {
+            init.transfer.push(data.buffer)
+          }
+        }
+        // eslint-disable-next-line no-undef
+        return new EncodedVideoChunk(init)
+      },
       keyStore: KeyStore.getKeyStore()
     })
 

@@ -151,7 +151,16 @@ const AVComponentsLoaded = loadPolyfills().catch((error) => {
 })
 
 export const createEncodedAudioChunk = (input) => {
-  return new EncodedAudioChunk(input)
+  const init = { ...input, transfer: [] }
+  const data = init.data
+  if (data) {
+    if (data instanceof ArrayBuffer) {
+      init.transfer.push(data)
+    } else if (ArrayBuffer.isView(data)) {
+      init.transfer.push(data.buffer)
+    }
+  }
+  return new EncodedAudioChunk(init)
 }
 
 export const createAudioData = (input) => {
