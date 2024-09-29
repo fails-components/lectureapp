@@ -612,7 +612,7 @@ export class AVInterface {
       AVInterface.mediadevicesupported = false
     }
     if (!navigator.mediaDevices.getDisplayMedia) {
-      supported.screenin = false
+      supported.screencastin = false
     }
     if (!('AudioDecoder' in globalThis)) {
       console.log('AudioDecoder unsupported! We will failback to polyfill!')
@@ -628,7 +628,7 @@ export class AVInterface {
     if (!('VideoEncoder' in globalThis)) {
       console.log('VideoEncoder unsupported!')
       supported.videoin = false
-      supported.screenin = false
+      supported.screencastin = false
     }
     return supported
   }
