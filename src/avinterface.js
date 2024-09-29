@@ -630,6 +630,16 @@ export class AVInterface {
       supported.videoin = false
       supported.screencastin = false
     }
+    if (
+      navigator.userAgent.includes('Firefox') &&
+      !window.location.pathname.includes('experimental') // support it on the experimental branch
+    ) {
+      console.log(
+        'VideoEncoder is broken on Firefox at least on windows! Deactivate!'
+      )
+      supported.videoin = false
+      supported.screencastin = false
+    }
     return supported
   }
 
