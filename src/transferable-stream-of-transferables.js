@@ -164,7 +164,7 @@ class ReadableFromExternal {
   }
 }
 
-// for non-chromium platforms
+// for non-chromium platforms and non safari platforms
 class ReadableToExternal {
   constructor(args) {
     this.port = args.port

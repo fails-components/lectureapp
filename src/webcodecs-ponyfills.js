@@ -53,6 +53,7 @@ export class MediaStreamTrackProcessor {
     else if (track.kind === 'audio') this._setupAudio()
     this.outputQueue = []
     this.isPolyfill = true
+    this._useTimeDelay = false
   }
 
   _setupAudio() {
@@ -99,12 +100,24 @@ export class MediaStreamTrackProcessor {
       this.rvfcHandle = this.videoele.requestVideoFrameCallback(videoCallback)
     } else {
       // assumes getVideoPlaybackquality
-      const oldqual = this.videoele.getVideoPlaybackQuality()
+      let oldqual = this.videoele?.getVideoPlaybackQuality()
+      const oldtime = document.timeline.currentTime // 1 s delay
       const animHelper = (now) => {
-        const newqual = this.videoele.getVideoPlaybackQuality()
+        const newqual = this.videoele?.getVideoPlaybackQuality()
+        // enable fall back mode for firefox
         if (
-          newqual.totalVideoFrames - newqual.droppedVideoFrames >
-          oldqual.totalVideoFrames - oldqual.droppedVideoFrames
+          !this._useTimeDelay &&
+          newqual?.totalVideoFrames === 0 /* Firefox !!! */ &&
+          now - oldtime > 40 + 1000
+        ) {
+          this._useTimeDelay = true
+        }
+        if (
+          newqual?.totalVideoFrames - newqual?.droppedVideoFrames >
+            oldqual?.totalVideoFrames - oldqual?.droppedVideoFrames ||
+          (newqual?.totalVideoFrames === 0 /* Firefox !!! */ &&
+            now - oldtime > 40 &&
+            this._useTimeDelay)
         ) {
           // done submit
           videoCallback(now, {
@@ -112,6 +125,8 @@ export class MediaStreamTrackProcessor {
             width: this.videoele.videoWidth,
             height: this.videoele.videoHeight
           })
+          oldqual = newqual
+          // oldtime = now
         } else {
           this.rvfcHandle = requestAnimationFrame(animHelper)
         }
@@ -160,17 +175,21 @@ export class MediaStreamTrackProcessor {
 
   _enqueueVideo({ now, metadata }) {
     // console.log('SETUP video enqueue', now, metadata)
-    // eslint-disable-next-line no-undef
-    const frame = new VideoFrame(this.videoele, {
-      timestamp: Math.floor(metadata.presentationTime * 1000),
-      alpha: 'discard',
-      visibleRect: {
-        x: 0,
-        y: 0,
-        width: metadata.width,
-        height: metadata.height
-      }
-    })
-    this.streamController.enqueue(frame)
+    try {
+      // eslint-disable-next-line no-undef
+      const frame = new VideoFrame(this.videoele, {
+        timestamp: Math.floor(metadata.presentationTime * 1000),
+        alpha: 'discard',
+        visibleRect: {
+          x: 0,
+          y: 0,
+          width: metadata.width,
+          height: metadata.height
+        }
+      })
+      this.streamController.enqueue(frame)
+    } catch (error) {
+      console.log('enqueue video problem')
+    }
   }
 }
