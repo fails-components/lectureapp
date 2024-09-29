@@ -993,7 +993,7 @@ export class AVOneFrameToManyScaler extends AVOneToMany {
       frame.close()
       return resframe
     }
-    if (visibleRect.width === 1 && visibleRect.height === 1) {
+    if (visibleRect?.width === 1 && visibleRect?.height === 1) {
       frame.close()
       return resframe
     }
