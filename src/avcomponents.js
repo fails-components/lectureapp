@@ -993,6 +993,10 @@ export class AVOneFrameToManyScaler extends AVOneToMany {
       frame.close()
       return resframe
     }
+    if (visibleRect.width === 1 && visibleRect.height === 1) {
+      frame.close()
+      return resframe
+    }
     if (!this.backgroundOff) {
       const oldframe = frame
       const { frame: newframe } = await this.backgroundRemover(oldframe)
