@@ -123,9 +123,14 @@ export class AVTransport {
             })
           await this.transport.ready
           webtransport = true
-          console.log('webtransport is ready' /*, this.transport */)
+          console.log('webtransport is ready to', url /*, this.transport */)
         } catch (error) {
-          console.log('webtransport connection or closed failed', error)
+          console.log(
+            'webtransport connection or closed failed to',
+            url,
+            'with error:',
+            error
+          )
           this.connectedrej(error)
         }
 
