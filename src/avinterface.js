@@ -58,6 +58,7 @@ export class AVDeviceInputStream extends AVStream {
   constructor(args) {
     super(args)
     this.track = args.track
+    this.trackEnabled = false
     this.deviceId = args.deviceId
   }
 
@@ -110,8 +111,8 @@ export class AVVideoInputStream extends AVDeviceInputStream {
   }
 
   videoOff() {
-    if (this.track && !this.off) {
-      this.track.enabled = false
+    if ((this.track || this.trackEnabled) && !this.off) {
+      if (this.track) this.track.enabled = false
       this.off = true
       AVInterface.worker.postMessage({
         task: 'offChange',
@@ -122,8 +123,8 @@ export class AVVideoInputStream extends AVDeviceInputStream {
   }
 
   videoOn() {
-    if (this.track && this.off) {
-      this.track.enabled = true
+    if ((this.track || this.trackEnabled) && this.off) {
+      if (this.track) this.track.enabled = true
       this.off = false
       AVInterface.worker.postMessage({
         task: 'offChange',
@@ -202,52 +203,80 @@ export class AVVideoInputStream extends AVDeviceInputStream {
   }
 
   switchTrack({ track, screenshare }) {
-    // eslint-disable-next-line no-undef
-    const trackprocessor = new MediaStreamTrackProcessor({
-      track,
-      maxBufferSize: 10
-    })
-    if (!this.track) {
-      // now we will drop the track to the worker
-      AVInterface.worker.postMessage(
-        {
-          task: 'openVideoInput',
-          webworkid: this.webworkid,
-          screenshare,
-          readable: transferReadableStream(
-            trackprocessor.readable,
-            trackprocessor.isPolyfill
-          )
-        },
-        [
-          transferReadableStream(
-            trackprocessor.readable,
-            trackprocessor.isPolyfill
-          )
-        ]
-      )
-    } else {
-      AVInterface.worker.postMessage(
-        {
-          task: 'switchVideoInput',
-          screenshare,
-          webworkid: this.webworkid,
-          readable: transferReadableStream(
-            trackprocessor.readable,
-            trackprocessor.isPolyfill
-          )
-        },
-        [
-          transferReadableStream(
-            trackprocessor.readable,
-            trackprocessor.isPolyfill
-          )
-        ]
-      )
-    }
+    if (!AVInterface.mstinworker) {
+      // eslint-disable-next-line no-undef
+      const trackprocessor = new MediaStreamTrackProcessor({
+        track,
+        maxBufferSize: 10
+      })
+      if (!this.track) {
+        // now we will drop the track to the worker
+        AVInterface.worker.postMessage(
+          {
+            task: 'openVideoInput',
+            webworkid: this.webworkid,
+            screenshare,
+            readable: transferReadableStream(
+              trackprocessor.readable,
+              trackprocessor.isPolyfill
+            )
+          },
+          [
+            transferReadableStream(
+              trackprocessor.readable,
+              trackprocessor.isPolyfill
+            )
+          ]
+        )
+      } else {
+        AVInterface.worker.postMessage(
+          {
+            task: 'switchVideoInput',
+            screenshare,
+            webworkid: this.webworkid,
+            readable: transferReadableStream(
+              trackprocessor.readable,
+              trackprocessor.isPolyfill
+            )
+          },
+          [
+            transferReadableStream(
+              trackprocessor.readable,
+              trackprocessor.isPolyfill
+            )
+          ]
+        )
+      }
 
-    this.track = track
-    if (this.off) this.track.enabled = false
+      this.track = track
+      if (this.off) this.track.enabled = false
+    } else {
+      if (!this.trackEnabled) {
+        // now we will drop the track to the worker
+        AVInterface.worker.postMessage(
+          {
+            task: 'openVideoInput',
+            webworkid: this.webworkid,
+            screenshare,
+            track,
+            off: this.off
+          },
+          [track]
+        )
+      } else {
+        AVInterface.worker.postMessage(
+          {
+            task: 'switchVideoInput',
+            screenshare,
+            webworkid: this.webworkid,
+            track,
+            off: this.off
+          },
+          [track]
+        )
+      }
+      this.trackEnabled = true
+    }
   }
 }
 
@@ -303,8 +332,8 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
   }
 
   muteOn() {
-    if (this.track && !this.mute) {
-      this.track.enabled = false
+    if ((this.track || this.trackEnabled) && !this.mute) {
+      if (this.track) this.track.enabled = false
       this.mute = true
       AVInterface.worker.postMessage({
         task: 'muteChangeMic',
@@ -315,8 +344,8 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
   }
 
   muteOff() {
-    if (this.track && this.mute) {
-      this.track.enabled = true
+    if ((this.track || this.trackEnabled) && this.mute) {
+      if (this.track) this.track.enabled = true
       this.mute = false
       AVInterface.worker.postMessage({
         task: 'muteChangeMic',
@@ -355,46 +384,71 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
     })
     console.log('audio track settings after', track.getSettings())
 
-    // eslint-disable-next-line no-undef
-    const trackprocessor = new MediaStreamTrackProcessor({
-      track,
-      maxBufferSize: 10
-    })
-    if (!this.track) {
-      // now we will drop the track to the worker
-      AVInterface.worker.postMessage(
-        {
-          task: 'openAudioMicrophone',
-          webworkid: this.webworkid,
-          readable: transferReadableStream(
-            trackprocessor.readable,
-            trackprocessor.isPolyfill
-          )
-        },
-        [
-          transferReadableStream(
-            trackprocessor.readable,
-            trackprocessor.isPolyfill
-          )
-        ]
-      )
+    if (!AVInterface.mstinworker) {
+      // eslint-disable-next-line no-undef
+      const trackprocessor = new MediaStreamTrackProcessor({
+        track,
+        maxBufferSize: 10
+      })
+      if (!this.track && !this.trackEnabled) {
+        // now we will drop the track to the worker
+        AVInterface.worker.postMessage(
+          {
+            task: 'openAudioMicrophone',
+            webworkid: this.webworkid,
+            readable: transferReadableStream(
+              trackprocessor.readable,
+              trackprocessor.isPolyfill
+            )
+          },
+          [
+            transferReadableStream(
+              trackprocessor.readable,
+              trackprocessor.isPolyfill
+            )
+          ]
+        )
+      } else {
+        AVInterface.worker.postMessage(
+          {
+            task: 'switchAudioMicrophone',
+            webworkid: this.webworkid,
+            readable: transferReadableStream(
+              trackprocessor.readable,
+              trackprocessor.isPolyfill
+            )
+          },
+          [
+            transferReadableStream(
+              trackprocessor.readable,
+              trackprocessor.isPolyfill
+            )
+          ]
+        )
+      }
     } else {
-      AVInterface.worker.postMessage(
-        {
-          task: 'switchAudioMicrophone',
-          webworkid: this.webworkid,
-          readable: transferReadableStream(
-            trackprocessor.readable,
-            trackprocessor.isPolyfill
-          )
-        },
-        [
-          transferReadableStream(
-            trackprocessor.readable,
-            trackprocessor.isPolyfill
-          )
-        ]
-      )
+      if (!this.track && !this.trackEnabled) {
+        // now we will drop the track to the worker
+        AVInterface.worker.postMessage(
+          {
+            task: 'openAudioMicrophone',
+            webworkid: this.webworkid,
+            track,
+            mute: this.mute
+          },
+          [track]
+        )
+      } else {
+        AVInterface.worker.postMessage(
+          {
+            task: 'switchAudioMicrophone',
+            webworkid: this.webworkid,
+            track,
+            mute: this.mute
+          },
+          [track]
+        )
+      }
     }
     const ac = AVInterface.getInterface().getAudioContext()
     const tracksource = ac.createMediaStreamSource(mstream)
@@ -414,8 +468,12 @@ export class AVMicrophoneStream extends AVDeviceInputStream {
 
     this.tracksource = tracksource
 
-    this.track = track
-    if (this.mute) this.track.enabled = false
+    if (AVInterface.mstinworker) {
+      this.trackEnabled = true
+    } else {
+      this.track = track
+      if (this.mute) this.track.enabled = false
+    }
   }
 }
 
@@ -520,6 +578,7 @@ export class AVInterface {
   static interf = null
   static mediadevicesupported = false
   static userhash // unique hash, should be set, so that we can distinguish users, but should be a hash, so that we can not identify!
+  static mstinworker = false
 
   constructor(
     args // do not call directly
@@ -550,6 +609,9 @@ export class AVInterface {
     AVInterface.worker.addEventListener('message', interf.onMessage)
     AVInterface.worker.addEventListener('error', interf.onError)
     AVInterface.worker.addEventListener('messageerror', interf.onMessageError)
+    AVInterface.worker.postMessage({
+      task: 'probeMSTP'
+    })
     return AVInterface.interf
   }
 
@@ -651,6 +713,36 @@ export class AVInterface {
     this.avstatuscbs.delete(cb)
   }
 
+  tryActivateMstWorker() {
+    // we have a media stream track source inside a worker
+    // let's check if the Mediatrack is transferable
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = 40
+      canvas.height = 40
+      const stream = canvas.captureStream(1)
+      const testtrack = stream.getVideoTracks()[0]
+      testtrack.stop()
+      AVInterface.worker.postMessage(
+        {
+          task: 'testtransferabletrack',
+          testtrack
+        },
+        [testtrack]
+      )
+      AVInterface.mstinworker = true
+    } catch (error) {
+      // eslint-disable-next-line no-undef
+      if (!(error instanceof DataCloneError)) {
+        console.log('Test error result', error)
+      }
+      // deactivvate in any error case
+      AVInterface.mstinworker = false
+    }
+    console.log('Create MediaStreamTrackProcessor in worker!')
+    AVInterface.mstinworker = false // deactivate until testing is possible
+  }
+
   onMessage(event) {
     const task = event.data.task
     switch (task) {
@@ -723,6 +815,9 @@ export class AVInterface {
           const obj = this.objects[event.data.webworkid].deref()
           obj.extBlocked({ reason: event.data.block })
         }
+        break
+      case 'activatemstinworker':
+        this.tryActivateMstWorker()
         break
       default:
         console.log('unhandled onMessage', event)

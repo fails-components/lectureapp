@@ -487,7 +487,11 @@ class AVInputProcessor extends AVProcessor {
   // input means input from camera
   constructor(args) {
     super(args)
-    this.inputstream = args.inputstream
+    if (!args.track) {
+      this.inputstream = args.inputstream
+    } else {
+      this.newTrack(args)
+    }
 
     this.encoder = {}
     this.encrypt = {}
@@ -530,6 +534,24 @@ class AVInputProcessor extends AVProcessor {
 
   finalize() {
     this.close()
+  }
+
+  newTrack(args) {
+    if (this.track) {
+      this.track.stop()
+      delete this.track
+    }
+    this.track = args.track
+    // eslint-disable-next-line no-undef
+    this.trackprocessor = new MediaStreamTrackProcessor({
+      track: args.track,
+      maxBufferSize: 10
+    })
+    this.inputstream = this.trackprocessor.readable
+    this.off = args.off
+    if (args.off) {
+      this.track.enabled = false
+    }
   }
 
   setStreamDest(stream) {
@@ -942,6 +964,10 @@ class AVVideoInputProcessor extends AVInputProcessor {
   }
 
   changeOff(off) {
+    if (this.track) {
+      // we have the track
+      this.track.enabled = !off
+    }
     this.multscaler.changeOff(off)
   }
 
@@ -950,10 +976,17 @@ class AVVideoInputProcessor extends AVInputProcessor {
   }
 
   switchVideoInput(args) {
+    // may be move to base class and rename to switchInput?
     this.inputstream
       .cancel()
       .catch((error) => console.log('Error cancel videoinpustream:', error))
-    this.inputstream = args.inputstream
+    if (args.track) {
+      const { track, off } = args
+      // we have the track
+      this.newTrack({ track, off })
+    } else {
+      this.inputstream = args.inputstream
+    }
     this.inputstream.pipeTo(this.multscaler.writable, {
       preventClose: true,
       preventAbort: true
@@ -1045,7 +1078,13 @@ class AVAudioInputProcessor extends AVInputProcessor {
     this.inputstream
       .cancel()
       .catch((error) => console.log('Error cancel audio inputstream:', error))
-    this.inputstream = args.inputstream
+    if (args.track) {
+      const { track, off } = args
+      // we have the track
+      this.newTrack({ track, off })
+    } else {
+      this.inputstream = args.inputstream
+    }
     this.inputstream.pipeTo(this.multscaler.writable, {
       preventClose: true,
       preventAbort: true
@@ -1053,6 +1092,10 @@ class AVAudioInputProcessor extends AVInputProcessor {
   }
 
   changeMute(muted) {
+    if (this.track) {
+      // we have the track
+      this.track.enabled = !muted
+    }
     this.multscaler.changeMute(muted)
   }
 
@@ -1601,6 +1644,15 @@ class AVWorker {
     })
   }
 
+  probeMSTP() {
+    if (!('MediaStreamTrackProcessor' in globalThis)) {
+      console.log('MediaStreamTrackProcessor in AVWorker detected!')
+      this.sendMessage({
+        task: 'activatemstinworker'
+      })
+    }
+  }
+
   sendMessage(message) {
     globalThis.postMessage(message)
   }
@@ -1626,7 +1678,11 @@ class AVWorker {
 
   onMessage(event) {
     const task = event.data.task
-    if (!event.data.webworkid && task !== 'networkControl')
+    if (
+      !event.data.webworkid &&
+      task !== 'networkControl' &&
+      task !== 'probeMSTP'
+    )
       throw new Error('no webworkid specified')
     if (
       task !== 'getDb' &&
@@ -1641,8 +1697,11 @@ class AVWorker {
         {
           const newobj = new AVVideoInputProcessor({
             webworkid: event.data.webworkid,
-            inputstream: receiveReadableStream(event.data.readable),
-            screenshare: event.data.screenshare
+            inputstream:
+              event.data.readable && receiveReadableStream(event.data.readable),
+            track: event.data.track,
+            screenshare: event.data.screenshare,
+            off: event.data.off
           })
           this.objects[event.data.webworkid] = newobj
         }
@@ -1651,7 +1710,10 @@ class AVWorker {
         {
           const newobj = new AVAudioInputProcessor({
             webworkid: event.data.webworkid,
-            inputstream: receiveReadableStream(event.data.readable)
+            inputstream:
+              event.data.readable && receiveReadableStream(event.data.readable),
+            track: event.data.track,
+            off: event.data.mute
           })
           this.objects[event.data.webworkid] = newobj
         }
@@ -1679,7 +1741,10 @@ class AVWorker {
         {
           const object = this.objects[event.data.webworkid]
           object.switchVideoInput({
-            inputstream: receiveReadableStream(event.data.readable)
+            inputstream:
+              event.data.readable && receiveReadableStream(event.data.readable),
+            track: event.data.track,
+            off: event.data.off
           })
         }
         break
@@ -1687,7 +1752,10 @@ class AVWorker {
         {
           const object = this.objects[event.data.webworkid]
           object.switchAudioMicrophone({
-            inputstream: receiveReadableStream(event.data.readable)
+            inputstream:
+              event.data.readable && receiveReadableStream(event.data.readable),
+            track: event.data.track,
+            off: event.data.mute
           })
         }
         break
@@ -1792,6 +1860,9 @@ class AVWorker {
           if (AVWorker.networkRes) AVWorker.networkRes()
           AVWorker.networkRes = undefined
         }
+        break
+      case 'probeMSTP':
+        this.probeMSTP()
         break
       default:
         console.log('Unhandled message task (AVWorker):', task)
