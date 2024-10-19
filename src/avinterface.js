@@ -733,9 +733,7 @@ export class AVInterface {
       AVInterface.mstinworker = true
     } catch (error) {
       // eslint-disable-next-line no-undef
-      if (!(error instanceof DataCloneError)) {
-        console.log('Test error result', error)
-      }
+      console.log('DataClone Test error result', error)
       // deactivvate in any error case
       AVInterface.mstinworker = false
     }
