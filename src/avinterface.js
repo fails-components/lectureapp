@@ -731,13 +731,13 @@ export class AVInterface {
         [testtrack]
       )
       AVInterface.mstinworker = true
+      console.log('Create MediaStreamTrackProcessor in worker!')
     } catch (error) {
       // eslint-disable-next-line no-undef
       console.log('DataClone Test error result', error)
       // deactivvate in any error case
       AVInterface.mstinworker = false
     }
-    console.log('Create MediaStreamTrackProcessor in worker!')
     AVInterface.mstinworker = false // deactivate until testing is possible
   }
 
