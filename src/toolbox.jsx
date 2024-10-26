@@ -1836,7 +1836,7 @@ export class ToolBox extends ToolHandling {
             optionLabel='displayname'
             optionValue='id'
             options={idents}
-            style={{ maxHeight: '20vh' }}
+            style={{ maxHeight: '20vh', overflowY: 'auto' }}
             itemTemplate={this.identTemplate}
           />
           {digest && (
