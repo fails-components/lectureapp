@@ -65,9 +65,7 @@ export class AVTransport {
         if (this.statuscb) this.statuscb({ status: 'connecting' })
         const hinfo = await this.hostinfocb()
         if (!hinfo) {
-          await new Promise((resolve) => {
-            setTimeout(resolve, 5000)
-          })
+          // hostinfocb has its own 5 seconds timeout on the socket.io connection
           continue
         }
         const url = hinfo.url // 'https://' + this.hostname + ':' + this.port + '/avfails'

@@ -842,69 +842,69 @@ class SocketWorker {
 
   handleAV(event) {
     if (event.data.command && this.socket) {
-      this.socket.emit(event.data.command, event.data.data, (data) => {
-        switch (event.data.command) {
-          case 'gettransportinfo':
-            if (data.error) {
-              this.av.postMessage({
-                task: 'transportinfo',
-                error: data.error
-              })
-              this.servererrorhandler(
-                -1,
-                'AVS: ' + data.error,
-                'AVS Transport error'
-              )
-            } else {
-              this.av.postMessage({
-                task: 'transportinfo',
-                data: {
-                  url: data.url,
-                  wsurl: data.wsurl,
-                  spki: data.spki,
-                  token: data.token
-                }
-              })
-            }
-            break
-          case 'getrouting':
-            console.log('getrouting', data)
-            if (data.error) {
-              this.av.postMessage({
-                task: 'tickets',
-                error: data.error,
-                webworkid: event.data.webworkid,
-                queryid: event.data.queryid
-              })
-              this.servererrorhandler(
-                -1,
-                'AVS: ' + data.error,
-                'AVS ticket error'
-              )
-            } else if (data.notfound) {
-              console.log('client not found in network', data.notfound)
-              this.av.postMessage({
-                task: 'tickets',
-                error: 'Client not found in network',
-                webworkid: event.data.webworkid,
-                queryid: event.data.queryid
-              })
-            } else {
-              this.av.postMessage({
-                task: 'tickets',
-                data: {
-                  tickets: data.tickets
-                },
-                webworkid: event.data.webworkid,
-                queryid: event.data.queryid
-              })
-            }
-            break
+      this.socket
+        .timeout(5000)
+        .emit(event.data.command, event.data.data, (terror, data) => {
+          const error =
+            data?.error || (terror && terror.toString()) || undefined
+          switch (event.data.command) {
+            case 'gettransportinfo':
+              if (error) {
+                this.av.postMessage({
+                  task: 'transportinfo',
+                  error
+                })
+                this.servererrorhandler(
+                  -1,
+                  'AVS: ' + error,
+                  'AVS Transport error'
+                )
+              } else {
+                this.av.postMessage({
+                  task: 'transportinfo',
+                  data: {
+                    url: data.url,
+                    wsurl: data.wsurl,
+                    spki: data.spki,
+                    token: data.token
+                  }
+                })
+              }
+              break
+            case 'getrouting':
+              console.log('getrouting', data)
+              if (error) {
+                this.av.postMessage({
+                  task: 'tickets',
+                  error,
+                  webworkid: event.data.webworkid,
+                  queryid: event.data.queryid
+                })
+                this.servererrorhandler(-1, 'AVS: ' + error, 'AVS ticket error')
+              } else if (data.notfound) {
+                console.log('client not found in network', data.notfound)
+                this.av.postMessage({
+                  task: 'tickets',
+                  error: 'Client not found in network',
+                  webworkid: event.data.webworkid,
+                  queryid: event.data.queryid
+                })
+              } else {
+                this.av.postMessage({
+                  task: 'tickets',
+                  data: {
+                    tickets: data.tickets
+                  },
+                  webworkid: event.data.webworkid,
+                  queryid: event.data.queryid
+                })
+              }
+              break
 
-          default:
-          // do nothing
-        }
-      })
+            default:
+            // do nothing
+          }
+        })
     }
   }
 
