@@ -696,11 +696,16 @@ export class AVInterface {
       navigator.userAgent.includes('Firefox') &&
       !window.location.pathname.includes('experimental') // support it on the experimental branch
     ) {
-      console.log(
-        'VideoEncoder is broken on Firefox at least on windows! Deactivate!'
-      )
-      supported.videoin = false
-      supported.screencastin = false
+      let browserVersion = 0.0
+      const match = navigator.userAgent.match(/Firefox\/(\d+\.\d+)/)
+      if (match) browserVersion = Number(`${match[1]}`)
+      if (browserVersion < 134) {
+        console.log(
+          'VideoEncoder is broken on Firefox before 134 at least on windows! Deactivate!'
+        )
+        supported.videoin = false
+        supported.screencastin = false
+      }
     }
     return supported
   }
