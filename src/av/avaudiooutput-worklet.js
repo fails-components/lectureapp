@@ -34,6 +34,7 @@ export class AVAudioOutput extends AudioWorkletProcessor {
 
   process(inputs, outputs, parameters) {
     let outputpos = 0
+    // FIXME outputs seems to be zero sometimes
     while (outputpos < outputs[0][0].length) {
       if (!this.currentframe && this.nextframes.length > 0) {
         this.currentframe = this.nextframes.shift()

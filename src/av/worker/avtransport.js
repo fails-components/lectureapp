@@ -63,9 +63,13 @@ export class AVTransport {
       // WebTransportWS
       while (true) {
         if (this.statuscb) this.statuscb({ status: 'connecting' })
+        const hinfotimeoutprom = new Promise((resolve) =>
+          setTimeout(resolve, 2000)
+        )
         const hinfo = await this.hostinfocb()
         if (!hinfo) {
-          // hostinfocb has its own 5 seconds timeout on the socket.io connection
+          await hinfotimeoutprom
+          // hostinfocb has its own 5 seconds timeout on the socket.io connection, not true
           continue
         }
         const url = hinfo.url // 'https://' + this.hostname + ':' + this.port + '/avfails'

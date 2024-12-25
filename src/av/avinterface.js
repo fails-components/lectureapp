@@ -16,8 +16,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { MediaStreamTrackProcessor as MediaStreamTrackProcessorPolyfill } from './webcodecs-ponyfills.js'
-import { transferReadableStream } from './transferable-stream-of-transferables'
+import { MediaStreamTrackProcessor as MediaStreamTrackProcessorPolyfill } from './ponyfills/webcodecs-ponyfills.js'
+import { transferReadableStream } from './ponyfills/transferable-stream-of-transferables.js'
 import Color from 'color'
 
 // install polyfills, if required
@@ -571,7 +571,7 @@ export class AVRenderStream extends AVInputStream {
 }
 
 export class AVInterface {
-  static worker = new Worker(new URL('./avworker.js', import.meta.url), {
+  static worker = new Worker(new URL('./worker/avworker.js', import.meta.url), {
     type: 'module'
   })
 

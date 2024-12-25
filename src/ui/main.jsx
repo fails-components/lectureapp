@@ -73,19 +73,23 @@ import {
   fiScreenCast,
   fiNotes
 } from './icons/icons.jsx'
-import { NoteScreenBase } from './notepad.jsx'
-import { NoteTools } from './toolbox'
+import { NoteScreenBase } from './notepad/notepad.jsx'
+import { NoteTools } from './toolbox/toolbox.jsx'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
 import { UAParser } from 'ua-parser-js'
-import { ScreenManager } from './screenmanager'
-import { VideoControl, FloatingVideo, SpeakerSet } from './audiovideoctrl'
-import { SocketInterface } from './socketinterface'
-import { AVInterface } from './avinterface'
-import { KeyStore } from './keystore'
-import { PictureSelect } from './pictureselect'
-import { AVVideoRender } from './avvideorender.jsx'
+import { ScreenManager } from '../misc/screenmanager.js'
+import {
+  VideoControl,
+  FloatingVideo,
+  SpeakerSet
+} from '../avwidgets/audiovideoctrl.jsx'
+import { SocketInterface } from '../socket/socketinterface.js'
+import { AVInterface } from '../av/avinterface.js'
+import { KeyStore } from '../misc/keystore.js'
+import { PictureSelect } from './pictureselect.jsx'
+import { AVVideoRender } from '../avwidgets/avvideorender.jsx'
 
 class ChannelEdit extends Component {
   constructor(props) {

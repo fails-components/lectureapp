@@ -218,22 +218,22 @@ class AVBackgroundRemover {
     if (await FilesetResolver.isSimdSupported()) {
       wasmFileSet = {
         wasmLoaderPath: new URL(
-          '../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.js',
+          '../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.js',
           import.meta.url
         ).pathname,
         wasmBinaryPath: new URL(
-          '../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.wasm',
+          '../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.wasm',
           import.meta.url
         ).pathname
       }
     } else {
       wasmFileSet = {
         wasmLoaderPath: new URL(
-          '../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.js',
+          '../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.js',
           import.meta.url
         ).pathname,
         wasmBinaryPath: new URL(
-          '../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.wasm',
+          '../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.wasm',
           import.meta.url
         ).pathname
       }

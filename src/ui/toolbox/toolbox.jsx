@@ -17,9 +17,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 import React, { Component, Fragment } from 'react'
-import failsLogo from './logo/logo2.svg'
+import failsLogo from '../logo/logo2.svg'
 import { Badge } from 'primereact/badge'
-import failsLogoExp from './logo/logo2exp.svg'
+import failsLogoExp from '../logo/logo2exp.svg'
 import { Button } from 'primereact/button'
 import { OverlayPanel } from 'primereact/overlaypanel'
 import { ListBox } from 'primereact/listbox'
@@ -66,7 +66,7 @@ import {
   fiAddRectangleIcon,
   fiAddEllipseIcon,
   fiAddCircleIcon
-} from './icons/icons.jsx'
+} from '../icons/icons.jsx'
 import { UAParser } from 'ua-parser-js'
 
 class ColorPickerButton2 extends Component {

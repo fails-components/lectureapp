@@ -18,8 +18,8 @@
 */
 
 import React, { Component, Fragment } from 'react'
-import { Blackboard, BlackboardNotepad } from './blackboard.jsx'
-import { ToolBox, UtilBox, CopyDeleteBox } from './toolbox.jsx'
+import { Blackboard, BlackboardNotepad } from '../blackboard/blackboard.jsx'
+import { ToolBox, UtilBox, CopyDeleteBox } from '../toolbox/toolbox.jsx'
 import {
   Dispatcher,
   Collection,

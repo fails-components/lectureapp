@@ -31,9 +31,9 @@ import {
   AVOneFrameToManyScaler,
   createEncodedAudioChunk,
   AVFrameSceneChange
-} from './avcomponents'
-import { KeyStore } from './keystore'
-import { receiveReadableStream } from './transferable-stream-of-transferables'
+} from '../components/avcomponents'
+import { KeyStore } from '../../misc/keystore'
+import { receiveReadableStream } from '../ponyfills/transferable-stream-of-transferables'
 
 const videoQualities = [
   {

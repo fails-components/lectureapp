@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-import { KeyStore } from './keystore'
+import { KeyStore } from '../misc/keystore'
 export class SocketInterface {
   static worker = new Worker(new URL('./socketworker.js', import.meta.url), {
     type: 'module'

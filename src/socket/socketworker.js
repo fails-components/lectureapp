@@ -652,7 +652,8 @@ class SocketWorker {
         }
         this.informUpdatedKeys()
       } catch (error) {
-        console.log('receiveKey error', error)
+        const message = BSONdeserialize(data.message)
+        console.log('receiveKey error', error, message)
       }
     })
 

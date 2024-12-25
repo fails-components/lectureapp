@@ -22,12 +22,12 @@ import React, { useState } from 'react'
 import './theme/theme.scss' // fails theme based on saga blue
 import 'primereact/resources/primereact.min.css'
 
-import { FailsBoard, FailsScreen, FailsNotes } from './main.jsx'
+import { FailsBoard, FailsScreen, FailsNotes } from './ui/main.jsx'
 import './index.css'
 
 import { FailsConfig } from '@fails-components/config'
-import { Welcome } from './welcome.jsx'
-import { SocketInterface } from './socketinterface'
+import { Welcome } from './ui/welcome.jsx'
+import { SocketInterface } from './socket/socketinterface.js'
 // eslint-disable-next-line camelcase
 import jwt_decode from 'jwt-decode'
 

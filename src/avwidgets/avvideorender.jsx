@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { AVInterface } from './avinterface.js'
+import { AVInterface } from '../av/avinterface.js'
 
 export class AVVideoRender extends Component {
   constructor(args) {
