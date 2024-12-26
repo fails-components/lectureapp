@@ -83,13 +83,13 @@ import { ScreenManager } from '../misc/screenmanager.js'
 import {
   VideoControl,
   FloatingVideo,
-  SpeakerSet
-} from '../avwidgets/audiovideoctrl.jsx'
+  SpeakerSet,
+  AVVideoRender
+} from '../avwidgets'
 import { SocketInterface } from '../socket/interface.js'
-import { AVInterface } from '../av/avinterface.js'
+import { AVInterface } from '../av/interface.js'
 import { KeyStore } from '../misc/keystore.js'
 import { PictureSelect } from './pictureselect.jsx'
-import { AVVideoRender } from '../avwidgets/avvideorender.jsx'
 
 class ChannelEdit extends Component {
   constructor(props) {
