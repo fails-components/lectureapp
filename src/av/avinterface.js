@@ -571,7 +571,7 @@ export class AVRenderStream extends AVInputStream {
 }
 
 export class AVInterface {
-  static worker = new Worker(new URL('./worker/avworker.js', import.meta.url), {
+  static worker = new Worker(new URL('./worker/worker.js', import.meta.url), {
     type: 'module'
   })
 
