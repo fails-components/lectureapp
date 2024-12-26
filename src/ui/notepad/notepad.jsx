@@ -19,7 +19,7 @@
 
 import React, { Component, Fragment } from 'react'
 import { Blackboard, BlackboardNotepad } from '../blackboard/index.jsx'
-import { ToolBox, UtilBox, CopyDeleteBox } from '../toolbox/toolbox.jsx'
+import { ToolBox, UtilBox, CopyDeleteBox } from '../toolbox/index.jsx'
 import {
   Dispatcher,
   Collection,

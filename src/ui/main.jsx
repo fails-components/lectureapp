@@ -74,7 +74,7 @@ import {
   fiNotes
 } from './icons/icons.jsx'
 import { NoteScreenBase } from './notepad/notepad.jsx'
-import { NoteTools } from './toolbox/toolbox.jsx'
+import { NoteTools } from './toolbox/index.jsx'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { v4 as uuidv4 } from 'uuid'
