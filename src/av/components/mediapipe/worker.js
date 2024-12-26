@@ -96,6 +96,7 @@ class AVBackgroundRemover {
     this.segmenter.catch((error) => {
       console.log('Problem creating Image segmenter', error)
     })
+    this.timeorigin = undefined
   }
 
   initGlObjects() {
@@ -293,10 +294,14 @@ class AVBackgroundRemover {
       const { duration, timestamp, visibleRect, displayHeight, displayWidth } =
         frame
 
+      if (timestamp && typeof this.timeorigin === 'undefined') {
+        this.timeorigin = timestamp
+      }
+
       const inprogress = new Promise((resolve, reject) => {
         segmenter.segmentForVideo(
           frame,
-          timestamp,
+          timestamp - this.timeorigin,
           {},
           ({ confidenceMasks }) => {
             try {
