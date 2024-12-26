@@ -22,12 +22,6 @@ import Color from 'color'
 
 export class SVGWriting2 extends Component {
   render() {
-    /* { color:  this.state.workcolor, alpha: , objnum: this.state.workobjnum ,
-                 path: path ,
-                 startradius: this.state.workstartradius, endpoint: {x: wx-sx, y: wy-sy },
-                endradius: this.curpenwidth   } */
-    // <svg viewBox="-20 -20 40 40" width="100%" height="100%">
-    // console.log(this.props.glyph);
     const glyph = this.props.glyph
     const viewbox =
       Math.round(glyph.area.left) +
@@ -46,12 +40,10 @@ export class SVGWriting2 extends Component {
     let alpha = 1
     if (glyph.gtype === 1) alpha = 0.3
     else if (glyph.gtype === 2) {
-      // console.log("Eraser",this.props.backcolor);
       scolor = this.props.backcolor
       alpha = 0.95
     }
     if (glyph.gtype === 0) {
-      //  console.log('color check', glyph.color, this.props.backcolor)
       if (Color(this.props.backcolor).isLight()) {
         if (Color(glyph.color).luminosity() > 0.9) {
           stroke = 'black'
@@ -60,12 +52,6 @@ export class SVGWriting2 extends Component {
           scolor = Color(glyph.color).darken(0.3).hex()
         }
       }
-      /* else if (
-        Color(this.props.backcolor).isDark() &&
-        Color(glyph.color).luminosity() < 0.2
-      ) {
-        stroke = 'white'
-      } */
     }
 
     let firstpoint = null
@@ -177,17 +163,6 @@ export class SVGSpotlight extends Component {
         <circle cx='10' cy='10' r='10' fill="url('#laserGradient')" />
       </svg>
     )
-
-    /* return  <svg viewBox={viewbox}  style={style} >
-            <defs>
-            <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                <stop offset="0%" style="stop-color:rgb(255,0,0);
-                stop-opacity:1" />
-                <stop offset="100%" style="stop-color:rgb(255,255,255);stop-opacity:0" />
-            </radialGradient>
-            </defs>
-            <ellipse cx="25" cy="25" rx="25" ry="25" fill="url(#grad1)" />
-        </svg> */
   }
 }
 
@@ -205,8 +180,6 @@ export class FormHelper extends Component {
       zIndex: this.props.zIndex,
       left: Math.round(this.props.x - 10) + 'px',
       top: Math.round(this.props.y - 10) + 'px',
-      /* width: Math.round(width) + 'px',
-      height: Math.round(height) + 'px', */
       userSelect: 'none',
       pointerEvents: 'none'
     }

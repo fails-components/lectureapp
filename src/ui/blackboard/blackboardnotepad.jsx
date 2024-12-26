@@ -62,7 +62,6 @@ export class BlackboardNotepad extends Component {
     this.svgscale = 2000 // should be kept constant
 
     this.interactive = true
-    // props.stage.interactive=true;
 
     this.mousepathstarted = false
 
@@ -203,7 +202,6 @@ export class BlackboardNotepad extends Component {
   setScrollOffset(scrolloffset) {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.setScrollOffset(scrolloffset)
-    // this.scrolloffset=scrolloffset; // I believe we will need this for incoming pointer events no it is already delegated to realblackboard uff
   }
 
   calcObjId(pointerId) {
@@ -296,19 +294,7 @@ export class BlackboardNotepad extends Component {
           window.devicePixelRatio
         )
         return true
-      } /* else
-          console.log(
-            'degree debug',
-            distance,
-            degrees,
-            x,
-            y,
-            this.lastTouchPos.x,
-            this.lastTouchPos.y,
-            event.clientX,
-            event.clientY,
-            window.devicePixelRatio
-          ) */
+      }
     }
     if (
       this.touchPenPrevent &&
@@ -316,7 +302,6 @@ export class BlackboardNotepad extends Component {
         (now < this.lastPenEvent &&
           this.lastPenEvent - now < 2000)) /* || !event.isPrimary */
     ) {
-      console.log('pen blocks touch')
       return true // no touchy touchy
     }
     return false
@@ -343,12 +328,9 @@ export class BlackboardNotepad extends Component {
         return false
       } else return true
     }, this)
-    // if (this.pointerrejectcheck.length > 0)
-    //  console.log('pPR size', this.pointerrejectcheck.length)
   }
 
   async pointerdown(event) {
-    // console.log('pointerdown', event)
     console.log(
       'pointerdown pointerId:',
       event.pointerId,
@@ -463,15 +445,10 @@ export class BlackboardNotepad extends Component {
               addformpictposy: pos.y / this.props.bbwidth + this.calcCurpos(),
               addformpictheight: 200 / this.props.bbwidth,
               addformpictwidth: 200 / this.props.bbwidth,
-              // addformpictmode: 3 /* for drawing */
               addformpictmode: 2 /* for drawing */
             })
-            // this.addformpictmode = 3
             this.lastpictmovetime = now
-            // break
-            // case 3:
             this.addformpictmode = 2
-            // this.setState({ addformpictmode: 2 })
             this.addFormPictureMovePos({
               pos: { x: pos.x + 200, y: pos.y + 200 },
               reactivate: true,
@@ -489,8 +466,6 @@ export class BlackboardNotepad extends Component {
             break
         }
       } else {
-        // console.log( "startpath check",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth );
-        // console.log("startpath tool check", this.toolcolor, this.toolsize,this.props.bbwidth);
         if (this.notetools()) {
           this.notetools().setCanTooltip(false)
         }
@@ -503,7 +478,6 @@ export class BlackboardNotepad extends Component {
         this.pointerstoragenum[event.pointerId] = Math.floor(
           pos.y / this.props.bbwidth + this.calcCurpos()
         )
-        // console.log("objid",objid);
         this.props.outgoingsink.startPath(
           null,
           objid,
@@ -512,7 +486,6 @@ export class BlackboardNotepad extends Component {
           pos.y / this.props.bbwidth + this.calcCurpos(),
           this.tooltype,
           Color(this.toolcolor).rgbNumber(),
-          // (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
           this.toolsize / this.svgscale,
           event.pressure
         )
@@ -525,7 +498,6 @@ export class BlackboardNotepad extends Component {
             pos.y / this.props.bbwidth + this.calcCurpos(),
             this.tooltype,
             Color(this.toolcolor).rgbNumber(),
-            // (this.toolsize / this.props.bbwidth) * this.props.devicePixelRatio,
             this.toolsize / this.svgscale,
             event.pressure
           )
@@ -538,23 +510,18 @@ export class BlackboardNotepad extends Component {
           })
         }
 
-        // console.log("props.devicePixelRatio", this.props.devicePixelRatio);
-
         this.mousepathstarted = true
-        // console.log("mousedownbb");
       }
     }
   }
 
   rightdown(event) {
-    // console.log("rightdown1");
     if (this.props.notesmode) return
 
     this.rightmousescrollx = event.screenX
     this.rightmousescrolly = event.screenY
     this.rightmousescroll = true
     this.rightmousescrollpos = this.calcCurpos()
-    // console.log("rightdown");
     this.mouseidentifier = null
   }
 
@@ -655,23 +622,6 @@ export class BlackboardNotepad extends Component {
       //
       this.fogtime[pointerid] = newtime
 
-      /*  const lfp = this.lastfogpos[pointerid]
-        let distance = 0
-        if (lfp) distance = (x - lfp.x) * (x - lfp.x) + (y - lfp.y) * (y - lfp.y)
-        this.lastfogpos[pointerid] = { x: x, y: y }
-  
-        const velocity = Math.sqrt(distance / timeelapsed / timeelapsed) // this is velocity squared
-        if (!this.fogmeanvel[pointerid]) this.fogmeanvel[pointerid] = 0
-        this.fogmeanvel[pointerid] =
-          this.fogmeanvel[pointerid] * 0.66 + 0.33 * velocity */
-
-      /* console.log('fog ' + this.fogmeanvel[pointerid], timeelapsed, velocity)
-        console.log(
-          'FoG scrolloffset',
-          y,
-          this.state.curscrollpos,
-          this.state.scrolloffset
-        ) */
       this.reportFoG(x, y, this.clientId)
       if (this.realblackboard && this.realblackboard.current)
         this.realblackboard.current.preReceiveFoG({
@@ -679,36 +629,6 @@ export class BlackboardNotepad extends Component {
           y,
           clientid: this.clientId
         })
-
-      /*  if (this.fogmeanvel[pointerid] > 0.7) {
-          this.fogontime = newtime
-          this.props.notepadscreen.reportFoG(x, y, this.clientId)
-          if (this.realblackboard && this.realblackboard.current)
-            this.realblackboard.current.preReceiveFoG({
-              x: x,
-              y: y,
-              clientid: this.clientId
-            })
-        } else {
-          if (this.fogontime && newtime - this.fogontime > 2000) {
-            this.fogontime = null
-            this.props.notepadscreen.reportFoG(null, null, this.clientId)
-            if (this.realblackboard && this.realblackboard.current)
-              this.realblackboard.current.preReceiveFoG({
-                x: null,
-                y: null,
-                clientid: this.clientId
-              })
-          } else if (this.fogontime) {
-            this.props.notepadscreen.reportFoG(x, y, this.clientId)
-            if (this.realblackboard && this.realblackboard.current)
-              this.realblackboard.current.preReceiveFoG({
-                x: x,
-                y: y,
-                clientid: this.clientId
-              })
-          }
-        } */
     }
   }
 
@@ -722,7 +642,6 @@ export class BlackboardNotepad extends Component {
         (lastpos.y - pos.y) * (lastpos.y - pos.y)
       if (distance > 0) {
         const objid = this.pointerobjids[mevent.pointerId]
-        // console.log("distance check,",distance,pos.x,pos.y,pos.x/this.props.bbwidth,pos.y/this.props.bbwidth+this.getCurScrollPos()  );
         this.props.outgoingsink.addToPath(
           null,
           objid,
@@ -763,15 +682,6 @@ export class BlackboardNotepad extends Component {
 
   pointermove(event) {
     const now = event.timeStamp
-    /* console.log("pointermove",event);
-          console.log("pointerId:",event.pointerId,
-                  "pointerType",event.pointerType,
-                  "isPrimary",event.isPrimary,
-                  "width",event.width,
-                  "height",event.height,
-                  "button",event.button,
-                  "cX",event.clientX,
-                  "cY",event.clientY); */
     if (event.pointerType === 'pen' /* || event.pointerType === 'mouse' */)
       // also applies to mouse, behaviour of some wacom tablet in the not windows ink mode
       // no is not true in this case it is a mixure of mouse and touch events emulating the pen
@@ -810,10 +720,6 @@ export class BlackboardNotepad extends Component {
         this.lastTouchTime = now
         this.lastTouchPointerId = event.pointerId
         // }
-        /* console.log("pointerdraw", this.pointerdraw[event.pointerId]);
-             console.log("last pos",this.lastpos );
-             console.log("pointer id", event.pointerId);
-             console.log("lastpos",this.lastpos[event.pointerId]); */
         if (this.magictool) {
           const pos = { x: event.clientX, y: event.clientY }
           if (this.realblackboard && this.realblackboard.current)
@@ -859,7 +765,6 @@ export class BlackboardNotepad extends Component {
           return // no touchy touchy  // this is handled in pointer down already, no it is not in this case
 
         const pos = { x: event.clientX, y: event.clientY }
-        // console.log("Fog out BB",pos.x,this.props.bbwidth,pos.y,this.props.bbwidth,event.data,this);
         if (this.laserpointer)
           this.fogHandle(
             pos.x / this.props.bbwidth,
@@ -868,7 +773,6 @@ export class BlackboardNotepad extends Component {
             now
           )
       }
-      // console.log("mousemove");
     } else {
       this.props.outgoingsink.scrollBoard(
         null,
@@ -885,7 +789,6 @@ export class BlackboardNotepad extends Component {
           this.rightmousescrollpos +
             (-event.screenY + this.rightmousescrolly) / this.props.bbwidth
         )
-      // console.log("rightmove");
     }
   }
 
@@ -894,14 +797,6 @@ export class BlackboardNotepad extends Component {
       this.rightup(event)
       return
     }
-    /*
-      if (
-        event.pointerType === 'touch' &&
-        Date.now() - this.lastPenEvent < 5 * 1000
-      )
-        return // no touchy touchy
-      */ // this is handled in pointer down already !, would otherwise result in stale drawings...
-
     const pos = { x: event.clientX, y: event.clientY }
 
     if (event.pointerId === this.magicpointerid && this.magictool) {
@@ -964,14 +859,6 @@ export class BlackboardNotepad extends Component {
         'cY',
         event.clientY
       )
-      /* console.log('pu event', event)
-        console.log(
-          'pointerup',
-          pos.x,
-          pos.y,
-          pos.x / this.props.bbwidth,
-          pos.y / this.props.bbwidth + this.calcCurpos()
-        ) */
       if (event.clientX !== 0 && event.clientY !== 0) {
         this.props.outgoingsink.addToPath(
           null,
@@ -1004,7 +891,6 @@ export class BlackboardNotepad extends Component {
   }
 
   wheel(event) {
-    // console.log('wheel', event)
     if (this.props.reportScroll) {
       this.props.reportScroll(event.deltaY / this.props.bbwidth)
     }
@@ -1032,11 +918,9 @@ export class BlackboardNotepad extends Component {
         )
       this.rightmousescroll = false
     }
-    // console.log("rightup");
   }
 
   scrollboardTB(x, y, reference) {
-    // console.log("scrollboardTB",x,y,reference);
     if (this.props.outgoingsink)
       this.props.outgoingsink.scrollBoard(null, this.clientId, 0, reference + y)
     if (this.realblackboard && this.realblackboard.current)
@@ -1050,7 +934,6 @@ export class BlackboardNotepad extends Component {
 
   scrollboardKeys(x, y) {
     if (this.props.notesmode) return
-    // console.log("scrollboardKeys",x,y,this.getCurScrollPos(),this.state.curkeyscroll);
     const time = Date.now()
 
     let resetkeyscroll = null
@@ -1135,12 +1018,6 @@ export class BlackboardNotepad extends Component {
       this.realblackboard.current.turnOffMagic()
       for (let pos = 0; pos < magicobjids.length; pos++) {
         const element = magicobjids[pos]
-        /* console.log(
-            'delete request',
-            element.objid,
-            element.storagenum,
-            element
-          ) */
         this.props.outgoingsink.deleteObject(
           null,
           element.objid,

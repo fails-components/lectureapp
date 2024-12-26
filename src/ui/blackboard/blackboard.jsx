@@ -99,8 +99,6 @@ export class Blackboard extends Component {
 
     this.lastrpd = Date.now()
 
-    // stage.addChild(this.blackboardtemp);
-
     this.pathstarted = this.pathupdated = false
 
     this.stage = props.stage
@@ -199,14 +197,6 @@ export class Blackboard extends Component {
     }
   }
 
-  /* componentWillUnmount()
-  {
-    if (this.props.bbchannel)
-    {
-    }
-
-  } */
-
   componentDidUpdate(prevprops, prevState) {
     if (
       !isNaN(this.props.pageoffset) &&
@@ -260,9 +250,7 @@ export class Blackboard extends Component {
   addPicture(time, objnum, curclient, x, y, width, height, uuid) {
     this.updateRenderArea(x, y)
     this.updateRenderArea(x + width, y + height)
-    // console.log('addpicture', x, y, width, height, uuid)
     const pictinfo = this.pictures[uuid]
-    // console.log('pictinfo', pictinfo)
     if (pictinfo) {
       const addpict = new DrawObjectPicture(objnum)
 
@@ -403,8 +391,6 @@ export class Blackboard extends Component {
   }
 
   startPath(time, objnum, curclient, x, y, type, color, width, pressure) {
-    // console.log("startPath",x,y,type,color,width, pressure);
-
     if (this.workobj[objnum]) {
       // in case of lost messages
       console.log('lost case', objnum)
@@ -428,8 +414,6 @@ export class Blackboard extends Component {
   }
 
   preStartPath(time, objnum, curclient, x, y, type, color, width, pressure) {
-    // console.log("startPath",x,y,type,color,width, pressure);
-
     if (this.preworkobj[objnum]) {
       // in case of lost messages
       console.log('lost case preview')
@@ -490,10 +474,7 @@ export class Blackboard extends Component {
               this.scrollheight()
           )
       }
-
-      // this.updateRenderArea(x, y)
     }
-    // console.log("addToPath",time,curclient,x,y,x*this.props.bbwidth,y*this.props.bbwidth);
   }
 
   finishPath(time, objid, curclient) {
@@ -501,12 +482,6 @@ export class Blackboard extends Component {
       this.workobj[objid].finishPath()
       this.workobj[objid].setPreview(false)
       delete this.workobj[objid]
-      /* if (this.preworkobj[objid])
-        console.log(
-          'finish pathdelay',
-          (Date.now() - this.preworkobj[objid].finishtime) / 1000,
-          'seconds'
-        ) */
       delete this.preworkobj[objid] // also remove preview
 
       if (!this.redrawing) {
@@ -519,9 +494,6 @@ export class Blackboard extends Component {
   preFinishPath(time, objid, curclient) {
     if (this.preworkobj[objid]) {
       this.preworkobj[objid].finishPath()
-      // this.preworkobj[objid].finishtime = Date.now()
-      // this.work.objects.push(this.workobj[objid])
-      // delete this.workobj[objid]
 
       if (!this.redrawing) {
         if (this.state.fogpos) this.setState({ fogpos: false })
@@ -564,8 +536,7 @@ export class Blackboard extends Component {
     }
 
     if (y !== 0 && true) {
-      // console.log('scrollboard', y, this.state.scrolloffset)
-      let newpos = /* this.curscrollpos+ */ y
+      let newpos = y
       if (newpos < 0) newpos = 0
       this.setState({ curscrollpos: newpos })
       if (this.props.scrollposListener) this.props.scrollposListener(newpos)
@@ -582,8 +553,7 @@ export class Blackboard extends Component {
 
     if (y !== 0 && true) {
       this.myclientnum = clientnum
-      // console.log("scrollboard",y,this.state.scrolloffset);
-      let newpos = /* this.curscrollpos+ */ y
+      let newpos = y
       if (newpos < 0) newpos = 0
       this.setState({ curscrollpos: newpos })
       if (this.props.scrollposListener) this.props.scrollposListener(newpos)
@@ -594,17 +564,9 @@ export class Blackboard extends Component {
   }
 
   calcCurpos(curscrollpos) {
-    // console.log("calcCurpos pre",this.props.pageoffsetabsolute, this.props.pageoffset );
     if (this.props.pageoffsetabsolute) return this.props.pageoffset
     let pageoffset = 0
     if (this.props.pageoffset) pageoffset = this.props.pageoffset
-    /* console.log(
-      'calcCurpos',
-      this.state.curscrollpos + pageoffset + this.state.scrolloffset,
-      this.state.curscrollpos,
-      pageoffset,
-      this.state.scrolloffset
-    ) */
     return (
       (curscrollpos || this.state.curscrollpos) +
       pageoffset +
@@ -622,8 +584,6 @@ export class Blackboard extends Component {
       ) ||
       this.forceredraw
     ) {
-      // console.log("check redraw start 2");
-
       this.doRedraw()
     }
   }
@@ -691,12 +651,10 @@ export class Blackboard extends Component {
   }
 
   receivePictInfo(data) {
-    // console.log('receivepictureinfo', data)
     this.pictures[data.uuid] = data
   }
 
   receiveBgpdfInfo(data) {
-    // console.log('receivebgpdfinfo', data)
     if (data.none) this.setState({ bgpdf: null })
     else if (data.url) this.setState({ bgpdf: data.url })
   }
@@ -706,7 +664,7 @@ export class Blackboard extends Component {
     let fogpos = {}
     if (!data.x && !data.y) fogpos = false
     else {
-      fogpos = { x: data.x, y: data.y /* +state.curscrollpos */ }
+      fogpos = { x: data.x, y: data.y }
     }
     if (this.spotlight.current) this.spotlight.current.setFogpos(fogpos)
   }
@@ -716,7 +674,7 @@ export class Blackboard extends Component {
     let fogpos = {}
     if (!data.x && !data.y) fogpos = false
     else {
-      fogpos = { x: data.x, y: data.y /* +state.curscrollpos */ }
+      fogpos = { x: data.x, y: data.y }
     }
     if (this.spotlight.current) this.spotlight.current.setFogpos(fogpos)
   }
@@ -852,9 +810,7 @@ export class Blackboard extends Component {
         console.log('unknown drawing', el)
         rendercache = <React.Fragment key={key}></React.Fragment>
       }
-      // console.log('cache miss')
       el.setRenderCache(key, rendercache)
-      // console.log('cache miss fix ', el)
     }
     return rendercache
   }
@@ -880,7 +836,6 @@ export class Blackboard extends Component {
       backcolor: this.props.backcolor
     }
 
-    // console.log("render ob", this.state.objects);
     const written = this.state.objects
       .filter(this.renderFilter)
       .map(

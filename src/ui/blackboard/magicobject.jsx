@@ -123,7 +123,6 @@ export class MagicObject {
   }
 
   addPoint(x, y) {
-    // if (this.points.length < 3) console.log('magic add point', x, y)
     this.pathdirty = true
 
     // the following lines rescale at the borders
@@ -246,7 +245,6 @@ export class MagicObject {
 
   pointerdown(event) {
     if (!this.moveison) return
-    console.log('pointerdown magic hi')
     if (event && event.target && event.target.id !== 'theMagicPath') return // only if the path is hit, we will proceed, says joda
     if (this.svgref.current) {
       this.svgref.current.setPointerCapture(event.pointerId)

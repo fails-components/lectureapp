@@ -70,17 +70,10 @@ export class BackgroundPDFPage extends Component {
 
     const page = this.props.page
     const bbwidth = this.props.bbwidth
-    // console.log("props page",this.props.page);
-    // console.log("page height debug ",this.props.bbwidth , this.props.page.height);
-    console.log(
-      'getvp width bbwidth',
-      page.pageobj.getViewport({ scale: 1.0 }).width,
-      bbwidth
-    )
+
     const viewport = page.pageobj.getViewport({
       scale: bbwidth / page.pageobj.getViewport({ scale: 1.0 }).width
     })
-    console.log('viewport', viewport)
 
     canvas.height = viewport.height
     canvas.width = viewport.width
@@ -97,7 +90,6 @@ export class BackgroundPDFPage extends Component {
     const renderTask = page.pageobj.render(renderContext)
     try {
       await renderTask.promise
-      console.log('Render pdf page ', page.pagenum)
       this.inrendering = false
 
       // this.setState({ page, bbwidth })
