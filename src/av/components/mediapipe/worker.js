@@ -1,3 +1,20 @@
+/*
+    Fails Components (Fancy Automated Internet Lecture System - Components)
+    Copyright (C)  2022- (FAILS Components)  Marten Richter <marten.richter@freenet.de>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 import { ImageSegmenter, FilesetResolver } from '@mediapipe/tasks-vision'
 class AVBackgroundRemover {
   static fragmentShaderCodeColor = `#version 300 es
@@ -218,22 +235,22 @@ class AVBackgroundRemover {
     if (await FilesetResolver.isSimdSupported()) {
       wasmFileSet = {
         wasmLoaderPath: new URL(
-          '../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.js',
+          '../../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.js',
           import.meta.url
         ).pathname,
         wasmBinaryPath: new URL(
-          '../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.wasm',
+          '../../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.wasm',
           import.meta.url
         ).pathname
       }
     } else {
       wasmFileSet = {
         wasmLoaderPath: new URL(
-          '../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.js',
+          '../../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.js',
           import.meta.url
         ).pathname,
         wasmBinaryPath: new URL(
-          '../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.wasm',
+          '../../../../node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_nosimd_internal.wasm',
           import.meta.url
         ).pathname
       }

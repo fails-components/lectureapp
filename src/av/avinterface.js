@@ -571,7 +571,7 @@ export class AVRenderStream extends AVInputStream {
 }
 
 export class AVInterface {
-  static worker = new Worker(new URL('./worker/worker.js', import.meta.url), {
+  static worker = new Worker(new URL('./worker/main.js', import.meta.url), {
     type: 'module'
   })
 
@@ -828,9 +828,13 @@ export class AVInterface {
     }
   }
 
-  onMessageError(event) {}
+  onMessageError(event) {
+    console.log('AVWorker message error:', event)
+  }
 
-  onError(event) {}
+  onError(event) {
+    console.log('AVWorker error', event)
+  }
 
   getNewId() {
     const newid = this.idCount
@@ -1034,3 +1038,5 @@ export class AVInterface {
     }
   }
 }
+
+console.log('After staring worker', AVInterface.worker)

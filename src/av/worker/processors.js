@@ -2,21 +2,21 @@ import { KeyStore } from '../../misc/keystore'
 import {
   AVAudioDecoder,
   AVAudioEncoder,
-  AVDecrypt,
-  AVDeFramer,
-  AVEncrypt,
-  AVFramer,
-  AVFrameSceneChange,
-  AVOneFrameToManyScaler,
-  AVOneToManyCopy,
   AVVideoDecoder,
   AVVideoEncoder,
-  BsonDeFramer,
+  createEncodedAudioChunk,
+  AVFramer,
+  AVDeFramer,
   BsonFramer,
-  createEncodedAudioChunk
-} from '../components/avcomponents'
+  BsonDeFramer,
+  AVDecrypt,
+  AVEncrypt,
+  AVOneToManyCopy,
+  AVOneFrameToManyScaler,
+  AVFrameSceneChange
+} from '../components'
 import { AVTransport } from './transport'
-import { avworker, AVWorker, undefined } from './worker'
+import { AVWorker } from './avworker'
 
 export const videoQualities = [
   {
@@ -1083,7 +1083,10 @@ export class AVAudioInputProcessor extends AVInputProcessor {
     const prom = new Promise((resolve) => {
       this.dbPromsRes.push(resolve)
     })
-    avworker.sendMessage({ task: 'getDbMax', webworkid: this.webworkid })
+    AVWorker.getWorker()?.sendMessage?.({
+      task: 'getDbMax',
+      webworkid: this.webworkid
+    })
 
     const db = await prom
 

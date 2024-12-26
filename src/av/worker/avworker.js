@@ -1,34 +1,18 @@
-/*
-    Fails Components (Fancy Automated Internet Lecture System - Components)
-    Copyright (C)  2022- (FAILS Components)  Marten Richter <marten.richter@freenet.de>
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as
-    published by the Free Software Foundation, either version 3 of the
-    License, or (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-import { AVTransport } from './transport'
 import { KeyStore } from '../../misc/keystore'
 import { receiveReadableStream } from '../ponyfills/transferable-stream-of-transferables'
-import { AVVideoRenderInt } from './videorenderint'
 import {
-  AVAudioInputProcessor,
-  AVAudioOutputProcessor,
   AVVideoInputProcessor,
-  AVVideoOutputProcessor
+  AVAudioInputProcessor,
+  AVVideoOutputProcessor,
+  AVAudioOutputProcessor
 } from './processors'
+import { AVTransport } from './transport'
+import { AVVideoRenderInt } from './videorenderint'
 
 export class AVWorker {
   static ncPipe = null
   static networkRes = null
+  static worker = null
   static networkProm = new Promise((resolve, reject) => {
     AVWorker.networkRes = resolve
   })
@@ -39,6 +23,7 @@ export class AVWorker {
 
     this.handleNetworkControl = this.handleNetworkControl.bind(this)
     this.transportInfoProm = Promise.resolve()
+    AVWorker.worker = this
   }
 
   static isNetworkOn() {
@@ -47,6 +32,10 @@ export class AVWorker {
 
   static async waitForNetwork() {
     await AVWorker.networkProm
+  }
+
+  static getWorker() {
+    return AVWorker.worker
   }
 
   handleNetworkControl(message) {
@@ -315,21 +304,3 @@ export class AVWorker {
     }
   }
 }
-
-console.log('before startConnection')
-// eslint-disable-next-line prefer-const
-export let avworker
-new AVTransport({
-  cb: async () => {
-    if (avworker) return await avworker.getTransportInfo()
-    return null
-  },
-  status: (state) => {
-    if (avworker) avworker.avtransportStatus(state)
-  }
-}).startConnection()
-
-avworker = new AVWorker()
-
-globalThis.addEventListener('message', avworker.onMessage)
-console.log('AVWorker started')
