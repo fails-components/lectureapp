@@ -29,7 +29,7 @@ import Color from 'color'
 import * as pdfjs from 'pdfjs-dist'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  '../node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+  '../../../node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs',
   import.meta.url
 ).href
 
