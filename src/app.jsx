@@ -22,7 +22,7 @@ import React, { useState } from 'react'
 import './theme/theme.scss' // fails theme based on saga blue
 import 'primereact/resources/primereact.min.css'
 
-import { FailsBoard, FailsScreen, FailsNotes } from './ui/main.jsx'
+import { FailsBoard, FailsScreen, FailsNotes } from './ui'
 import './index.css'
 
 import { FailsConfig } from '@fails-components/config'
