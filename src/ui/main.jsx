@@ -85,7 +85,7 @@ import {
   FloatingVideo,
   SpeakerSet
 } from '../avwidgets/audiovideoctrl.jsx'
-import { SocketInterface } from '../socket/socketinterface.js'
+import { SocketInterface } from '../socket/interface.js'
 import { AVInterface } from '../av/avinterface.js'
 import { KeyStore } from '../misc/keystore.js'
 import { PictureSelect } from './pictureselect.jsx'

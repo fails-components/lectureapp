@@ -27,7 +27,7 @@ import './index.css'
 
 import { FailsConfig } from '@fails-components/config'
 import { Welcome } from './ui/welcome.jsx'
-import { SocketInterface } from './socket/socketinterface.js'
+import { SocketInterface } from './socket/interface.js'
 // eslint-disable-next-line camelcase
 import jwt_decode from 'jwt-decode'
 

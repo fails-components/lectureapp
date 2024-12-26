@@ -100,11 +100,6 @@ class SocketWorker {
       this.keymaster &&
       (!keyobject.exptime || keyobject.exptime - now - 60 < 0)
     ) {
-      /* console.log(
-        'keymasterGenerate',
-        !keyobject.exptime,
-        keyobject.exptime - now - 60
-      ) */
       // I am the keymaster and I should regenerate keys
       if (!this.keymasterGeneratingKeys) {
         this.keymasterGeneratingKeys = true
@@ -417,15 +412,12 @@ class SocketWorker {
   initializeSocketHandlers() {
     this.socket.removeAllListeners('authtoken')
     this.socket.on('authtoken', (data) => {
-      // console.log('authtoken renewed', data)
-      // console.log('oldauthtoken' /* , this.myauthtoken */)
       this.myauthtoken = data.token
       globalThis.postMessage({
         task: 'setToken',
         token: data.token,
         decodedToken: this.decodedToken()
       })
-      // console.log('newauthtoken' /* , this.myauthtoken */)
       console.log('authtoken renewed')
       this.scheduleReauthor() // request renewal
     })
@@ -472,7 +464,6 @@ class SocketWorker {
     this.socket.on('identUpdate', async (data) => {
       if (data.id && data.identity) {
         const iden = data.identity
-        // console.log('identUpdate', iden, iden.signKey, iden.cryptKey, data.id)
         try {
           const el = await toIden(iden, data.id)
           this.idents[data.id] = el
@@ -512,18 +503,6 @@ class SocketWorker {
     this.socket.on('identList', async (data) => {
       const now = Date.now()
       for (const id in data) {
-        /*  console.log(
-          'identList',
-          this.socket.id,
-          id,
-          data[id],
-          data[id].signKey,
-          data[id].cryptKey,
-          now - 60 * 5 * 1000 - Number(data[id].lastaccess),
-          now - 60 * 5 * 1000,
-          Number(data[id].lastaccess),
-          now - 60 * 5 * 1000 - Number(data[id].lastaccess) < 0
-        ) */
         if (
           data[id].signKey &&
           data[id].cryptKey &&
@@ -599,7 +578,6 @@ class SocketWorker {
           verikey = this.idents[data.id].signKey
         }
         if (!verikey) {
-          // console.log('key info', message, message.id, this.idents)
           if (message.verifyKey && this.decodedToken().purpose !== 'lecture') {
             verikey = await crypto.subtle.importKey(
               'jwk',
@@ -624,7 +602,6 @@ class SocketWorker {
           data.message
         )
         if (!verified) throw new Error('verification of keymaster failed')
-        // console.log('destination check', data.dest, message.dest)
         if (this.socket.id !== message.dest)
           throw new Error('destination forged')
 
@@ -695,7 +672,6 @@ class SocketWorker {
       console.log('Socketio error', data)
       this.servererrorhandler(data.code, data.message, data.type)
       this.setReloading(true)
-      // this.setState({ reloading: true })
       if (this.socket) {
         this.socket.disconnect()
       }
@@ -736,14 +712,12 @@ class SocketWorker {
 
   authCB(cb) {
     const token = this.getToken()
-    // console.log("authCB",cb);
     // eslint-disable-next-line n/no-callback-literal
     cb({ token })
   }
 
   decodedToken() {
     const curtoken = this.getToken()
-    // console.log("tokens internal",curtoken,this.decoded_token_int, window.failstoken, this.lastdectoken);
     if (curtoken !== this.lastdectoken && curtoken !== undefined) {
       try {
         this.decoded_token_int = jwt_decode(curtoken)
@@ -753,7 +727,6 @@ class SocketWorker {
         console.log('token error', error)
       }
     }
-    // console.log("tokens",curtoken,this.decoded_token_int);
 
     return this.decoded_token_int
   }
@@ -780,12 +753,6 @@ class SocketWorker {
   initializeSocketHandlersScreens() {
     this.socket.removeAllListeners('connect')
     this.socket.on('connect', (data) => {
-      // if (this.noteref) this.noteref.setHasControl(false) // do not emit while reloading!
-      /* setTimeout(() => {
-          if (this.sshh.shhh) console.log('do error')
-          notepadsocket.emit('sendboards', {})
-        }, 500) */
-      // this.updateSizes() // inform sizes
       this.connectCrypto()
       this.scheduleReauthor()
       this.sendId()
@@ -795,12 +762,6 @@ class SocketWorker {
   initializeSocketHandlersNotes() {
     this.socket.removeAllListeners('connect')
     this.socket.on('connect', (data) => {
-      // if (this.noteref) this.noteref.setHasControl(false) // do not emit while reloading!
-      /* setTimeout(() => {
-          if (this.sshh.shhh) console.log('do error')
-          notepadsocket.emit('sendboards', {})
-        }, 500) */
-      // this.updateSizes() // inform sizes
       this.connectCrypto()
       this.scheduleReauthor()
       this.sendId()
@@ -831,7 +792,6 @@ class SocketWorker {
   }
 
   getToken() {
-    // console.log("gettoken",this.myauthtoken);
     if (this.myauthtoken) return this.myauthtoken
   }
 
@@ -910,9 +870,7 @@ class SocketWorker {
   }
 
   onMessage(event) {
-    // console.log('SocketWorker onMessage', event.data, this, this.socket)
     const task = event.data.task
-    // console.log('got event with task', task)
     switch (task) {
       case 'on':
         {

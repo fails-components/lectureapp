@@ -18,7 +18,7 @@
 */
 import { KeyStore } from '../misc/keystore'
 export class SocketInterface {
-  static worker = new Worker(new URL('./socketworker.js', import.meta.url), {
+  static worker = new Worker(new URL('./worker.js', import.meta.url), {
     type: 'module'
   })
 
