@@ -56,11 +56,11 @@ const loadPolyfills = async () => {
     console.log('LibAV loaded', LibAVlib, globalThis.LibAV)
     const target = globalThis.LibAV.target()
     globalThis.LibAV.wasmurl = new URL(
-      `../../node_modules/libav.js/dist/libav-${globalThis.LibAV.VER}-opus.${target}.wasm`,
+      `../../../node_modules/libav.js/dist/libav-${globalThis.LibAV.VER}-opus.${target}.wasm`,
       import.meta.url
     ).href
     globalThis.LibAV.toImport = new URL(
-      `../../node_modules/libav.js/dist/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
+      `../../../node_modules/libav.js/dist/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
       import.meta.url
     ).href
     /* globalThis.LibAV.importedjs = await import(
@@ -69,7 +69,7 @@ const loadPolyfills = async () => {
     globalThis.LibAV.importedjs = await import(
       /* @vite-ignore */
       new URL(
-        `../../node_modules/libav.js/dist/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
+        `../../../node_modules/libav.js/dist/libav-${globalThis.LibAV.VER}-opus.${target}.js`,
         import.meta.url
       ).href
     )
