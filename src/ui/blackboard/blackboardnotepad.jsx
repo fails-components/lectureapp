@@ -88,7 +88,9 @@ export class BlackboardNotepad extends Component {
     this.processPointerReject = this.processPointerReject.bind(this)
     this.recycleObjId = this.recycleObjId.bind(this)
     this.scrollposListener = this.scrollposListener.bind(this)
-
+    this.closeApp = this.closeApp.bind(this)
+    this.submitAppPosition = this.submitAppPosition.bind(this)
+    this.addNewPicture = this.addNewPicture.bind(this)
     this.pointerRejectInterval = setInterval(this.processPointerReject, 100)
 
     this.mainDiv = React.createRef()
@@ -1249,6 +1251,28 @@ export class BlackboardNotepad extends Component {
       })
   }
 
+  ipynbButtonPressed() {
+    // may be do something else
+    this.props.notepadscreen.ipynbButtonPressed()
+  }
+
+  addNewPicture(x, y, width, height, sha) {
+    this.objnum++
+    // eslint-disable-next-line dot-notation
+    this.pointerobjnum['newpicture'] = this.objnum
+    const objid = this.calcObjId('newpicture')
+    this.props.outgoingsink.addPicture(
+      undefined,
+      objid,
+      undefined,
+      x,
+      y,
+      width,
+      height,
+      sha
+    )
+  }
+
   okButtonPressed() {
     if (this.addformpictmode !== 0) {
       this.setblocked(false)
@@ -1360,9 +1384,43 @@ export class BlackboardNotepad extends Component {
     })
   }
 
+  onAppStart(id, sha, appid) {
+    const scrollheight = this.scrollheight()
+    this.props.outgoingsink.startApp(
+      undefined /* time */,
+      0.15,
+      scrollheight * 0.3 + this.getCurScrollPos(),
+      0.25,
+      scrollheight * 0.5,
+      id,
+      sha,
+      appid
+    )
+  }
+
+  closeApp() {
+    this.props.outgoingsink.closeApp(undefined /* time */)
+  }
+
+  submitAppPosition(x, y, width, height, deactivate) {
+    this.props.outgoingsink.moveApp(
+      undefined /* time */,
+      x,
+      y,
+      width,
+      height,
+      deactivate
+    )
+  }
+
   receivePictInfo(data) {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.receivePictInfo(data)
+  }
+
+  receiveIpynbInfo(data) {
+    if (this.realblackboard && this.realblackboard.current)
+      this.realblackboard.current.receiveIpynbInfo(data)
   }
 
   receiveBgpdfInfo(data) {
@@ -1453,6 +1511,7 @@ export class BlackboardNotepad extends Component {
           storage={this.props.storage}
           ref={this.realblackboard}
           notepadscreen={this.props.notepadscreen}
+          experimental={this.props.experimental}
           isnotepad={true}
           zOffset={this.props.notesmode ? 100 : undefined}
           notesmode={this.props.notesmode}
@@ -1460,6 +1519,11 @@ export class BlackboardNotepad extends Component {
           pageoffsetabsolute={this.props.pageoffsetabsolute}
           scrollposListener={this.scrollposListener}
           drawActivityMonitor={this.props.drawActivityMonitor}
+          makeAppletMaster={this.props.makeAppletMaster}
+          screenShotSaver={this.props.screenShotSaver}
+          addNewPicture={this.addNewPicture}
+          closeApp={this.closeApp}
+          submitAppPosition={this.submitAppPosition}
         ></Blackboard>
       </div>
     )

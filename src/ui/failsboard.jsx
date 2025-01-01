@@ -23,7 +23,8 @@ import { Dialog } from 'primereact/dialog'
 import { ListBox } from 'primereact/listbox'
 import { Steps } from 'primereact/steps'
 import { Toast } from 'primereact/toast'
-import React from 'react'
+import { Tree } from 'primereact/tree'
+import React, { Fragment } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { VideoControl, FloatingVideo } from '../avwidgets'
 import { ChannelEdit } from './widgets/channeledit'
@@ -33,6 +34,8 @@ import { fiEyeOn, fiEyeOff } from './icons/icons'
 import { NoteScreenBase } from './notepad/notepad'
 import { PictureSelect } from './widgets/pictureselect'
 import { ShortcutsMessage } from './widgets/shortcutsmessage'
+import Pica from 'pica'
+import ImageBlobReduce from 'image-blob-reduce'
 
 export class FailsBoard extends FailsBasis {
   constructor(props) {
@@ -40,6 +43,7 @@ export class FailsBoard extends FailsBasis {
     // this.state = {} move to parent
     this.state.arrangebuttondialog = false
     this.state.pictbuttondialog = false
+    this.state.ipynbbuttondialog = false
     // this.state.casttoscreens = false // no initial definition, wait for network
     // this.state.showscreennumber = false // no initial definition, wait for network
     this.state.notepadisscreen = true
@@ -47,6 +51,7 @@ export class FailsBoard extends FailsBasis {
     this.state.screens = [{ name: 'Loading...' }]
     this.state.noscreen = false
     this.state.pictures = null
+    this.state.ipynbs = null
     this.state.pictIndex = 0
     this.state.availscreens = []
     this.state.welcomeMessageSend = 0
@@ -62,12 +67,16 @@ export class FailsBoard extends FailsBasis {
 
     this.onHideArrangeDialog = this.onHideArrangeDialog.bind(this)
     this.onHidePictDialog = this.onHidePictDialog.bind(this)
+    this.onHideIpynbDialog = this.onHideIpynbDialog.bind(this)
     this.onAddPicture = this.onAddPicture.bind(this)
+    this.onStartApplet = this.onStartApplet.bind(this)
     this.onOpenNewScreen = this.onOpenNewScreen.bind(this)
     this.onOpenNewNotepad = this.onOpenNewNotepad.bind(this)
     this.onNewWriting = this.onNewWriting.bind(this)
     this.arrangebuttonCallback = this.arrangebuttonCallback.bind(this)
     this.pictbuttonCallback = this.pictbuttonCallback.bind(this)
+    this.ipynbbuttonCallback = this.ipynbbuttonCallback.bind(this)
+    this.screenShotSaver = this.screenShotSaver.bind(this)
     this.pollTemplate = this.pollTemplate.bind(this)
     this.blockChat = this.blockChat.bind(this)
     this.allowVideoquestion = this.allowVideoquestion.bind(this)
@@ -374,6 +383,52 @@ export class FailsBoard extends FailsBasis {
     this.setState({ pictbuttondialog: true, pictures: picts })
   }
 
+  async ipynbbuttonCallback() {
+    // Picture button was pressed
+    const ret = await this.socket.getAvailableIpynbs()
+
+    const ipynbs = ret
+      .map((el) => ({
+        label: el.name + (el.note ? ' (' + el.note + ') ' : ''),
+        key: el.id + 'key',
+        id: el.id,
+        sha: el.sha,
+        alt: el.name,
+        selectable: false,
+        children: el.applets?.map?.((applet) => ({
+          appid: applet.appid,
+          sha: el.sha,
+          id: el.id,
+          label: applet.appname,
+          selectable: true,
+          key: el.id + ':' + el.sha + ':' + applet.appid
+        }))
+      }))
+      .filter((el) => el.children?.length > 0)
+    this.setState({ ipynbbuttondialog: true, ipynbs })
+  }
+
+  async screenShotSaver({ data, type }) {
+    const picture = new Blob([data], { type })
+
+    if (!this.reduce) {
+      const pica = Pica({ features: ['js', 'wasm', 'cib'] })
+      this.reduce = new ImageBlobReduce({ pica })
+    }
+    const thumbnail = await this.reduce.toBlob(picture, { max: 100 })
+
+    const result = await this.socket.uploadPicture(
+      'screenshot_' +
+        new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_') +
+        '.png',
+      picture,
+      thumbnail
+    )
+    console.log('Peek result')
+    const { sha, tsha } = result
+    return { sha, tsha }
+  }
+
   selectWrist(pos) {
     if (this.noteref) this.noteref.selectWrist(pos)
   }
@@ -394,6 +449,15 @@ export class FailsBoard extends FailsBasis {
     }
   }
 
+  onHideIpynbDialog() {
+    console.log('inHideIpynbDialog')
+    this.setState({ ipynbbuttondialog: false })
+    /* if (this.noteref) {
+      this.noteref.setHasControl(true)
+      this.noteref.reactivateToolBox()
+    } */
+  }
+
   onAddPicture() {
     this.setState({ pictbuttondialog: false })
     if (this.noteref) {
@@ -409,6 +473,25 @@ export class FailsBoard extends FailsBasis {
         pict.thumbnailImageSrc
       )
     }
+  }
+
+  async onStartApplet() {
+    console.log('onStartApplet', this.state.selipynb)
+    if (this.noteref && this.state.selipynb) {
+      const [id = undefined, sha = undefined, appid = undefined] =
+        this.state.selipynb.split(':')
+      if (
+        typeof id !== 'undefined' &&
+        typeof sha !== 'undefined' &&
+        typeof appid !== 'undefined'
+      )
+        this.noteref.onAppStart(id, sha, appid)
+    }
+    this.setState({
+      ipynbs: undefined,
+      selipynb: undefined,
+      ipynbbuttondialog: false
+    })
   }
 
   async onStartPoll() {
@@ -543,8 +626,6 @@ export class FailsBoard extends FailsBasis {
       typeof this.state.blackbackground === 'undefined'
         ? true
         : this.state.blackbackground
-
-    // console.log('pictures', this.state.pictures)
     return (
       <div>
         <Toast ref={(el) => (this.toast = el)} position='top-left' />
@@ -558,7 +639,12 @@ export class FailsBoard extends FailsBasis {
           isnotepad={true}
           bbchannel={this.bbchannel}
           pictbuttoncallback={this.pictbuttonCallback}
+          ipynbbuttoncallback={this.ipynbbuttonCallback}
           reportDrawPosCB={this.reportDrawPos}
+          makeAppletMaster={() => {
+            this.netSendSocket('switchAppMaster')
+          }}
+          screenShotSaver={this.screenShotSaver}
           mainstate={{
             blackbackground,
             bgpdf: this.state.bgpdf,
@@ -606,7 +692,7 @@ export class FailsBoard extends FailsBasis {
               position: 'absolute',
               bottom: '2vh',
               right: '1vw',
-              zIndex: 150
+              zIndex: 151
             }}
           >
             <Button
@@ -669,6 +755,40 @@ export class FailsBoard extends FailsBasis {
           )}
           {this.state.pictures && this.state.pictures.length === 0 && (
             <h3> No pictures uploaded! </h3>
+          )}
+        </Dialog>
+
+        <Dialog
+          header='Select jupyter notebook'
+          visible={this.state.ipynbbuttondialog}
+          style={{ maxWidth: '50vw', minWidth: '30vw' }}
+          onHide={this.onHideIpynbDialog}
+        >
+          {this.state.ipynbs && this.state.ipynbs.length !== 0 && (
+            <div className='p-grid'>
+              <div className='p-col-12'>
+                <Tree
+                  value={this.state.ipynbs}
+                  selectionMode='single'
+                  selectionKeys={this.state.selipynb}
+                  onSelectionChange={(e) =>
+                    this.setState({ selipynb: e.value })
+                  }
+                />
+              </div>
+              {this.state.selipynb && (
+                <div className='p-col-6'>
+                  <Button
+                    label='Start applet'
+                    icon='pi pi-send'
+                    onClick={this.onStartApplet}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          {(!this.state.ipynbs || this.state.ipynbs.length === 0) && (
+            <Fragment> No jupyter notebook uploaded!</Fragment>
           )}
         </Dialog>
 

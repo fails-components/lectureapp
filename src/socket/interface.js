@@ -41,6 +41,8 @@ export class SocketInterface {
     this.createScreenReq = []
     this.createNotepadReq = []
     this.getAvailablePictsReq = []
+    this.getAvailableIpynbsReq = []
+    this.uploadPictureReq = {}
     this.getPollsReq = []
     this.castVoteReq = []
 
@@ -106,6 +108,30 @@ export class SocketInterface {
         if (this.getAvailablePictsReq.length === 0)
           throw new Error('getAvailablePicts without request')
         this.getAvailablePictsReq.shift().resolve(event.data.data)
+        break
+      case 'getAvailableIpynbs':
+        if (this.getAvailableIpynbsReq.length === 0)
+          throw new Error('getAvailableIpynbs without request')
+        this.getAvailableIpynbsReq.shift().resolve(event.data.data)
+        break
+      case 'uploadPicture':
+        if (
+          !this.uploadPictureReq[event.data.data.name] ||
+          this.uploadPictureReq[event.data.data.name].length === 0
+        )
+          throw new Error('uploadPicture without request')
+        if (event.data.data.error) {
+          this.uploadPictureReq[event.data.data.name]
+            .shift()
+            .reject(new Error(event.data.data.error))
+        } else {
+          this.uploadPictureReq[event.data.data.name]
+            .shift()
+            .resolve(event.data.data)
+        }
+        if (this.uploadPictureReq[event.data.data.name].length === 0)
+          delete this.uploadPictureReq[event.data.data.name]
+
         break
       case 'getPolls':
         if (this.getPollsReq.length === 0)
@@ -246,6 +272,34 @@ export class SocketInterface {
     })
     SocketInterface.worker.postMessage({
       task: 'getAvailablePicts'
+    })
+    return promise
+  }
+
+  getAvailableIpynbs() {
+    const promise = new Promise((resolve, reject) => {
+      this.getAvailableIpynbsReq.push({ resolve, reject })
+    })
+    SocketInterface.worker.postMessage({
+      task: 'getAvailableIpynbs'
+    })
+    return promise
+  }
+
+  async uploadPicture(name, picture, thumbnail) {
+    if (!name) throw new Error('No name passed to upload picture')
+    const promise = new Promise((resolve, reject) => {
+      if (!this.uploadPictureReq[name]) this.uploadPictureReq[name] = []
+      this.uploadPictureReq[name].push({ resolve, reject })
+    })
+    const pictbuffer = await picture.arrayBuffer()
+    const thumbbuffer = await thumbnail.arrayBuffer()
+    SocketInterface.worker.postMessage({
+      task: 'uploadPicture',
+      name,
+      picture: pictbuffer,
+      thumbnail: thumbbuffer,
+      type: picture.type
     })
     return promise
   }

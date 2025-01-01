@@ -74,6 +74,161 @@ code {
   }
 }
 
+.appletHeading {
+  display: flex; 
+  align-items: center;
+  padding: 0px 0px; 
+  /*height:  2.357rem; */
+  width: 100%; 
+}
+
+.appletHeadingText {
+  flex-grow: 1; 
+  text-align: left; 
+  font-weight: 600; 
+  font-size: 1.3rem; 
+  padding-left: 2px; 
+  display: flex; 
+  align-items: center;
+  color: white;
+  text-overflow: ellipsis;
+  white-space: nowrap; 
+  overflow: hidden;
+}
+
+.appletButtons {
+  padding: 0.80rem;
+  color: whitesmoke;
+  border-radius: 24px;
+  outline: none; 
+  border: none;
+  background-color: #003d5ee5;
+}
+
+.appletButtonsSelected {
+  background-color: #0077b699;
+}
+
+.appletButtons:hover {
+  background-color: #0077b699;
+}
+
+.appletKernelStatus{
+  padding: 0.50rem;
+  margin-right: 0.1rem;
+  border-radius: 0.9rem;
+  outline-style: solid;
+  outline-width: 0.15rem;
+  outline-color: #ffffffee;
+}
+
+@keyframes kernelstatus-pulsate {
+  0% {
+    background-color: var(--first-color);
+  }
+  50% {
+    background-color: var(--second-color);
+  }
+  100% {
+    background-color: var(--first-color);
+  }
+}
+
+.appletKernelStatus.appletKernelStatusidle{
+  background-color: #00b663;
+}
+
+.appletKernelStatus.appletKernelStatusunknown{
+  background-color: transparent;
+}
+.appletKernelStatus.appletKernelStatusstarting{
+  animation: kernelstatus-pulsate 1s infinite;
+  --first-color: #e95100;
+  --second-color: #ff7c37;
+}
+.appletKernelStatus.appletKernelStatusbusy{
+  background-color: #ff7c37;
+}
+.appletKernelStatus.appletKernelStatusterminating{
+  animation: kernelstatus-pulsate 1s infinite;
+  --first-color: #e95100;
+  --second-color: #ff7c37;
+}
+.appletKernelStatus.appletKernelStatusrestarting{
+  animation: kernelstatus-pulsate 1s infinite;
+  --first-color: #e95100;
+  --second-color: #ff7c37;
+}
+.appletKernelStatus.appletKernelStatusautorestarting{
+  animation: kernelstatus-pulsate 1s infinite;
+  --first-color: #e95100;
+  --second-color: #ff7c37;
+}
+.appletKernelStatus.appletKernelStatusdead{
+  background-color: #e95100;
+}
+
+.appletMain{
+  border-radius: 18px;
+  background-color: #003d5ee5;
+  cursor: auto;
+  animation: fadeInAppletMain linear 0.5s;
+  transition: left 0.5s ease
+}
+
+.appletMainMove{
+  transition: left 0.05s ease, top 0.05s ease, width 0.05s ease, height 0.05s ease;
+}
+
+.appletIframe{
+  background-color: #efefef;
+  color: black;
+  border-radius: 10px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+
+.appletCollapsed{
+  cursor: auto;
+  background-color: #003d5ee5;
+  left: 0.7rem;
+  width: 2.357rem; 
+  height: 2.357rem;
+  border-radius: 0rem 2rem 2rem 2rem;
+  transform: rotate(-45deg);
+  transition: left 0.5s ease;
+}
+
+.appletCollapsed.appletCollapsedHidden{
+  left: -5rem;
+}
+
+.appletCollapsedContent {
+  transform: rotate(45deg);
+  position: absolute;
+  left: 0.8rem;
+  top: 0.5rem;
+  color: white;
+} 
+
+
+@keyframes fadeInAppletMain {
+  0% {opacity:0;}
+  20% {opacity:0;}
+  100% {opacity:1;}
+}
+
+.link-button {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
 .magicPath {
   fill: #80ffff;
   animation: dash 15s linear infinite;
@@ -136,6 +291,12 @@ code {
   animation: fadeInWelcome linear 4s;
 }
 
+@keyframes fadeInWelcome {
+  0% {opacity:0;}
+  20% {opacity:0;}
+  100% {opacity:1;}
+}
+
 .hiddenButton {
   display:none !important;
 }
@@ -144,11 +305,7 @@ code {
   white-space: pre-line;
 }
 
-@keyframes fadeInWelcome {
-  0% {opacity:0;}
-  20% {opacity:0;}
-  100% {opacity:1;}
-}
+
 
 .buttonbar {
   position: absolute; 

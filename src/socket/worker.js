@@ -663,6 +663,41 @@ class SocketWorker {
       }
     })
 
+    this.socket.removeAllListeners('ipynbinfo')
+    this.socket.on('ipynbinfo', (data) => {
+      if (this.blackboard) {
+        data.ipynbs?.forEach?.((el) => {
+          this.blackboard.postMessage({
+            type: 'receiveIpynbInfo',
+            data: {
+              name: el.name,
+              filename: el.filename,
+              note: el.note,
+              id: el.id,
+              mimetype: el.mimetype,
+              sha: el.sha,
+              url: el.url,
+              appletMaster:
+                typeof data.appletMaster !== 'undefined'
+                  ? data.appletMaster === this.socket.id
+                  : undefined,
+              applets: el.applets?.map?.((applet) => ({
+                appid: applet.appid,
+                appname: applet.appname
+              }))
+            }
+          })
+        })
+      }
+    })
+    this.socket.removeAllListeners('switchAppMaster')
+    this.socket.on('switchAppMaster', (data) => {
+      this.blackboard.postMessage({
+        type: 'switchAppMaster',
+        data: { appletMaster: data.appletMaster === this.socket.id }
+      })
+    })
+
     this.socket.on('FoG', (data) => {
       this.blackboard.postMessage({ type: 'receiveFoG', data })
     })
@@ -928,6 +963,26 @@ class SocketWorker {
         this.socket.emit('getAvailablePicts', (ret) => {
           globalThis.postMessage({ task: 'getAvailablePicts', data: ret })
         })
+        break
+      case 'getAvailableIpynbs':
+        this.socket.emit('getAvailableIpynbs', (ret) => {
+          globalThis.postMessage({ task: 'getAvailableIpynbs', data: ret })
+        })
+        break
+      case 'uploadPicture':
+        {
+          const { picture, thumbnail, type, name } = event.data
+          this.socket.emit(
+            'uploadPicture',
+            name,
+            type,
+            picture,
+            thumbnail,
+            (ret) => {
+              globalThis.postMessage({ task: 'uploadPicture', data: ret })
+            }
+          )
+        }
         break
       case 'getPolls':
         this.socket.emit('getPolls', (ret) => {

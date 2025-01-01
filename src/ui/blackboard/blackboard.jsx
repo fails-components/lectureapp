@@ -29,6 +29,7 @@ import { MagicObject } from './magicobject'
 import { ImageHelper } from './ImageHelper'
 import { BackgroundPDF } from './backgroundpdf'
 import { SVGWriting2, SVGSpotlight, FormHelper } from './helpers'
+import { JupyterHublet } from './jupyterhublet'
 
 window.addEventListener('contextmenu', function (e) {
   e.preventDefault()
@@ -86,6 +87,7 @@ export class Blackboard extends Component {
     this.lastkeyscrolltime = 0
 
     this.pictures = {}
+    this.ipynbs = {}
 
     this.notepadscreen = props.notepadscreen
 
@@ -114,6 +116,7 @@ export class Blackboard extends Component {
     this.changeMagic = this.changeMagic.bind(this)
     this.updateObjectsId = setInterval(this.updateObjects, 40)
     this.isdirty = false
+    this.isdirtyapp = false
   }
 
   changeStorage(prevstorage) {
@@ -148,6 +151,21 @@ export class Blackboard extends Component {
       })
       this.objdirty = false
     }
+    if (this.isdirtyapp) {
+      let ipynb
+      if (this.appon && this.appids) {
+        const key = this.appids.sha + ':' + this.appids.id
+        ipynb = this.ipynbs[key]
+      }
+      this.setState({
+        appon: this.appon,
+        appdeactivated: this.appdeactivated,
+        apppos: this.apppos,
+        appids: this.appids,
+        appipynb: ipynb
+      })
+      this.isdirtyapp = false
+    }
   }
 
   handleBBChannel(event) {
@@ -181,6 +199,12 @@ export class Blackboard extends Component {
         break
       case 'receivePictInfo':
         this.receivePictInfo(data.data)
+        break
+      case 'receiveIpynbInfo':
+        this.receiveIpynbInfo(data.data)
+        break
+      case 'switchAppMaster':
+        this.switchAppMaster(data.data)
         break
       case 'receiveFoG':
         this.receiveFoG(data.data)
@@ -529,6 +553,34 @@ export class Blackboard extends Component {
     }
   }
 
+  startApp(time, x, y, width, height, id, sha, appid) {
+    // if (!this.redrawing) {
+    this.isdirtyapp = true
+    // }
+    this.appon = true
+    this.appdeactivated = false
+    this.apppos = { x, y, width, height }
+    this.appids = {
+      id,
+      sha,
+      appid
+    }
+  }
+
+  closeApp(time) {
+    this.isdirtyapp = true
+    this.appon = false
+    this.appdeactivated = false
+    this.apppos = undefined
+    this.appids = undefined
+  }
+
+  moveApp(time, x, y, width, height, deactivate) {
+    this.apppos = { x, y, width, height }
+    this.appdeactivated = deactivate
+    this.isdirtyapp = true
+  }
+
   scrollBoard(time, clientnum, x, y) {
     if (this.myclientnum && clientnum === this.myclientnum) return // only scrolls from other people
     if (x !== 0) {
@@ -643,15 +695,55 @@ export class Blackboard extends Component {
         this.calcCurpos() - 1.5,
         this.calcCurpos() + this.scrollheight() + 1.5
       )
+      this.collection.reparseJupyter(this) // get appstate
       this.redrawing = false // not to be confused with the state
-      this.setState({ redrawing: false, objects: [...this.work.objects] })
-
+      this.setState({
+        redrawing: false,
+        objects: [...this.work.objects],
+        /* appstuff */
+        appon: this.appon,
+        appdeactivated: this.appdeactivated,
+        apppos: this.apppos,
+        appids: this.appids
+      })
       console.log('Redraw! replace Data')
     }
   }
 
   receivePictInfo(data) {
     this.pictures[data.uuid] = data
+  }
+
+  receiveIpynbInfo(data) {
+    console.log('receiveIpynbInfo', data)
+    const {
+      name,
+      filename,
+      note,
+      id,
+      mimetype,
+      sha,
+      url,
+      appletMaster,
+      applets
+    } = data
+    this.ipynbs[sha + ':' + id] = {
+      name,
+      filename,
+      note,
+      id,
+      mimetype,
+      sha,
+      url,
+      applets
+    }
+    this.isdirtyapp = true
+    if (typeof appletMaster !== 'undefined') this.setState({ appletMaster })
+  }
+
+  switchAppMaster(data) {
+    const { appletMaster } = data
+    if (typeof appletMaster !== 'undefined') this.setState({ appletMaster })
   }
 
   receiveBgpdfInfo(data) {
@@ -945,6 +1037,28 @@ export class Blackboard extends Component {
               bbwidth={this.props.bbwidth}
               zIndex={51 + zoffset}
             ></SVGSpotlight>
+            {this.props.experimental && this.state.appon && (
+              <JupyterHublet
+                pos={this.state.apppos}
+                deactivated={this.state.appdeactivated}
+                bbwidth={this.props.bbwidth}
+                zIndex={151 + zoffset}
+                appids={this.state.appids}
+                ipynb={this.state.appipynb}
+                master={this.state.appletMaster}
+                makeAppletMaster={this.props.makeAppletMaster}
+                screenShotSaver={this.props.screenShotSaver}
+                closeApp={this.props.closeApp}
+                submitAppPosition={(x, y, width, height, deactivated) => {
+                  this.props.submitAppPosition(x, y, width, height, deactivated)
+                  this.setState({
+                    appdeactivated: deactivated,
+                    apppos: { x, y, width, height }
+                  })
+                }}
+                addPicture={this.props.addNewPicture}
+              />
+            )}
           </span>
         )}
       </div>

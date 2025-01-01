@@ -288,6 +288,12 @@ export class ToolBox extends ToolHandling {
     }
   }
 
+  ipynbButtonPressed() {
+    if (this.blackboard()) {
+      this.blackboard().ipynbButtonPressed()
+    }
+  }
+
   reactivate() {
     console.log('reactivate toolbox')
     this.addRemoveSecondToolGuardian(true)
@@ -398,6 +404,19 @@ export class ToolBox extends ToolHandling {
           this.pictButtonPressed()
         }}
         className={selbuttonclass(this.state.selectedButtonid === 6)}
+      />
+    )
+
+    const ipynbbutton = (
+      <Button
+        icon={/* fiAddPictIcon */ <Fragment>JA</Fragment>}
+        tooltip='Start app'
+        tooltipOptions={ttopts}
+        key={11}
+        onClick={(e) => {
+          this.ipynbButtonPressed()
+        }}
+        className='p-button-secondary p-button-raised p-button-rounded tbChild'
       />
     )
 
@@ -831,6 +850,7 @@ export class ToolBox extends ToolHandling {
     }
     if (idents.length > 0) settingswheel.push(identbutton)
     if (this.props.startUpAVBroadcast) settingswheel.push(avstartupbutton)
+    if (this.props.experimental) settingswheel.push(ipynbbutton)
     settingswheel.push(infobutton)
 
     let setwheelpcpos = false

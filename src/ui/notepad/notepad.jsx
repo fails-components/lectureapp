@@ -335,6 +335,10 @@ export class NoteScreenBase extends Component {
     this.props.pictbuttoncallback()
   }
 
+  ipynbButtonPressed() {
+    this.props.ipynbbuttoncallback()
+  }
+
   receivePictInfo(data) {
     if (this.blackboard && this.blackboard.current)
       this.blackboard.current.receivePictInfo(data)
@@ -348,6 +352,10 @@ export class NoteScreenBase extends Component {
   enterAddPictureMode(uuid, url, urlthumb) {
     if (this.blackboard && this.blackboard.current)
       this.blackboard.current.enterAddPictureMode(uuid, url, urlthumb)
+  }
+
+  onAppStart(id, sha, appid) {
+    this.blackboard?.current?.onAppStart?.(id, sha, appid)
   }
 
   onKeyDown(key) {
@@ -449,6 +457,7 @@ export class NoteScreenBase extends Component {
             <Blackboard
               ref={this.blackboard}
               storage={this.storage}
+              experimental={this.props.experimental}
               backcolor={this.props.backgroundcolor}
               backclass={this.props.backclass}
               bbchannel={this.props.bbchannel}
@@ -468,6 +477,7 @@ export class NoteScreenBase extends Component {
               <BlackboardNotepad
                 ref={this.blackboardnotes}
                 storage={this.state.localstorage}
+                experimental={this.props.experimental}
                 outgoingsink={this.state.localstorage?.incomdispatcher}
                 backcolor={this.props.backgroundcolor}
                 backclass={''}
@@ -490,6 +500,7 @@ export class NoteScreenBase extends Component {
           <BlackboardNotepad
             ref={this.blackboard}
             storage={this.storage}
+            experimental={this.props.experimental}
             outgoingsink={this.outgodispatcher}
             backcolor={this.props.backgroundcolor}
             backclass={this.props.backclass}
@@ -500,6 +511,8 @@ export class NoteScreenBase extends Component {
             reportDrawPosCB={this.props.reportDrawPosCB}
             devicePixelRatio={this.state.devicePixelRatio}
             informDraw={this.props.informDraw}
+            makeAppletMaster={this.props.makeAppletMaster}
+            screenShotSaver={this.props.screenShotSaver}
             drawActivityMonitor={this.props.drawActivityMonitor}
           ></BlackboardNotepad>
         )}
