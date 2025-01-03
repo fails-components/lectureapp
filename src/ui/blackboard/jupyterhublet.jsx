@@ -541,7 +541,7 @@ export class JupyterHublet extends Component {
             >
               <Tooltip
                 target={this.kernelStatusRef.current}
-                content={'Kernelstatus: ' + this.state.kernelStatus}
+                content={'Kernel state: ' + this.state.kernelStatus}
                 className='teal-tooltip'
                 position='top'
                 showDelay={1000}
@@ -600,6 +600,9 @@ export class JupyterHublet extends Component {
                 kernelStatusCallback={(status) => {
                   console.log('kernelStatus', status)
                   this.setState({ kernelStatus: status })
+                }}
+                receiveInterceptorUpdate={({ path, mime, state }) => {
+                  console.log('receiveInterceptorUpdate', path, mime, state)
                 }}
               />
             </div>
