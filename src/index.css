@@ -115,7 +115,8 @@ code {
 
 .appletKernelStatus{
   padding: 0.50rem;
-  margin-right: 0.1rem;
+  margin-right: 0.15rem;
+  margin-bottom: 0.15rem;
   border-radius: 0.9rem;
   outline-style: solid;
   outline-width: 0.15rem;
