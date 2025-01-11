@@ -97,6 +97,7 @@ export class SpeakerSet {
           continue
         }
       } else {
+        ns = await ns
         ns.setSrcId(nid)
         this.speakerStr.set(nid, Promise.resolve(ns))
       }
