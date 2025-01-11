@@ -876,7 +876,9 @@ export class AVInterface {
         console.log('getAVDevices, getUserMedia...', error)
       }
     }
-    this.devices = await navigator.mediaDevices.enumerateDevices()
+    this.devices = (await navigator.mediaDevices.enumerateDevices()).filter(
+      (el) => el.deviceId !== 'default' && el.deviceId !== 'communications'
+    )
     return this.devices
   }
 
