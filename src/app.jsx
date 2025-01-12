@@ -45,6 +45,10 @@ SocketInterface.createSocketInterface()
 window.addEventListener(
   'message',
   (event) => {
+    const iframemessage = Array.from(window.frames).some(
+      (frame) => frame === event.source
+    )
+    if (iframemessage) return
     console.log('message from', event.origin /* , 'data:', event.data */)
     if (
       event.origin !== cfg.getURL('appweb') &&
