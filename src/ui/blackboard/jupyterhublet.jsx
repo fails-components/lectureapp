@@ -1035,14 +1035,13 @@ export class JupyterHublet extends Component {
               (this.state.resize?.height ?? 0))
       )
     )
+    let className = 'appletMain'
+    if (this.state.movepos || this.state.resize) className += ' appletMainMove'
+    if (this.props.laserPointerOn) className += ' appletMainLaserPointer'
     return (
       <Fragment>
         <div
-          className={
-            this.state.movepos || this.state.resize
-              ? 'appletMain appletMainMove'
-              : 'appletMain'
-          }
+          className={className}
           key='appletMain'
           style={{
             position: 'absolute',

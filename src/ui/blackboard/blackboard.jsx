@@ -1049,7 +1049,7 @@ export class Blackboard extends Component {
             <SVGSpotlight
               ref={this.spotlight}
               bbwidth={this.props.bbwidth}
-              zIndex={51 + zoffset}
+              zIndex={152 + zoffset}
             ></SVGSpotlight>
             {this.props.experimental && this.state.appon && (
               <JupyterHublet
@@ -1060,6 +1060,7 @@ export class Blackboard extends Component {
                 appids={this.state.appids}
                 ipynb={this.state.appipynb}
                 master={this.state.appletMaster}
+                laserPointerOn={this.state.cursor.mode === 'laserpointer'}
                 makeAppletMaster={this.props.makeAppletMaster}
                 screenShotSaver={this.props.screenShotSaver}
                 closeApp={this.props.closeApp}

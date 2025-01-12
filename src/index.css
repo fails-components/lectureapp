@@ -181,6 +181,11 @@ code {
   transition: left 0.05s ease, top 0.05s ease, width 0.05s ease, height 0.05s ease;
 }
 
+.appletMain.appletMainLaserPointer{
+  cursor: none;
+  pointer-events: none;
+}
+
 .appletIframe{
   background-color: #efefef;
   color: black;
