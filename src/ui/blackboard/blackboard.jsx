@@ -70,8 +70,6 @@ export class Blackboard extends Component {
 
     this.recpathstarted = false
 
-    this.replay = false // during a replay state updates are handled differently!
-
     this.lastpos = 0
 
     this.temppoints = []
@@ -117,6 +115,8 @@ export class Blackboard extends Component {
     this.updateObjectsId = setInterval(this.updateObjects, 40)
     this.isdirty = false
     this.isdirtyapp = false
+    this.pendingStateUpdates = []
+    this.appDataReceiver = undefined
   }
 
   changeStorage(prevstorage) {
@@ -164,6 +164,10 @@ export class Blackboard extends Component {
         appids: this.appids,
         appipynb: ipynb
       })
+      this.pendingStateUpdates.forEach((buffer) =>
+        this.appDataReceiver?.receiveData?.(buffer, true)
+      )
+      this.pendingStateUpdates = []
       this.isdirtyapp = false
     }
   }
@@ -565,6 +569,7 @@ export class Blackboard extends Component {
       sha,
       appid
     }
+    this.pendingStateUpdates = []
   }
 
   closeApp(time) {
@@ -573,12 +578,21 @@ export class Blackboard extends Component {
     this.appdeactivated = false
     this.apppos = undefined
     this.appids = undefined
+    this.pendingStateUpdates = []
   }
 
   moveApp(time, x, y, width, height, deactivate) {
     this.apppos = { x, y, width, height }
     this.appdeactivated = deactivate
     this.isdirtyapp = true
+  }
+
+  dataApp(time, buffer) {
+    if (!this.isdirtyapp) {
+      this.appDataReceiver?.receiveData?.(buffer, false)
+    } else {
+      this.pendingStateUpdates.push(buffer)
+    }
   }
 
   scrollBoard(time, clientnum, x, y) {
@@ -1055,6 +1069,14 @@ export class Blackboard extends Component {
                     appdeactivated: deactivated,
                     apppos: { x, y, width, height }
                   })
+                }}
+                submitStateUpdate={(update) => {
+                  if (this.state.appletMaster) {
+                    this.props.submitStateUpdate?.(update)
+                  }
+                }}
+                setStateReceiver={(receiver) => {
+                  this.appDataReceiver = receiver
                 }}
                 addPicture={this.props.addNewPicture}
               />

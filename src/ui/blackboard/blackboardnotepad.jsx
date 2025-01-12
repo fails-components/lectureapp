@@ -90,6 +90,7 @@ export class BlackboardNotepad extends Component {
     this.scrollposListener = this.scrollposListener.bind(this)
     this.closeApp = this.closeApp.bind(this)
     this.submitAppPosition = this.submitAppPosition.bind(this)
+    this.submitStateUpdate = this.submitStateUpdate.bind(this)
     this.addNewPicture = this.addNewPicture.bind(this)
     this.pointerRejectInterval = setInterval(this.processPointerReject, 100)
 
@@ -1413,6 +1414,10 @@ export class BlackboardNotepad extends Component {
     )
   }
 
+  submitStateUpdate(update) {
+    this.props.outgoingsink.dataApp(undefined /* time */, update)
+  }
+
   receivePictInfo(data) {
     if (this.realblackboard && this.realblackboard.current)
       this.realblackboard.current.receivePictInfo(data)
@@ -1524,6 +1529,7 @@ export class BlackboardNotepad extends Component {
           addNewPicture={this.addNewPicture}
           closeApp={this.closeApp}
           submitAppPosition={this.submitAppPosition}
+          submitStateUpdate={this.submitStateUpdate}
         ></Blackboard>
       </div>
     )

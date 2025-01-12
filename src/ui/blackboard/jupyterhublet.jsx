@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+import { SHA1 } from 'jshashes'
 import React, { Component, Fragment } from 'react'
 import { Tooltip } from 'primereact/tooltip'
 import {
@@ -76,6 +77,547 @@ export class AppletButton extends Component {
   }
 }
 
+class Dict {
+  static reservedTypes = 32
+  constructor() {
+    this.resetDict()
+  }
+
+  resetDict() {
+    this._dictIndex = new Map()
+    this._dict = []
+    this._dictWindowPointer = 0
+    this._dictId = undefined
+  }
+}
+
+class DictCompressor extends Dict {
+  constructor() {
+    super()
+    this._compressorId = Math.random().toString(36).substr(2, 9)
+    this._dictNum = 0
+  }
+
+  codeState(path, mime, state, reffullstate) {
+    // we will compress the incoming state, with a special dictionary
+
+    const cur = {
+      length: 32768,
+      pos: 0
+    }
+    cur.chunk = new Uint8Array(cur.length)
+    cur.chunkview = new DataView(cur.chunk.buffer)
+    if (typeof this._dictId === 'undefined') {
+      this._dictNum++
+      this._dictId = parseInt(
+        '0x' +
+          new SHA1()
+            .hex(this._compressorId + this._dictNum.toString(36))
+            .substr(0, 8)
+      )
+    }
+    // header
+    this.checkLength(5, cur)
+    cur.chunkview.setUint8(cur.pos, 1) // version
+    cur.chunkview.setUint32(cur.pos + 1, this._dictId) // unique stream id
+    cur.pos += 5
+    this.writeString(path, cur)
+    this.writeString(mime, cur)
+
+    this.writeObject(state, cur, reffullstate)
+    return new Uint8Array(cur.chunk.buffer, 0, cur.pos)
+  }
+
+  checkLength(length, cur) {
+    if (cur.pos + length >= cur.length) {
+      const oldlength = cur.length
+      const newlength = oldlength * 2
+      const oldchunk = cur.chunk
+      cur.chunk = new Uint8Array(newlength)
+      cur.chunk.set(oldchunk, 0)
+      cur.length = newlength
+      // reallocate
+      cur.chunkview = new DataView(cur.chunk.buffer)
+    }
+  }
+
+  writeObject(val, cur, reffullstate) {
+    this.writeSimpleType(8, cur) // Start of Object
+    for (const [key, value] of Object.entries(val)) {
+      // first code the key, we allow a dictionary of 65635 - reserved types values
+      this.writeString(key, cur)
+      // now we code the value
+      this.writeBasicTypes(value, cur, reffullstate?.[key])
+      if (
+        typeof reffullstate !== 'undefined' &&
+        typeof reffullstate === 'object' &&
+        !Array.isArray(reffullstate) &&
+        (!reffullstate?.[key] ||
+          typeof reffullstate?.[key] !== 'object' ||
+          typeof value !== typeof reffullstate?.[key] ||
+          Array.isArray(value) !== Array.isArray(reffullstate?.[key]))
+      )
+        reffullstate[key] = value
+    }
+    this.writeSimpleType(9, cur) // End of Object
+  }
+
+  writeArray(val, cur, reffullstate) {
+    this.writeSimpleType(9, cur) // Start of Array
+    const length = Math.min(val.length, 254)
+    this.writeVarType(length, cur)
+    for (let ind = 0; ind < length; ind++) {
+      // now we code the value
+      this.writeBasicTypes(val[ind], cur, reffullstate?.[ind])
+      if (
+        typeof reffullstate !== 'undefined' &&
+        typeof reffullstate === 'object' &&
+        Array.isArray(reffullstate) &&
+        (!reffullstate[ind] ||
+          typeof reffullstate[ind] !== 'object' ||
+          typeof val !== typeof reffullstate[ind] ||
+          Array.isArray(val) !== Array.isArray(reffullstate[ind]))
+      )
+        reffullstate[ind] = val[ind]
+    }
+  }
+
+  writeBasicTypes(value, cur, reffullstate) {
+    /* if (value === reffullstate) {
+      return this.writeSimpleType(12, cur) // we coded use reffull state
+    } */
+    switch (typeof value) {
+      case 'undefined':
+        this.writeSimpleType(1, cur)
+        break
+      case 'boolean':
+        if (value === true) this.writeSimpleType(2, cur)
+        else this.writeSimpleType(3, cur)
+        break
+      case 'number':
+        if (
+          !Number.isInteger(value) ||
+          value < -2147483648 ||
+          value > 2147483647
+        ) {
+          this.writeFloat(value, cur)
+        } else if (value > -127 && value < 128) {
+          this.writeBInt(value, cur)
+        } else {
+          this.writeInt(value, cur)
+        }
+        break
+      case 'bigint':
+        this.writeBigInt(value, cur)
+        break
+      case 'object':
+        if (Array.isArray(value)) {
+          this.writeArray(value, cur, reffullstate)
+        } else if (value === null) {
+          this.writeSimpleType(10, cur)
+        } else {
+          this.writeObject(value, cur, reffullstate)
+        }
+        break
+      case 'string':
+        this.writeString(value, cur)
+        break
+      case 'function':
+      case 'symbol':
+      default:
+        throw new Error('Default/symbol/function case is forbidden')
+    }
+  }
+
+  writeSimpleType(type, cur) {
+    this.writeVarType(type, cur)
+  }
+
+  writeVarType(type, cur) {
+    if (type < 0x80) {
+      this.checkLength(1, cur)
+      cur.chunkview.setUint8(cur.pos, type)
+      cur.pos += 1
+    } else {
+      this.checkLength(2, cur)
+      cur.chunkview.setUint8(cur.pos, (type & 0x7f) | 0x80)
+      cur.chunkview.setUint8(cur.pos + 1, (type >> 7) & 0xff)
+      cur.pos += 2
+    }
+  }
+
+  writeBInt(value, cur) {
+    this.writeVarType(11, cur)
+    this.checkLength(1, cur)
+    cur.chunkview.setInt8(cur.pos, value)
+    cur.pos += 1
+  }
+
+  writeInt(value, cur) {
+    this.writeVarType(4, cur)
+    this.checkLength(4, cur)
+    cur.chunkview.setInt32(cur.pos, value)
+    cur.pos += 4
+  }
+
+  writeBigInt(value, cur) {
+    this.writeVarType(6, cur)
+    this.checkLength(8, cur)
+    cur.chunkview.setBigInt(cur.pos, value)
+    cur.pos += 8
+  }
+
+  writeFloat(value, cur) {
+    this.writeVarType(5, cur)
+    this.checkLength(4, cur)
+    cur.chunkview.setFloat32(cur.pos, value)
+    cur.pos += 4
+  }
+
+  writeString(string, cur) {
+    this.checkLength(2 + 1 + 3 * string.length, cur)
+    const tencoder = new TextEncoder()
+    const numtypes = 32767 - Dict.reservedTypes
+    const type = this._dictIndex.get(string) || 0 // means new string
+    this.writeVarType(type, cur)
+    if (type === 0) {
+      // we limit strings to 254 characters, seriously, 255 is reserved for future length extension
+      let { written } = tencoder.encodeInto(
+        string,
+        cur.chunk.subarray(cur.pos + 1)
+      )
+      if (written > 254) written = 254
+      cur.chunkview.setUint8(cur.pos, written)
+      cur.pos += written + 1
+      if (this._dict[this._dictWindowPointer]) {
+        this._dictIndex.delete(this._dict[this._dictWindowPointer])
+      }
+      this._dict[this._dictWindowPointer] = string
+      this._dictIndex.set(string, this._dictWindowPointer + Dict.reservedTypes)
+      this._dictWindowPointer = (this._dictWindowPointer + 1) % numtypes
+    }
+  }
+}
+
+class DictDecompressor extends Dict {
+  decodeState(buffer, getReffullstate) {
+    // we will compress the incoming state, with a special dictionary
+    try {
+      const cur = {
+        length: buffer.byteLength,
+        pos: 0,
+        chunk: buffer,
+        chunkview: new DataView(
+          buffer.buffer,
+          buffer.byteOffset,
+          buffer.byteLength
+        )
+      }
+
+      const version = cur.chunkview.getUint8(cur.pos) // version
+      if (version !== 1)
+        throw new Error('Unsupported compression version and type')
+      const dictId = cur.chunkview.getUint32(cur.pos) // unique stream id
+      if (dictId !== this._dictId) {
+        console.log('decodeState dictId change', dictId, this._dictId)
+        // May be we need a map of dictionaries?
+        this.resetDict()
+        this._dictId = dictId
+      }
+      cur.pos += 5
+
+      const path = this.readString(cur)
+      const mime = this.readString(cur)
+      const reffullstate = getReffullstate(path, mime)
+
+      const state = this.readObject(cur, reffullstate)
+      return { path, mime, state }
+    } catch (error) {
+      console.log('decode State error: ', error)
+      return undefined
+    }
+  }
+
+  checkLength(length, cur) {
+    if (cur.pos + length >= cur.length) return false
+    return true
+  }
+
+  readObject(cur, reffullstate) {
+    const type = this.readSimpleType(cur) // Start of Object
+    if (type !== 8) return undefined // not a object
+    const retobj = {}
+    while (true) {
+      // first code the key, we allow a dictionary of 65635 - reserved types values
+      const key = this.readString(cur)
+      if (typeof key === 'undefined') {
+        // broken
+        return undefined
+      }
+      // now we code the value
+      const value = this.readBasicTypes(cur, reffullstate?.[key])
+      if (
+        typeof reffullstate !== 'undefined' &&
+        typeof reffullstate === 'object' &&
+        !Array.isArray(reffullstate) &&
+        (!reffullstate?.[key] ||
+          typeof reffullstate?.[key] !== 'object' ||
+          typeof value !== typeof reffullstate?.[key] ||
+          Array.isArray(value) !== Array.isArray(reffullstate?.[key]))
+      )
+        reffullstate[key] = value
+      retobj[key] = value
+      const ntype = this.peakSimpleType(cur)
+      if (ntype === 9) break // end of object
+    }
+    this.readSimpleType(cur) // End of Object
+    return retobj
+  }
+
+  readArray(cur, reffullstate) {
+    const type = this.readSimpleType(cur) // Start of array
+    if (type !== 9) return undefined // not a array
+    const length = this.readVarType(cur)
+    const retarray = new Array(length)
+    for (let ind = 0; ind < length; ind++) {
+      // now we code the value
+      const value = this.readBasicTypes(cur, reffullstate?.[ind])
+      if (
+        typeof reffullstate !== 'undefined' &&
+        typeof reffullstate === 'object' &&
+        Array.isArray(reffullstate) &&
+        (!reffullstate[ind] ||
+          typeof reffullstate[ind] !== 'object' ||
+          typeof value !== typeof reffullstate[ind] ||
+          Array.isArray(value) !== Array.isArray(reffullstate[ind]))
+      )
+        reffullstate[ind] = value
+      retarray[ind] = value
+    }
+    return retarray
+  }
+
+  readBasicTypes(cur, reffullstate) {
+    const ptype = this.peakSimpleType(cur)
+    switch (ptype) {
+      case 12: // reffullstate
+        this.readSimpleType(cur)
+        return reffullstate
+      case 1: // 'undefined':
+        this.readSimpleType(cur)
+        return undefined
+      case 2: // boolean true
+        this.readSimpleType(cur)
+        return true
+      case 3: // boolean false
+        this.readSimpleType(cur)
+        return false
+      case 5: // number float
+        return this.readFloat(cur)
+      case 11: // number byte int
+        return this.readBInt(cur)
+      case 4:
+        return this.readInt(cur)
+      case 6:
+        return this.readBigInt(cur)
+      case 8:
+        return this.readObject(cur, reffullstate)
+      case 9:
+        return this.readArray(cur, reffullstate)
+      case 10:
+        this.readSimpleType(cur)
+        return null
+      default:
+        if (ptype !== 0 && ptype < Dict.reservedTypes) break // unknown type
+        // string
+        return this.readString(cur)
+    }
+  }
+
+  readSimpleType(cur) {
+    return this.readVarType(cur)
+  }
+
+  peakSimpleType(cur) {
+    return this.peakVarType(cur)
+  }
+
+  readVarType(cur) {
+    let type = cur.chunkview.getUint8(cur.pos)
+    cur.pos += 1
+    if (type & 0x80) {
+      const next = cur.chunkview.getUint8(cur.pos)
+      cur.pos += 1
+      type = (type & 0x7f) | (next << 7)
+    }
+    return type
+  }
+
+  peakVarType(cur) {
+    let type = cur.chunkview.getUint8(cur.pos)
+    if (type & 0x80) {
+      const next = cur.chunkview.getUint8(cur.pos + 1)
+      type = (type & 0x7f) | (next << 7)
+    }
+    return type
+  }
+
+  readBInt(cur) {
+    const type = this.readVarType(cur)
+    if (type !== 11) return undefined
+    const value = cur.chunkview.getInt8(cur.pos)
+    cur.pos += 1
+    return value
+  }
+
+  readInt(cur) {
+    const type = this.readVarType(cur)
+    if (type !== 4) return undefined
+    const value = cur.chunkview.getInt32(cur.pos)
+    cur.pos += 4
+    return value
+  }
+
+  readBigInt(cur) {
+    const type = this.readVarType(cur)
+    if (type !== 6) return undefined
+    const value = cur.chunkview.getBigInt(cur.pos)
+    cur.pos += 8
+    return value
+  }
+
+  readFloat(cur) {
+    const type = this.readVarType(cur)
+    if (type !== 5) return undefined
+    const value = cur.chunkview.getFloat32(cur.pos)
+    cur.pos += 4
+    return value
+  }
+
+  readString(cur) {
+    const tdecoder = new TextDecoder()
+    const numtypes = 65535 - Dict.reservedTypes
+    const type = this.readVarType(cur)
+
+    // const type = this._dictIndex.get(string) || 0 // means new string
+    if (type === 0) {
+      // we limit strings to 254 characters, seriously, 255 is reserved for future length extension
+      const length = cur.chunkview.getUint8(cur.pos)
+      cur.pos++
+      if (length > 254) throw new Error('Invalid string data')
+      const data = cur.chunk.subarray(cur.pos, cur.pos + length)
+      const string = tdecoder.decode(data)
+      cur.pos += length
+      if (this._dict[this._dictWindowPointer]) {
+        this._dictIndex.delete(this._dict[this._dictWindowPointer])
+      }
+      this._dict[this._dictWindowPointer] = string
+      this._dictIndex.set(string, this._dictWindowPointer + Dict.reservedTypes)
+      this._dictWindowPointer = (this._dictWindowPointer + 1) % numtypes
+      return string
+    }
+    const dictindex = type - Dict.reservedTypes
+    if (typeof this._dict[dictindex] === 'undefined')
+      throw new Error('Unknown dictionary value')
+    return this._dict[dictindex]
+  }
+}
+
+// will likely go into fails data, when ready
+class JupyterStateStore {
+  constructor() {
+    this._state = new Map()
+    this._dstate = new Map()
+    this.dictCompress = new DictCompressor()
+    this.dictDecompress = new DictDecompressor()
+  }
+
+  flushCompress() {
+    this._state = new Map()
+    this.dictCompress.resetDict()
+  }
+
+  updateState(key, mime, state) {
+    let old = this._state.get(key)
+    if (!old) {
+      // in state we have the current diff as in the message
+      // in fullstate, we do not allow deletes, e.g. for plotly,
+      // that confuses a state with a message mechanism
+      // but the messages are diffs...
+      old = { state: {}, fullstate: {} }
+      this._state.set(key, old)
+    }
+
+    /* const objdiff = diff(old.state, state)
+    const objdifffull = diff(old.fullstate, state)
+    diffApply(old.state, objdiff)
+    diffApply(
+      old.fullstate,
+      objdiff.filter((cmd) => cmd.op !== 'remove')
+    )
+    console.log(
+      'current states',
+      old.state,
+      old.fullstate,
+      JSON.stringify(state).length,
+      JSON.stringify(objdiff).length,
+      JSON.stringify(objdifffull).length
+    )
+      */
+    const coded = this.dictCompress.codeState(key, mime, state, old.fullstate)
+    console.log(
+      'coded state test',
+      JSON.stringify(state).length,
+      coded.byteLength
+    )
+    console.log('fullstate', old.fullstate)
+    /*
+    console.log(
+      'coded state diff',
+      diff(state, decoded?.state),
+      state,
+      decoded?.state
+    )
+    console.log(
+      'coded fullstate diff',
+      diff(old.fullstate, dold.fullstate),
+      old.fullstate,
+      dold.fullstate
+    )
+    console.log('coded state path', key, decoded?.path, mime, decoded?.mime) */
+
+    // return objdiff
+    return coded
+  }
+
+  receiveData(buffer) {
+    const decoded = this.dictDecompress.decodeState(
+      new Uint8Array(buffer),
+      (path, mime) => {
+        let dold = this._dstate.get(path)
+        if (!dold) {
+          // in state we have the current diff as in the message
+          // in fullstate, we do not allow deletes, e.g. for plotly,
+          // that confuses a state with a message mechanism
+          // but the messages are diffs...
+          dold = { state: {}, fullstate: {}, mime }
+          this._dstate.set(path, dold)
+        }
+        return dold.fullstate
+      }
+    )
+    return decoded
+  }
+
+  getAllStateData() {
+    const toret = []
+    for (const [key, value] of this._dstate.entries()) {
+      toret.push({ path: key, mime: value.mime, state: value.fullstate })
+    }
+    return toret
+  }
+}
+
 export class JupyterHublet extends Component {
   constructor(props) {
     super(props)
@@ -96,22 +638,55 @@ export class JupyterHublet extends Component {
     this.state.kernelStatus = 'unknown'
     this.appletwidth = 100
     this.appletheight = 100
+    this.jState = new JupyterStateStore()
+    this.pendingStateUpdates = []
+    this.kernelReady = false
   }
 
   componentDidMount() {
     // we just got mounted, we should load the file
+    this.pendingStateUpdates = [] // clear state updates
+    this.kernelReady = false
+    this.jState.flushCompress()
     this.tryLoadJupyterFile()
+    if (this.props.setStateReceiver) {
+      this.installStateReceiver()
+    }
   }
 
   componentDidUpdate(prevProps, prevState, snapshot) {
     if (this.props.ipynb?.sha !== prevProps.ipynb?.sha) {
       this.setState({ jupyteredit: false })
+      this.pendingStateUpdates = [] // clear state updates
+      this.kernelReady = false
+      this.jState.flushCompress()
       this.tryLoadJupyterFile()
     }
     if (this.props.master !== prevProps.master) {
       // check if we have to initiate a master rescale
       this.checkAdjustAppletSize()
+      if (this.props.master) {
+        // we became a master, so flush the jstate
+        this.jState.flushCompress()
+      }
     }
+    if (
+      this.props.setStateReceiver &&
+      this.props.setStateReceiver !== prevProps.setStateReceiver
+    ) {
+      this.installStateReceiver()
+    }
+  }
+
+  installStateReceiver() {
+    this.props.setStateReceiver({
+      receiveData: (buffer, replay) => {
+        if (replay) this.pendingStateUpdates.push(buffer)
+        else {
+          this.receiveStateUpdate(buffer)
+        }
+      }
+    })
   }
 
   async jupyterLicense() {
@@ -199,6 +774,60 @@ export class JupyterHublet extends Component {
       )
     } catch (error) {
       console.log('Screenshot error', error)
+    }
+  }
+
+  receiveStateUpdate(buffer) {
+    if (!this.props.master) {
+      // master gets no updates
+      const stateUpdate = this.jState.receiveData(buffer)
+      console.log('receiveStateUpdate result', stateUpdate)
+      const { path, mime, state } = stateUpdate
+      this.jupyteredit.current?.sendInterceptorUpdate?.({
+        path,
+        mime,
+        state
+      })
+    }
+  }
+
+  processInitialStateUpdates() {
+    console.log('processInitialStateUpdates')
+    // Note also a master should get this
+    const updates = this.pendingStateUpdates
+    this.pendingStateUpdates = []
+    if (updates.length === 0) return
+    for (const buffer of updates) {
+      this.jState.receiveData(buffer)
+    }
+    // ok, we got all updates
+    // we know iterate over all fullstate models and send them out
+    this.jState.getAllStateData().forEach(({ path, mime, state }) => {
+      this.jupyteredit.current?.sendInterceptorUpdate?.({
+        path,
+        mime,
+        state
+      })
+    })
+  }
+
+  kernelStateTrigger(status) {
+    // see if the initial kernel startup is over!
+    if (status === 'idle') {
+      if (!this.kernelReady) {
+        if (this.pendingKernelReadyTrigger)
+          clearTimeout(this.pendingKernelReadyTrigger)
+        this.pendingKernelReadyTrigger = setTimeout(() => {
+          delete this.pendingKernelReadyTrigger
+          this.kernelReady = true
+          this.processInitialStateUpdates()
+        }, 500) // needs to be idle for more than 500 ms
+      }
+    } else {
+      if (this.pendingKernelReadyTrigger) {
+        clearTimeout(this.pendingKernelReadyTrigger)
+        delete this.pendingKernelReadyTrigger
+      }
     }
   }
 
@@ -599,10 +1228,15 @@ export class JupyterHublet extends Component {
                 }}
                 kernelStatusCallback={(status) => {
                   console.log('kernelStatus', status)
+                  this.kernelStateTrigger(status)
                   this.setState({ kernelStatus: status })
                 }}
                 receiveInterceptorUpdate={({ path, mime, state }) => {
-                  console.log('receiveInterceptorUpdate', path, mime, state)
+                  // console.log('receiveInterceptorUpdate', path, mime, state)
+                  if (!this.props.master) return // only a master processes state updates
+                  // TODO check for mime
+                  const diff = this.jState.updateState(path, mime, state)
+                  this.props?.submitStateUpdate?.(diff)
                 }}
               />
             </div>
