@@ -1204,6 +1204,7 @@ export class JupyterHublet extends Component {
             >
               <JupyterEdit
                 editActivated={this.state.jupyteredit}
+                pointerOff={!this.props.master}
                 rerunAtStartup={true}
                 installScreenShotPatches={
                   !!this.props
