@@ -1055,12 +1055,13 @@ export class Blackboard extends Component {
               <JupyterHublet
                 pos={this.state.apppos}
                 deactivated={this.state.appdeactivated}
+                isnotepad={this.props.isnotepad}
                 bbwidth={this.props.bbwidth}
                 zIndex={151 + zoffset}
                 appids={this.state.appids}
                 ipynb={this.state.appipynb}
                 master={this.state.appletMaster}
-                laserPointerOn={this.state.cursor.mode === 'laserpointer'}
+                laserPointerOn={this.state.cursor?.mode === 'laserpointer'}
                 makeAppletMaster={this.props.makeAppletMaster}
                 screenShotSaver={this.props.screenShotSaver}
                 closeApp={this.props.closeApp}

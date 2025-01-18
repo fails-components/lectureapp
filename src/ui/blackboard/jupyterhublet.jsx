@@ -565,12 +565,12 @@ class JupyterStateStore {
     )
       */
     const coded = this.dictCompress.codeState(key, mime, state, old.fullstate)
-    console.log(
+    /* console.log(
       'coded state test',
       JSON.stringify(state).length,
       coded.byteLength
     )
-    console.log('fullstate', old.fullstate)
+    console.log('fullstate', old.fullstate) */
     /*
     console.log(
       'coded state diff',
@@ -636,6 +636,7 @@ export class JupyterHublet extends Component {
     this.state = {}
     this.state.movemodeactiv = {}
     this.state.kernelStatus = 'unknown'
+    this.state.appLocked = true
     this.appletwidth = 100
     this.appletheight = 100
     this.jState = new JupyterStateStore()
@@ -675,6 +676,16 @@ export class JupyterHublet extends Component {
       this.props.setStateReceiver !== prevProps.setStateReceiver
     ) {
       this.installStateReceiver()
+    }
+
+    if (!this.props.isnotepad) {
+      if (
+        prevState.appLocked !== this.state.appLocked &&
+        this.state.appLocked
+      ) {
+        // We are locked again, so go back to locked state!
+        this.sendCompleteStateUpdate()
+      }
     }
   }
 
@@ -778,17 +789,18 @@ export class JupyterHublet extends Component {
   }
 
   receiveStateUpdate(buffer) {
-    if (!this.props.master) {
-      // master gets no updates
-      const stateUpdate = this.jState.receiveData(buffer)
-      console.log('receiveStateUpdate result', stateUpdate)
-      const { path, mime, state } = stateUpdate
-      this.jupyteredit.current?.sendInterceptorUpdate?.({
-        path,
-        mime,
-        state
-      })
-    }
+    if (this.props.master) return
+    // master gets no updates
+    const stateUpdate = this.jState.receiveData(buffer)
+    console.log('receiveStateUpdate result', stateUpdate)
+    // do not update jupyter edit, while student is allowed to alter the state
+    if (!this.props.isnotepad && !this.state.appLocked) return
+    const { path, mime, state } = stateUpdate
+    this.jupyteredit.current?.sendInterceptorUpdate?.({
+      path,
+      mime,
+      state
+    })
   }
 
   processInitialStateUpdates() {
@@ -802,6 +814,10 @@ export class JupyterHublet extends Component {
     }
     // ok, we got all updates
     // we know iterate over all fullstate models and send them out
+    this.sendCompleteStateUpdate()
+  }
+
+  sendCompleteStateUpdate() {
     this.jState.getAllStateData().forEach(({ path, mime, state }) => {
       this.jupyteredit.current?.sendInterceptorUpdate?.({
         path,
@@ -1093,12 +1109,17 @@ export class JupyterHublet extends Component {
             )}
           </div>
           <div style={{ position: 'absolute', right: '0px', bottom: '0px' }}>
-            <AppletButton
-              // eslint-disable-next-line no-constant-condition
-              icon={true ? 'pi pi-lock-open' : 'pi pi-lock'}
-              key='lockbutton'
-              tooltip='Unlock/Lock to instructors applet state'
-            />
+            {!this.props.isnotepad && (
+              <AppletButton
+                // eslint-disable-next-line no-constant-condition
+                icon={!this.state.appLocked ? 'pi pi-lock-open' : 'pi pi-lock'}
+                key='lockbutton'
+                tooltip='Unlock/Lock to instructors applet state'
+                onClick={() => {
+                  this.setState((state) => ({ appLocked: !state.appLocked }))
+                }}
+              />
+            )}
             {!master && this.props.makeAppletMaster && (
               <AppletButton
                 icon={<FontAwesomeIcon icon={faTachometerAlt} />}
@@ -1203,7 +1224,12 @@ export class JupyterHublet extends Component {
             >
               <JupyterEdit
                 editActivated={this.state.jupyteredit}
-                pointerOff={!this.props.master}
+                pointerOff={
+                  !(
+                    (this.props.master && this.props.isnotepad) ||
+                    (!this.state.appLocked && !this.props.isnotepad)
+                  )
+                }
                 rerunAtStartup={true}
                 installScreenShotPatches={
                   !!this.props
