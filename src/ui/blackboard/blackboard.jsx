@@ -729,7 +729,7 @@ export class Blackboard extends Component {
   }
 
   receiveIpynbInfo(data) {
-    console.log('receiveIpynbInfo', data)
+    // console.log('receiveIpynbInfo', data)
     const {
       name,
       filename,
