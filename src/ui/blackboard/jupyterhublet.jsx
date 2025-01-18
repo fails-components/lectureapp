@@ -319,7 +319,6 @@ class DictDecompressor extends Dict {
         throw new Error('Unsupported compression version and type')
       const dictId = cur.chunkview.getUint32(cur.pos) // unique stream id
       if (dictId !== this._dictId) {
-        console.log('decodeState dictId change', dictId, this._dictId)
         // May be we need a map of dictionaries?
         this.resetDict()
         this._dictId = dictId
@@ -792,7 +791,6 @@ export class JupyterHublet extends Component {
     if (this.props.master) return
     // master gets no updates
     const stateUpdate = this.jState.receiveData(buffer)
-    console.log('receiveStateUpdate result', stateUpdate)
     // do not update jupyter edit, while student is allowed to alter the state
     if (!this.props.isnotepad && !this.state.appLocked) return
     const { path, mime, state } = stateUpdate
@@ -804,7 +802,6 @@ export class JupyterHublet extends Component {
   }
 
   processInitialStateUpdates() {
-    console.log('processInitialStateUpdates')
     // Note also a master should get this
     const updates = this.pendingStateUpdates
     this.pendingStateUpdates = []
@@ -1144,7 +1141,6 @@ export class JupyterHublet extends Component {
               icon={'pi pi-info-circle'}
               key='infobutton'
               onClick={(e) => {
-                console.log('Jupyter info')
                 this.jupyterinfo?.current?.toggle?.(e)
               }}
               tooltip='Info about applet and license'
@@ -1201,7 +1197,6 @@ export class JupyterHublet extends Component {
               key='closebutton'
               hide={!(master && this.props.closeApp)}
               onClick={() => {
-                console.log('Close applet')
                 this.props.closeApp()
               }}
               tooltip='Close applet'
