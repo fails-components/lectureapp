@@ -1219,6 +1219,7 @@ export class JupyterHublet extends Component {
             >
               <JupyterEdit
                 editActivated={this.state.jupyteredit}
+                jupyterurl={window.location.origin + '/jupyter/index.html'}
                 pointerOff={
                   !(
                     (this.props.master && this.props.isnotepad) ||
