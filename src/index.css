@@ -140,7 +140,9 @@ code {
 }
 
 .appletKernelStatus.appletKernelStatusunknown{
-  background-color: transparent;
+  animation: kernelstatus-pulsate 1s infinite;
+  --first-color: #e95100;
+  --second-color: #ff7c37;
 }
 .appletKernelStatus.appletKernelStatusstarting{
   animation: kernelstatus-pulsate 1s infinite;
