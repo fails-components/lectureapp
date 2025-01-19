@@ -28,7 +28,7 @@ import {
   faChevronRight
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { JupyterEdit } from '../../../../app/src/jupyteredit'
+import { JupyterEdit } from '@fails-components/jupyter-react-edit'
 import { OverlayPanel } from 'primereact/overlaypanel'
 
 export class AppletButton extends Component {

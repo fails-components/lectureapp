@@ -21,6 +21,7 @@
   "dependencies": {
     "@fails-components/config": "^1.5.4",
     "@fails-components/data": "^1.4.1",
+    "@fails-components/jupyter-react-edit": "file:../jupyterfails/packages/jupyterreactedit",
     "@fails-components/webtransport": "^1.1.4",
     "@fortawesome/fontawesome-svg-core": "^6.5.1",
     "@fortawesome/free-solid-svg-icons": "^6.5.1",
