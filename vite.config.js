@@ -39,7 +39,8 @@ export default defineConfig(() => {
         protocol: 'ws',
         port: 3000,
         host: 'localhost'
-      }
+      },
+      allowedHosts: ['.ngrok.app']
     },
     base: process?.env?.PUBLIC_URL
       ? process.env.PUBLIC_URL
