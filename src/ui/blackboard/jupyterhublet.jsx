@@ -31,6 +31,11 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { JupyterEdit } from '@fails-components/jupyter-react-edit'
 import { OverlayPanel } from 'primereact/overlaypanel'
 
+const jupyterProxyDomains =
+  import.meta.env.REACT_APP_JUPYTER_PROXY_DOMAINS.split(' ').map(
+    (el) => 'https://' + el
+  )
+
 export class AppletButton extends Component {
   constructor(args) {
     super(args)
@@ -647,6 +652,30 @@ export class JupyterHublet extends Component {
     // we just got mounted, we should load the file
     this.pendingStateUpdates = [] // clear state updates
     this.kernelReady = false
+
+    fetch(new URL('/config/proxy.json', window.location.origin), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error('HTTP error! status:' + res.status)
+        }
+        const config = await res.json()
+        console.log('We got a proxy config', config)
+        if (config?.allowedSites) {
+          this.setState({ allowedSites: config.allowedSites })
+        }
+      })
+      .catch((error) => {
+        console.log(
+          'Get config/proxy.json problem/not found, this must not be an error',
+          error
+        )
+      })
+
     this.jState.flushCompress()
     this.tryLoadJupyterFile()
     if (this.props.setStateReceiver) {
@@ -1231,6 +1260,11 @@ export class JupyterHublet extends Component {
                   !!this.props
                     .makeAppletMaster /* only install, if it can become master */
                 }
+                GDPRProxy={{
+                  proxySites: jupyterProxyDomains,
+                  allowedSites: this.state.allowedSites || [],
+                  proxyURL: globalThis.location.origin + '/jupyter/proxy/'
+                }}
                 ref={this.jupyteredit}
                 document={this.state.jupyterDocument}
                 filename={this.props.ipynb?.filename}
