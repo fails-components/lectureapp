@@ -26,7 +26,7 @@ import {
 
 import Color from 'color'
 import { MagicObject } from './magicobject'
-import { ImageHelper } from './ImageHelper'
+import { ImageHelper } from './imagehelper'
 import { BackgroundPDF } from './backgroundpdf'
 import { SVGWriting2, SVGSpotlight, FormHelper } from './helpers'
 import { JupyterHublet } from './jupyterhublet'
