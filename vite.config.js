@@ -14,12 +14,7 @@ export default defineConfig(() => {
     },
     plugins: [
       react(),
-      eslint({
-        exclude: [
-          'node_modules/**',
-          '../jupyterfails/packages/jupyterreactedit/lib/**/*.js' // Adjust this path if needed
-        ]
-      }),
+      eslint(),
       wasm(),
       topLevelAwait(),
       VitePWA({
