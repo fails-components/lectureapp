@@ -30,6 +30,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { JupyterEdit } from '@fails-components/jupyter-react-edit'
 import { OverlayPanel } from 'primereact/overlaypanel'
+import powerByJupyterLogo from '../jupyterlogo/poweredbyjupyter-square-lightbg.svg'
 
 const jupyterProxyDomains =
   import.meta.env.REACT_APP_JUPYTER_PROXY_DOMAINS.split(' ').map(
@@ -1337,7 +1338,18 @@ export class JupyterHublet extends Component {
           </div>
         </div>
         <OverlayPanel className='tbChild' ref={this.jupyterinfo} showCloseIcon>
-          <h3>FAILS' apps are powered by Jupyter Lite</h3>
+          <h3>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <img
+                src={powerByJupyterLogo}
+                style={{ width: '60px', marginLeft: '5px' }}
+                alt='powered by jupyter logo'
+              />
+              <div style={{ marginLeft: '10px', textAlign: 'left' }}>
+                FAILS' apps are powered by Jupyter Lite{' '}
+              </div>
+            </div>
+          </h3>
           Build upon the shoulders of giants, see{' '}
           <button
             onClick={() => {
