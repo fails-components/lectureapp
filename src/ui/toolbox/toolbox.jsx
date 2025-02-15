@@ -63,7 +63,8 @@ import {
   fiAddLineIcon,
   fiAddRectangleIcon,
   fiAddEllipseIcon,
-  fiAddCircleIcon
+  fiAddCircleIcon,
+  fiJupyterLiteIcon
 } from '../icons/icons.jsx'
 import { UAParser } from 'ua-parser-js'
 import { ToolHandling } from './toolhandling.jsx'
@@ -409,8 +410,8 @@ export class ToolBox extends ToolHandling {
 
     const ipynbbutton = (
       <Button
-        icon={/* fiAddPictIcon */ <Fragment>JA</Fragment>}
-        tooltip='Start app'
+        icon={fiJupyterLiteIcon}
+        tooltip='Jupyter lite base apps and more'
         tooltipOptions={ttopts}
         key={11}
         onClick={(e) => {
