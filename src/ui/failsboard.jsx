@@ -69,7 +69,6 @@ export class FailsBoard extends FailsBasis {
     this.onHidePictDialog = this.onHidePictDialog.bind(this)
     this.onHideIpynbDialog = this.onHideIpynbDialog.bind(this)
     this.onAddPicture = this.onAddPicture.bind(this)
-    this.onStartApplet = this.onStartApplet.bind(this)
     this.onOpenNewScreen = this.onOpenNewScreen.bind(this)
     this.onOpenNewNotepad = this.onOpenNewNotepad.bind(this)
     this.onNewWriting = this.onNewWriting.bind(this)
@@ -83,6 +82,7 @@ export class FailsBoard extends FailsBasis {
     this.onStartPoll = this.onStartPoll.bind(this)
     this.onStartSelPoll = this.onStartSelPoll.bind(this)
     this.onFinishSelPoll = this.onFinishSelPoll.bind(this)
+    this.ipynbTemplate = this.ipynbTemplate.bind(this)
   }
 
   componentDidMount() {
@@ -475,21 +475,16 @@ export class FailsBoard extends FailsBasis {
     }
   }
 
-  async onStartApplet() {
-    console.log('onStartApplet', this.state.selipynb)
-    if (this.noteref && this.state.selipynb) {
-      const [id = undefined, sha = undefined, appid = undefined] =
-        this.state.selipynb.split(':')
-      if (
-        typeof id !== 'undefined' &&
-        typeof sha !== 'undefined' &&
-        typeof appid !== 'undefined'
-      )
-        this.noteref.onAppStart(id, sha, appid)
+  async onStartApplet({
+    appid = undefined,
+    id = undefined,
+    sha = undefined
+  } = {}) {
+    if (this.noteref && appid && id && sha) {
+      this.noteref.onAppStart(id, sha, appid)
     }
     this.setState({
       ipynbs: undefined,
-      selipynb: undefined,
       ipynbbuttondialog: false
     })
   }
@@ -574,6 +569,37 @@ export class FailsBoard extends FailsBasis {
       numballots++
     }
     return { data: tpolldata, numballots }
+  }
+
+  ipynbTemplate(node) {
+    if (node.appid) {
+      const { appid, id, sha } = node
+      // it is a app
+      return (
+        <React.Fragment>
+          <b>{node.label}</b>{' '}
+          <Button
+            icon='pi pi-send'
+            className='p-button-text p-button-sm'
+            tooltip={'Start applet'}
+            tooltipOptions={{
+              className: 'teal-tooltip',
+              position: 'top',
+              showDelay: 1000
+            }}
+            iconPos='right'
+            onClick={() => {
+              this.onStartApplet({
+                appid,
+                id,
+                sha
+              })
+            }}
+          />{' '}
+        </React.Fragment>
+      )
+    }
+    return <b>{node.label}</b>
   }
 
   render() {
@@ -769,22 +795,10 @@ export class FailsBoard extends FailsBasis {
               <div className='p-col-12'>
                 <Tree
                   value={this.state.ipynbs}
+                  nodeTemplate={this.ipynbTemplate}
                   selectionMode='single'
-                  selectionKeys={this.state.selipynb}
-                  onSelectionChange={(e) =>
-                    this.setState({ selipynb: e.value })
-                  }
                 />
               </div>
-              {this.state.selipynb && (
-                <div className='p-col-6'>
-                  <Button
-                    label='Start applet'
-                    icon='pi pi-send'
-                    onClick={this.onStartApplet}
-                  />
-                </div>
-              )}
             </div>
           )}
           {(!this.state.ipynbs || this.state.ipynbs.length === 0) && (
