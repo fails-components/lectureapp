@@ -22,11 +22,11 @@ import { Tooltip } from 'primereact/tooltip'
 import {
   faMaximize,
   faArrowsAlt,
-  faTachometerAlt,
   faCamera,
   faChevronLeft,
   faChevronRight
 } from '@fortawesome/free-solid-svg-icons'
+import { fiSteer } from '../icons/icons.jsx'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { JupyterEdit } from '@fails-components/jupyter-react-edit'
 import { OverlayPanel } from 'primereact/overlaypanel'
@@ -48,10 +48,11 @@ export class AppletButton extends Component {
   }
 
   render() {
-    const icon = typeof this.props.icon !== 'string' && this.props.icon
+    let icon = typeof this.props.icon !== 'string' && this.props.icon
     const style = {}
     let iconclassname
     if (typeof this.props.icon === 'string') iconclassname = this.props.icon
+    if (typeof this.props.icon === 'function') icon = icon()
     if (this.props.hide) style.visibility = 'hidden'
     return (
       <button
@@ -1149,7 +1150,7 @@ export class JupyterHublet extends Component {
             )}
             {!master && this.props.makeAppletMaster && (
               <AppletButton
-                icon={<FontAwesomeIcon icon={faTachometerAlt} />}
+                icon={fiSteer}
                 key='controlbutton'
                 onClick={() => {
                   this.props.makeAppletMaster()
