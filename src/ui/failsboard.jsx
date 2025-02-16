@@ -36,6 +36,7 @@ import { PictureSelect } from './widgets/pictureselect'
 import { ShortcutsMessage } from './widgets/shortcutsmessage'
 import Pica from 'pica'
 import ImageBlobReduce from 'image-blob-reduce'
+import { notebookEditPseudoAppid } from './blackboard/jupyterhublet'
 
 export class FailsBoard extends FailsBasis {
   constructor(props) {
@@ -599,7 +600,29 @@ export class FailsBoard extends FailsBasis {
         </React.Fragment>
       )
     }
-    return <b>{node.label}</b>
+    return (
+      <React.Fragment>
+        <b>{node.label}</b>{' '}
+        <Button
+          icon='pi pi-file'
+          className='p-button-text p-button-sm'
+          tooltip={'Work individuelly at the notebook'}
+          tooltipOptions={{
+            className: 'teal-tooltip',
+            position: 'top',
+            showDelay: 1000
+          }}
+          iconPos='right'
+          onClick={() => {
+            this.onStartApplet({
+              appid: notebookEditPseudoAppid,
+              id: node.id,
+              sha: node.sha
+            })
+          }}
+        />{' '}
+      </React.Fragment>
+    )
   }
 
   render() {

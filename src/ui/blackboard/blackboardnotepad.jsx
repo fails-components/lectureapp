@@ -21,6 +21,7 @@ import { SHA1 } from 'jshashes'
 import React, { Component } from 'react'
 import Color from 'color'
 import { Blackboard } from './blackboard'
+import { notebookEditPseudoAppid } from './jupyterhublet'
 
 function ToRGBANumber(color) {
   if (typeof color === 'number') return color // no need to convert
@@ -1387,6 +1388,19 @@ export class BlackboardNotepad extends Component {
 
   onAppStart(id, sha, appid) {
     const scrollheight = this.scrollheight()
+    if (appid === notebookEditPseudoAppid) {
+      this.props.outgoingsink.startApp(
+        undefined /* time */,
+        0.1,
+        Math.min(9 / 16, this.scrollheight()) * 0.1 + this.getCurScrollPos(),
+        0.8,
+        Math.min(9 / 16, this.scrollheight()) * 0.8, // typical screen ration
+        id,
+        sha,
+        appid
+      )
+      return
+    }
     this.props.outgoingsink.startApp(
       undefined /* time */,
       0.15,

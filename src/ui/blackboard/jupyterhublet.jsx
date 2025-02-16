@@ -37,6 +37,8 @@ const jupyterProxyDomains =
     (el) => 'https://' + el
   )
 
+export const notebookEditPseudoAppid = '1e5584e0-718c-4228-a666-0bdaf57fb82e'
+
 export class AppletButton extends Component {
   constructor(args) {
     super(args)
@@ -975,10 +977,12 @@ export class JupyterHublet extends Component {
       newwidth = Math.max(150, newwidth)
       newheight = Math.max(150, newheight)
       const destaspect = this.aspect
-      if (newwidth > newheight) {
-        newheight = newwidth / destaspect
-      } else {
-        newwidth = newheight * destaspect
+      if (this.props.appids?.appid !== notebookEditPseudoAppid) {
+        if (newwidth > newheight) {
+          newheight = newwidth / destaspect
+        } else {
+          newwidth = newheight * destaspect
+        }
       }
       newheight -= oldheight
       newwidth -= oldwidth
@@ -1002,7 +1006,10 @@ export class JupyterHublet extends Component {
   }
 
   checkAdjustAppletSize() {
-    if (this.props.master) {
+    if (
+      this.props.master &&
+      this.props.appids?.appid !== notebookEditPseudoAppid
+    ) {
       const oldaspect = this.props.pos.width / this.props.pos.height
       const newaspect = this.aspect
       if (oldaspect !== newaspect) {
@@ -1050,6 +1057,7 @@ export class JupyterHublet extends Component {
     const applet = this.props.ipynb?.applets?.find?.(
       (el) => this.props.appids?.appid === el.appid
     )
+    const heading = applet?.appname || this.props.ipynb?.name
     const master = this.props.master
     const stopProp = (event) => event.stopPropagation()
     const width =
@@ -1158,16 +1166,18 @@ export class JupyterHublet extends Component {
                 tooltip='Steer applet state'
               />
             )}
-            {master && this.props.screenShotSaver && (
-              <AppletButton
-                icon={<FontAwesomeIcon icon={faCamera} />}
-                key='appletbutton'
-                onClick={() => {
-                  this.doScreenshot()
-                }}
-                tooltip='Create picture from applet'
-              />
-            )}
+            {master &&
+              this.props.appids?.appid !== notebookEditPseudoAppid &&
+              this.props.screenShotSaver && (
+                <AppletButton
+                  icon={<FontAwesomeIcon icon={faCamera} />}
+                  key='appletbutton'
+                  onClick={() => {
+                    this.doScreenshot()
+                  }}
+                  tooltip='Create picture from applet'
+                />
+              )}
             <AppletButton
               icon={'pi pi-info-circle'}
               key='infobutton'
@@ -1205,9 +1215,7 @@ export class JupyterHublet extends Component {
               onPointerMove={(event) => this.onPointerMove('move', event)}
               onPointerUp={(event) => this.onPointerUp('move', event)}
             />
-            <div className='appletHeadingText'>
-              {applet?.appname || 'Loading...'}
-            </div>
+            <div className='appletHeadingText'>{heading || 'Loading...'}</div>
             <div
               ref={this.kernelStatusRef}
               className={
@@ -1270,7 +1278,10 @@ export class JupyterHublet extends Component {
                 ref={this.jupyteredit}
                 document={this.state.jupyterDocument}
                 filename={this.props.ipynb?.filename}
-                appid={this.props.appids?.appid}
+                appid={
+                  this.props.appids?.appid !== notebookEditPseudoAppid &&
+                  this.props.appids?.appid
+                }
                 stateCallback={(stateChange) => {
                   this.setState((state) => ({
                     jupyterState: {
@@ -1347,7 +1358,8 @@ export class JupyterHublet extends Component {
                 alt='powered by jupyter logo'
               />
               <div style={{ marginLeft: '10px', textAlign: 'left' }}>
-                FAILS' apps are powered by Jupyter Lite{' '}
+                FAILS' apps and jupyter notebook support are powered by Jupyter
+                Lite{' '}
               </div>
             </div>
           </h3>
@@ -1363,7 +1375,7 @@ export class JupyterHublet extends Component {
             {' '}
             OSS attribution and licensing{' '}
           </button>{' '}
-          for app related content.
+          for jupyter related content.
           <br /> <br />
         </OverlayPanel>
       </Fragment>
