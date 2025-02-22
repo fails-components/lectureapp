@@ -1262,7 +1262,8 @@ export class JupyterHublet extends Component {
                 pointerOff={
                   !(
                     (this.props.master && this.props.isnotepad) ||
-                    (!this.state.appLocked && !this.props.isnotepad)
+                    (!this.state.appLocked && !this.props.isnotepad) ||
+                    this.props.appids?.appid === notebookEditPseudoAppid
                   )
                 }
                 rerunAtStartup={true}
