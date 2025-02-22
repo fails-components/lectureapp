@@ -64,7 +64,8 @@ import {
   fiAddRectangleIcon,
   fiAddEllipseIcon,
   fiAddCircleIcon,
-  fiJupyterLiteIcon
+  fiJupyterLiteIcon,
+  fiStartActivityIcon
 } from '../icons/icons.jsx'
 import { UAParser } from 'ua-parser-js'
 import { ToolHandling } from './toolhandling.jsx'
@@ -426,7 +427,7 @@ export class ToolBox extends ToolHandling {
 
     const startactivitybutton = (
       <Button
-        icon={<b>A</b>}
+        icon={fiStartActivityIcon}
         tooltip='Start activity'
         tooltipOptions={ttopts}
         key={11}
@@ -974,7 +975,7 @@ export class ToolBox extends ToolHandling {
       />
     )
 
-    const activitywheel = []
+    let activitywheel = []
     activitywheel.push(pollbutton)
     if (this.props.experimental) activitywheel.push(ipynbbutton)
 
@@ -984,6 +985,12 @@ export class ToolBox extends ToolHandling {
         activitywheelcpos = true
       }
     }
+
+    activitywheel = activitywheel.map((ele, it) => (
+      <div className='p-mr-2 p-mb-2' id={it} key={it}>
+        {ele}
+      </div>
+    ))
 
     const { colorwheel, pensizewheel, tmcolorwheel, bcolorwheel, fcolorwheel } =
       this.getColorButtons({
