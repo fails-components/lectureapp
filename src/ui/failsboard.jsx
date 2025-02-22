@@ -541,7 +541,11 @@ export class FailsBoard extends FailsBasis {
       ))
     return (
       <div key={item.id}>
-        <h3> {item.name + (item.multi ? ' (multi)' : ' (single)')} </h3>
+        <h3>
+          {' '}
+          {item.name + (item.multi ? ' (multi)' : ' (single)')}
+          {item.note ? <small> {' ' + item.note} </small> : ''}
+        </h3>
         <ol>{childlist}</ol>
       </div>
     )
