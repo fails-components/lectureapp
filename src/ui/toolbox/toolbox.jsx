@@ -298,7 +298,12 @@ export class ToolBox extends ToolHandling {
   reactivate() {
     console.log('reactivate toolbox')
     this.addRemoveSecondToolGuardian(true)
-    this.setState({ activated: true, selectedButtonid: this.lasttool })
+    this.setState({
+      activated: true,
+      selectedButtonid: this.lasttool,
+      secondtoolstep: 0,
+      thirdtoolstep: 0
+    })
   }
 
   deactivate() {
@@ -408,19 +413,6 @@ export class ToolBox extends ToolHandling {
       />
     )
 
-    const ipynbbutton = (
-      <Button
-        icon={fiJupyterLiteIcon}
-        tooltip='Jupyter lite base apps and more'
-        tooltipOptions={ttopts}
-        key={11}
-        onClick={(e) => {
-          this.ipynbButtonPressed()
-        }}
-        className='p-button-secondary p-button-raised p-button-rounded tbChild'
-      />
-    )
-
     const addformpictbutton = (
       <Button
         icon={fiFormPictSubMenuIcon}
@@ -429,6 +421,17 @@ export class ToolBox extends ToolHandling {
         key={10}
         onClick={(e) => this.selectTool(10)}
         className={selbuttonclass(this.state.selectedButtonid === 10)}
+      />
+    )
+
+    const startactivitybutton = (
+      <Button
+        icon={<b>A</b>}
+        tooltip='Start activity'
+        tooltipOptions={ttopts}
+        key={11}
+        onClick={(e) => this.selectTool(11)}
+        className={selbuttonclass(this.state.selectedButtonid === 11)}
       />
     )
 
@@ -539,7 +542,8 @@ export class ToolBox extends ToolHandling {
     if (this.state.canundo) maintools.push(undobutton)
     maintools.push(addformpictbutton)
     maintools.push(laserbutton)
-    maintools.push(pollbutton)
+    if (!this.props.experimental) maintools.push(pollbutton)
+    else maintools.push(startactivitybutton)
     maintools.push(endbutton)
     maintools.push(scrollbutton)
 
@@ -851,7 +855,6 @@ export class ToolBox extends ToolHandling {
     }
     if (idents.length > 0) settingswheel.push(identbutton)
     if (this.props.startUpAVBroadcast) settingswheel.push(avstartupbutton)
-    if (this.props.experimental) settingswheel.push(ipynbbutton)
     settingswheel.push(infobutton)
 
     let setwheelpcpos = false
@@ -957,6 +960,30 @@ export class ToolBox extends ToolHandling {
         {ele}
       </div>
     ))
+
+    const ipynbbutton = (
+      <Button
+        icon={fiJupyterLiteIcon}
+        tooltip='Jupyter lite base apps and more'
+        tooltipOptions={ttopts}
+        key={11}
+        onClick={(e) => {
+          this.ipynbButtonPressed()
+        }}
+        className='p-button-secondary p-button-raised p-button-rounded tbChild'
+      />
+    )
+
+    const activitywheel = []
+    activitywheel.push(pollbutton)
+    if (this.props.experimental) activitywheel.push(ipynbbutton)
+
+    let activitywheelcpos = false
+    if (this.state.selectedButtonid === 11) {
+      if (this.state.secondtoolstep === 1) {
+        activitywheelcpos = true
+      }
+    }
 
     const { colorwheel, pensizewheel, tmcolorwheel, bcolorwheel, fcolorwheel } =
       this.getColorButtons({
@@ -1086,6 +1113,11 @@ export class ToolBox extends ToolHandling {
             {formpictwheelcpos && (
               <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
                 {formpictwheel}
+              </div>
+            )}
+            {activitywheelcpos && (
+              <div className='p-d-flex p-flex-wrap p-jc-center fadeMenu'>
+                {activitywheel}
               </div>
             )}
             {cwheelcpos && (

@@ -204,6 +204,10 @@ export class ToolHandling extends Component {
         this.setState({ selectedFormid: undefined })
         this.addRemoveSecondToolGuardian(false, this.lasttool)
         break
+      case 11: // startActivityMenu menu
+        if (this.blackboard()) this.blackboard().setMenuMode()
+        this.addRemoveSecondToolGuardian(true, this.lasttool)
+        break
       default:
         break
     }
@@ -220,6 +224,7 @@ export class ToolHandling extends Component {
         case 1:
         case 4:
         case 10:
+        case 11:
           secondtoolstep = 1
           newbuttonid = buttonid
           break
