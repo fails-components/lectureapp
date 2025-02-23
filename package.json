@@ -34,6 +34,7 @@
     "dexie": "^3.2.2",
     "file-loader": "^6.2.0",
     "image-blob-reduce": "^3.0.1",
+    "js-file-download": "^0.4.12",
     "jshashes": "^1.0.8",
     "jwt-decode": "^3.1.2",
     "katex": "^0.16.21",

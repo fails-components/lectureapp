@@ -31,6 +31,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { JupyterEdit } from '@fails-components/jupyter-react-edit'
 import { OverlayPanel } from 'primereact/overlaypanel'
 import powerByJupyterLogo from '../jupyterlogo/poweredbyjupyter-square-lightbg.svg'
+import fileDownload from 'js-file-download'
 
 const jupyterProxyDomains =
   import.meta.env.REACT_APP_JUPYTER_PROXY_DOMAINS.split(' ').map(
@@ -1156,6 +1157,28 @@ export class JupyterHublet extends Component {
                 }}
               />
             )}
+            {this.state.jupyterState?.dirty &&
+              this.props.appids?.appid === notebookEditPseudoAppid && (
+                <AppletButton
+                  icon='pi pi-download'
+                  className='p-button-text p-button-sm'
+                  key='downloadbutton'
+                  tooltip='Download jupyter notebook'
+                  onClick={async () => {
+                    if (this.jupyteredit.current) {
+                      const toSave =
+                        await this.jupyteredit.current.saveJupyter()
+                      const theblob = new Blob([JSON.stringify(toSave)], {
+                        type: 'application/x-ipynb+json'
+                      })
+                      fileDownload(
+                        theblob,
+                        this.props.ipynb?.filename || 'unknown.ipynb'
+                      )
+                    }
+                  }}
+                />
+              )}
             {!master && this.props.makeAppletMaster && (
               <AppletButton
                 icon={fiSteer}
