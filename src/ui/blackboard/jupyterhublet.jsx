@@ -696,6 +696,12 @@ export class JupyterHublet extends Component {
       this.jState.flushCompress()
       this.tryLoadJupyterFile()
     }
+    if (
+      this.props.appids?.appid !== prevProps.appids?.appid &&
+      this.props.appids?.appid === notebookEditPseudoAppid
+    ) {
+      this.setState({ appletheight: undefined, appletwidth: undefined })
+    }
     if (this.props.master !== prevProps.master) {
       // check if we have to initiate a master rescale
       this.checkAdjustAppletSize()
