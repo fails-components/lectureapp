@@ -876,8 +876,18 @@ export class AVInterface {
         console.log('getAVDevices, getUserMedia...', error)
       }
     }
-    this.devices = (await navigator.mediaDevices.enumerateDevices()).filter(
-      (el) => el.deviceId !== 'default' && el.deviceId !== 'communications'
+    const enumDevices = await navigator.mediaDevices.enumerateDevices()
+    const unfiltered = {}
+    enumDevices.forEach((el) => {
+      if (el.deviceId !== 'default' && el.deviceId !== 'communications') {
+        // this will not be filtered
+        unfiltered[el.kind] = (unfiltered[el.kind] || 0) + 1
+      }
+    })
+    this.devices = enumDevices.filter(
+      (el) =>
+        (el.deviceId !== 'default' && el.deviceId !== 'communications') ||
+        !unfiltered[el.kind]
     )
     return this.devices
   }
