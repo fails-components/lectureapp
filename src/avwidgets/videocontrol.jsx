@@ -518,19 +518,32 @@ export class VideoControl extends Component {
 
   render() {
     const devices = this.state.avdevices || []
+    const labelGenerator = (label, index, replTitle) => {
+      if (typeof label === 'string' && label !== '') return label
+      return replTitle + ' ' + index
+    }
     const videosrc = devices
       .filter((el) => el.kind === 'videoinput')
-      .map((el) => ({ label: el.label, deviceId: el.deviceId }))
+      .map((el, index) => ({
+        label: labelGenerator(el.label, index, 'Video Input'),
+        deviceId: el.deviceId
+      }))
     console.log('videosrc', videosrc)
     console.log('videoid', this.state.videoid)
     const audiosrc = devices
       .filter((el) => el.kind === 'audioinput')
-      .map((el) => ({ label: el.label, deviceId: el.deviceId }))
+      .map((el, index) => ({
+        label: labelGenerator(el.label, index, 'Audio Input'),
+        deviceId: el.deviceId
+      }))
     console.log('audiosrc', audiosrc)
     console.log('audioid', this.state.audioid)
     const audioout = devices
       .filter((el) => el.kind === 'audiooutput')
-      .map((el) => ({ label: el.label, deviceId: el.deviceId }))
+      .map((el, index) => ({
+        label: labelGenerator(el.label, index, 'Audio Output'),
+        deviceId: el.deviceId
+      }))
     console.log('audioout', audioout, devices)
     console.log('audiooutid', this.state.audiooutid)
 
