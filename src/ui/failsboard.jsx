@@ -410,7 +410,28 @@ export class FailsBoard extends FailsBasis {
   }
 
   async screenShotSaver({ data, type }) {
-    const picture = new Blob([data], { type })
+    let picture = new Blob([data], { type })
+    if (picture.size > 950_000) {
+      // there is a 1 mbyte limit for message sizes, compress differently if necessary
+      // first attempt switch to jpeg
+      const origImage = await createImageBitmap(picture)
+      const canvas = new OffscreenCanvas(origImage.width, origImage.height)
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(origImage, 0, 0)
+      const qualities = [0.95, 0.9, 0.8, 0.7, 0.6, 0.5]
+      for (const quality of qualities) {
+        picture = await canvas.convertToBlob({
+          type: 'image/jpeg',
+          quality
+        })
+        if (picture.size < 950_000) break
+      }
+      if (picture.size > 950_000) {
+        throw new Error('Picture size of screenshot exceeds limit')
+      }
+    }
 
     if (!this.reduce) {
       const pica = Pica({ features: ['js', 'wasm', 'cib'] })

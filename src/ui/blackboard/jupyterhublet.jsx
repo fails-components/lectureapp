@@ -635,6 +635,7 @@ export class JupyterHublet extends Component {
       move: React.createRef()
     }
     this.jupyteredit = React.createRef()
+    this.jupytereditembedding = React.createRef()
     this.jupyterinfo = React.createRef()
     this.kernelStatusRef = React.createRef()
     this.moveid = {}
@@ -797,9 +798,21 @@ export class JupyterHublet extends Component {
     if (!this.props.screenShotSaver) return
     if (!this.props.addPicture) return
     try {
+      // we need to calculate our own dpi, as the dimensions on the pdf
+      // do not match the dimensions in the pdf
+
+      // calculate desired width
+      const dwidth =
+        400 /* dpi */ *
+        210 /* mm */ *
+        0.0393701 /* inch/ mm */ *
+        this.props.pos.width
+
+      const scaleratio = dwidth / this.appletwidth
+      const dpi = 96 * scaleratio
       const { sha } = await this.props.screenShotSaver(
         await this.jupyteredit.current?.screenShot?.({
-          dpi: 300
+          dpi
         })
       )
       if (!sha) {
@@ -1284,6 +1297,7 @@ export class JupyterHublet extends Component {
                 width: '100%',
                 height: '100%'
               }}
+              ref={this.jupytereditembedding}
             >
               <JupyterEdit
                 editActivated={this.state.jupyteredit}
