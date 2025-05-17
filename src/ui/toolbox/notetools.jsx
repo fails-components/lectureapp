@@ -24,7 +24,6 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button } from 'primereact/button'
-import React from 'react'
 import { fiMagicwand } from '../icons/icons'
 import { ToolHandling } from './toolhandling'
 
