@@ -41,7 +41,7 @@ export class ToolHandling extends Component {
       '#FE8BF0FF',
       '#FFA8A8FF'
     ]
-    this.pensizesizes = [0.25, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 11, 16]
+    this.pensizesizes = [0.25, 0.375, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 11, 16]
     this.tmcolorwheelcolors = [
       '#FF0066',
       '#00FF00',
