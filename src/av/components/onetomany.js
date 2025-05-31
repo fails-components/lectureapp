@@ -72,7 +72,7 @@ export class AVOneFrameToManyScaler extends AVOneToMany {
         x: 0,
         width: Math.max(frame.displayWidth, 1),
         y: 0.5 * (frame.displayHeight - frame.displayWidth * targetinvaspect),
-        height: Math.max(frame.displayWidth * targetinvaspect, 1)
+        height: Math.max(((frame.displayWidth * targetinvaspect) >> 1) << 1, 1)
       }
     }
     const resframe = {}
