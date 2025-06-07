@@ -324,6 +324,11 @@ export class AVDeFramer extends BasicDeframer {
     this.reset()
 
     this.inspectframe = null
+    this.goneCallback = undefined
+  }
+
+  setGoneCallback(cb) {
+    this.goneCallback = cb
   }
 
   setFrameInspector(inspector) {
@@ -434,8 +439,14 @@ export class AVDeFramer extends BasicDeframer {
         this.pendingDecoderConfig = obj.data
         this.decoderConfig = obj.data
         break
+      case 'gone':
+        console.log('AVDeFramer gone received')
+        if (this.goneCallback) {
+          this.goneCallback()
+        }
+        break
       default:
-        throw new Error('Unknown bson task')
+        console.log('AVDeFramer Unknown bson task', obj.task, obj)
     }
   }
 

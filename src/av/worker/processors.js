@@ -1105,9 +1105,11 @@ export class AVOutputProcessor extends AVProcessor {
     super(args)
 
     this.qualityInspect = this.qualityInspect.bind(this)
+    this.inputGone = this.inputGone.bind(this)
 
     this.deframer = new AVDeFramer(/* { type: 'video' } */)
     this.deframer.setFrameInspector(this.qualityInspect)
+    this.deframer.setGoneCallback(this.inputGone)
     this.inputctrlframer = new BsonFramer()
     this.streamSrc = null
     this.streamSrcRes = null
@@ -1371,9 +1373,19 @@ export class AVOutputProcessor extends AVProcessor {
     }
   }
 
-  async setSrcId(id) {
+  inputGone() {
+    console.log(
+      'Input gone, simulate a setSrcId to trigger new ticketing',
+      this.srcid
+    )
+    this.setSrcId(this.srcid, true).catch((error) => {
+      console.log('inputGone setSrcId problem', error)
+    })
+  }
+
+  async setSrcId(id, forceChange) {
     // dest is our id
-    const changed = this.srcid !== id
+    const changed = this.srcid !== id || !!forceChange
     this.srcid = id
     console.log('srcId', id, this.datatype, changed)
     if (changed) {
