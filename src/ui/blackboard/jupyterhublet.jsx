@@ -1163,6 +1163,16 @@ export class JupyterHublet extends Component {
                 }
               />
             )}
+            {!master && this.props.makeAppletMaster && (
+              <AppletButton
+                icon={fiSteer}
+                key='controlbutton'
+                onClick={() => {
+                  this.props.makeAppletMaster()
+                }}
+                tooltip='Steer applet state'
+              />
+            )}
           </div>
           <div style={{ position: 'absolute', right: '0px', bottom: '0px' }}>
             {!this.props.isnotepad && (
@@ -1198,16 +1208,6 @@ export class JupyterHublet extends Component {
                   }}
                 />
               )}
-            {!master && this.props.makeAppletMaster && (
-              <AppletButton
-                icon={fiSteer}
-                key='controlbutton'
-                onClick={() => {
-                  this.props.makeAppletMaster()
-                }}
-                tooltip='Steer applet state'
-              />
-            )}
             {master &&
               this.props.appids?.appid !== notebookEditPseudoAppid &&
               this.props.screenShotSaver && (
