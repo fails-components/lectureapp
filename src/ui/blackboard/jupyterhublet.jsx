@@ -25,7 +25,9 @@ import {
   faCamera,
   faChevronLeft,
   faChevronRight,
-  faArrowsLeftRight
+  faChevronDown,
+  faArrowsLeftRight,
+  faChevronUp
 } from '@fortawesome/free-solid-svg-icons'
 import { fiSteer } from '../icons/icons.jsx'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -1111,6 +1113,14 @@ export class JupyterHublet extends Component {
     let className = 'appletMain'
     if (this.state.movepos || this.state.resize) className += ' appletMainMove'
     if (this.props.laserPointerOn) className += ' appletMainLaserPointer'
+    console.log(
+      'check below',
+      this.props.pos.y > (this.props.scrollpos ?? 0) + this.props.scrollheight,
+      this.props.pos.y,
+      this.props.scrollpos ?? 0,
+      this.props.scrollheight
+    )
+
     return (
       <Fragment>
         <div
@@ -1412,6 +1422,84 @@ export class JupyterHublet extends Component {
             <FontAwesomeIcon icon={faChevronRight} />
           </div>
         </div>
+
+        <div
+          className={
+            this.props.pos.y + this.props.pos.height <
+            (this.props.scrollpos ?? 0)
+              ? 'appletAbove'
+              : 'appletAbove appletAboveHidden'
+          }
+          key='appletAbove'
+          onPointerDown={stopProp}
+          onPointerMove={stopProp}
+          onPointerUp={stopProp}
+          onClick={(event) =>
+            this.props.submitAppPosition(
+              this.props.pos.x,
+              this.props.scrollpos + 0.1,
+              this.props.pos.width,
+              this.props.pos.height,
+              false
+            )
+          }
+          style={{
+            position: 'absolute',
+            left:
+              (this.props.pos.x + this.props.pos.width * 0.5) *
+                this.props.bbwidth -
+              0.5 * buttonHSize +
+              'px',
+            top: this.props.scrollpos * this.props.bbwidth + 5 + 'px',
+            zIndex: this.props.zIndex
+          }}
+        >
+          <div className='appletAboveContent'>
+            <FontAwesomeIcon icon={faChevronDown} />
+          </div>
+        </div>
+
+        <div
+          className={
+            this.props.pos.y >
+            (this.props.scrollpos ?? 0) + this.props.scrollheight
+              ? 'appletBelow'
+              : 'appletBelow appletBelowHidden'
+          }
+          key='appletBelow'
+          onPointerDown={stopProp}
+          onPointerMove={stopProp}
+          onPointerUp={stopProp}
+          onClick={(event) =>
+            this.props.submitAppPosition(
+              this.props.pos.x,
+              this.props.scrollpos + 0.1,
+              this.props.pos.width,
+              this.props.pos.height,
+              false
+            )
+          }
+          style={{
+            position: 'absolute',
+            left:
+              (this.props.pos.x + this.props.pos.width * 0.5) *
+                this.props.bbwidth -
+              0.5 * buttonHSize +
+              'px',
+            top:
+              (this.props.scrollpos + this.props.scrollheight) *
+                this.props.bbwidth -
+              buttonVSize +
+              5 +
+              'px',
+            zIndex: this.props.zIndex
+          }}
+        >
+          <div className='appletBelowContent'>
+            <FontAwesomeIcon icon={faChevronUp} />
+          </div>
+        </div>
+
         <OverlayPanel className='tbChild' ref={this.jupyterinfo} showCloseIcon>
           <h3>
             <div style={{ display: 'flex', alignItems: 'center' }}>

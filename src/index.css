@@ -218,7 +218,54 @@ code {
   left: 0.8rem;
   top: 0.5rem;
   color: white;
-} 
+}
+
+.appletAbove {
+  cursor: auto;
+  background-color: #003d5ee5;
+  width: 2.357rem; 
+  height: 2.357rem;
+  border-radius: 0rem 2rem 2rem 2rem;
+  transform: translate(0rem, 0rem) rotate(45deg);
+  transition: transform 0.5s ease;
+}
+
+.appletAbove.appletAboveHidden{
+  transform: translate(0rem, -10rem) rotate(45deg);
+}
+
+
+.appletAboveContent {
+  transform: rotate(-45deg);
+  position: absolute;
+  left: 0.8rem;
+  top: 0.5rem;
+  color: white;
+}
+
+.appletBelow{
+  cursor: auto;
+  background-color: #003d5ee5;
+  left: 0.7rem;
+  width: 2.357rem; 
+  height: 2.357rem;
+  border-radius: 0rem 2rem 2rem 2rem;
+  transform: translate(0rem, -0rem) rotate(225deg);
+  transition: transform 0.5s ease;
+}
+
+.appletBelowContent {
+  transform: rotate(-225deg);
+  position: absolute;
+  left: 0.8rem;
+  top: 0.5rem;
+  color: white;
+}
+
+.appletBelow.appletBelowHidden{
+   transform: translate(0rem, 10rem) rotate(225deg);
+}
+
 
 
 @keyframes fadeInAppletMain {

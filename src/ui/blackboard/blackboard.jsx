@@ -1054,6 +1054,8 @@ export class Blackboard extends Component {
             {this.props.experimental && this.state.appon && (
               <JupyterHublet
                 pos={this.state.apppos}
+                scrollpos={this.state.curscrollpos + this.state.scrolloffset}
+                scrollheight={this.scrollheight()}
                 deactivated={this.state.appdeactivated}
                 isnotepad={this.props.isnotepad}
                 bbwidth={this.props.bbwidth}
