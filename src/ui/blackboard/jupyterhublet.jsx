@@ -1113,13 +1113,6 @@ export class JupyterHublet extends Component {
     let className = 'appletMain'
     if (this.state.movepos || this.state.resize) className += ' appletMainMove'
     if (this.props.laserPointerOn) className += ' appletMainLaserPointer'
-    console.log(
-      'check below',
-      this.props.pos.y > (this.props.scrollpos ?? 0) + this.props.scrollheight,
-      this.props.pos.y,
-      this.props.scrollpos ?? 0,
-      this.props.scrollheight
-    )
 
     return (
       <Fragment>
