@@ -24,7 +24,8 @@ import {
   faArrowsAlt,
   faCamera,
   faChevronLeft,
-  faChevronRight
+  faChevronRight,
+  faArrowsLeftRight
 } from '@fortawesome/free-solid-svg-icons'
 import { fiSteer } from '../icons/icons.jsx'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -1171,6 +1172,24 @@ export class JupyterHublet extends Component {
                   this.props.makeAppletMaster()
                 }}
                 tooltip='Steer applet state'
+              />
+            )}
+            {master && this.props.pos.width + this.props.pos.x > 1.0 && (
+              <AppletButton
+                icon={<FontAwesomeIcon icon={faArrowsLeftRight} />}
+                key='shrinkbutton'
+                onClick={() => {
+                  const aspect = this.props.pos.width / this.props.pos.height
+                  const newwidth = Math.max(0.9 - this.props.pos.x, 0.1)
+                  this.props.submitAppPosition(
+                    this.props.pos.x,
+                    this.props.pos.y,
+                    newwidth,
+                    newwidth / aspect,
+                    this.props.deactivated
+                  )
+                }}
+                tooltip='Shrink width to visible'
               />
             )}
           </div>
