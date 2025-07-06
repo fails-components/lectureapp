@@ -435,6 +435,14 @@ export class NoteScreenBase extends Component {
           position: 'relative',
           display: this.props.hidden ? 'none' : null
         }}
+        onScroll={(event) => {
+          // Fix, random scrolls initiated by Jupyter lite
+          const el = event.currentTarget
+          if (el.scrollTop !== 0) {
+            console.log('scrollTop changed, resetting to 0')
+            el.scrollTop = 0
+          }
+        }}
       >
         {this.props.showscreennumber && (
           <span
