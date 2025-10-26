@@ -905,13 +905,16 @@ export class FailsBasis extends Component {
             }
           )
           retarray.push(
-            <span dangerouslySetInnerHTML={{ __html: html }}></span>
+            <span
+              key={'latex-' + retarray.length}
+              dangerouslySetInnerHTML={{ __html: html }}
+            ></span>
           )
           secstart = curpos + 1
           seclatex = false
         } else {
           retarray.push(
-            <React.Fragment>
+            <React.Fragment key={'latex-' + retarray.length}>
               {string.substring(secstart, curpos - 1)}{' '}
             </React.Fragment>
           )
@@ -922,7 +925,7 @@ export class FailsBasis extends Component {
     }
 
     retarray.push(
-      <React.Fragment>
+      <React.Fragment key={'latex-' + retarray.length}>
         {string.substring(secstart, string.length)}{' '}
       </React.Fragment>
     )
