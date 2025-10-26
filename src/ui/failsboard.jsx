@@ -558,13 +558,15 @@ export class FailsBoard extends FailsBasis {
     let childlist = []
     if (item.children)
       childlist = item.children.map((el, ind) => (
-        <li key={item.id + ind}>{el.name}</li>
+        <li key={item.id + ind}>{this.maybeUseLatex(el.name)}</li>
       ))
     return (
       <div key={item.id}>
         <h3>
           {' '}
-          {item.name + (item.multi ? ' (multi)' : ' (single)')}
+          {this.maybeUseLatex(
+            item.name + (item.multi ? ' (multi)' : ' (single)')
+          )}
           {item.note ? <small> {' ' + item.note} </small> : ''}
         </h3>
         <ol>{childlist}</ol>
@@ -681,7 +683,7 @@ export class FailsBoard extends FailsBasis {
         pollanswers.push(
           <div key={ind + 'anw'}>
             {' '}
-            <b>{'A ' + (ind + 1) + ': '} </b> {mine.name}{' '}
+            <b>{'A ' + (ind + 1) + ': '} </b> {this.maybeUseLatex(mine.name)}{' '}
           </div>
         )
         polldata.datasets[0].data.push(tpolldata[choice])
@@ -910,8 +912,12 @@ export class FailsBoard extends FailsBasis {
                   <h3>
                     {' '}
                     {this.state.curpoll
-                      ? this.state.curpoll.name +
-                        (this.state.curpoll.multi ? ' (multi)' : ' (single)')
+                      ? this.maybeUseLatex(
+                          this.state.curpoll.name +
+                            (this.state.curpoll.multi
+                              ? ' (multi)'
+                              : ' (single)')
+                        )
                       : 'Current poll'}
                   </h3>
                 </div>

@@ -881,6 +881,10 @@ export class FailsBasis extends Component {
     this.setState(args)
   }
 
+  maybeUseLatex(item) {
+    return this.detectLatex(item) ? this.convertToLatex(item) : item
+  }
+
   detectLatex(string) {
     return string.indexOf('$') !== -1
   }

@@ -636,7 +636,7 @@ export class FailsNotes extends FailsBasis {
       pollanswers = pd.map((el, ind) => (
         <div key={ind + 'anw'}>
           {' '}
-          <b>{'A ' + (ind + 1) + ': '} </b> {el.name}{' '}
+          <b>{'A ' + (ind + 1) + ': '} </b> {this.maybeUseLatex(el.name)}{' '}
         </div>
       ))
     }
@@ -655,7 +655,7 @@ export class FailsNotes extends FailsBasis {
             }
           ></Checkbox>
           <label htmlFor='cb2' className='p-checkbox-label p-m-2'>
-            {el.name}
+            {this.maybeUseLatex(el.name)}
           </label>
         </div>
       ))
@@ -856,8 +856,10 @@ export class FailsNotes extends FailsBasis {
               <h3>
                 {' '}
                 {this.state.curpoll
-                  ? this.state.curpoll.name +
-                    (this.state.curpoll.multi ? ' (multi)' : ' (single)')
+                  ? this.maybeUseLatex(
+                      this.state.curpoll.name +
+                        (this.state.curpoll.multi ? ' (multi)' : ' (single)')
+                    )
                   : 'Current poll'}
               </h3>
               {pollsels}
@@ -879,8 +881,10 @@ export class FailsNotes extends FailsBasis {
               <h3>
                 {' '}
                 {this.state.curpoll
-                  ? this.state.curpoll.name +
-                    (this.state.curpoll.multi ? ' (multi)' : ' (single)')
+                  ? this.maybeUseLatex(
+                      this.state.curpoll.name +
+                        (this.state.curpoll.multi ? ' (multi)' : ' (single)')
+                    )
                   : 'Current poll'}
               </h3>
               {polldata && (
