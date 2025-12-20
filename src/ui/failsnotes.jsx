@@ -27,6 +27,7 @@ import { Dialog } from 'primereact/dialog'
 import { InputText } from 'primereact/inputtext'
 import { InputTextarea } from 'primereact/inputtextarea'
 import { OverlayPanel } from 'primereact/overlaypanel'
+import { ChatMessage } from './widgets/chatmessage'
 import { Toast } from 'primereact/toast'
 import React from 'react'
 import { FloatingVideo, AVVideoRender, VideoControl } from '../avwidgets'
@@ -44,6 +45,7 @@ import failsLogoExp from './logo/logo2exp.svg'
 import { NoteScreenBase } from './notepad/notepad'
 import { NoteTools } from './toolbox'
 import { VideoChatSender } from './widgets/videochat'
+import { maybeUseLatex, convertToLatex, detectLatex } from './misc/latex'
 
 export class FailsNotes extends FailsBasis {
   constructor(props) {
@@ -148,6 +150,60 @@ export class FailsNotes extends FailsBasis {
         polldata: data.result
       })
     })
+
+    notessocket.on('chatquestion', async (data) => {
+      console.log('Incoming chat', data)
+      let {
+        text,
+        encData,
+        iv,
+        keyindex,
+        resend = false,
+        showSendername = false
+      } = data
+      let isEncrypted = false
+      try {
+        if ((text === 'Encrypted' && encData, iv, keyindex)) {
+          isEncrypted = true
+          const decoder = new TextDecoder()
+          const key = await this.keystore.getKey(keyindex)
+          const decdata = await globalThis.crypto.subtle.decrypt(
+            {
+              name: 'AES-GCM',
+              iv
+            },
+            key.e2e,
+            encData
+          )
+          text = decoder.decode(decdata)
+        }
+      } catch (error) {
+        console.log('Error in chatquestion', error)
+        text = 'Error: receiving/decrypting chat: ' + error
+      }
+      let senderName
+      if (resend) {
+        const splitind = text.indexOf(':\n')
+        if (splitind !== -1) {
+          senderName = text.substring(0, splitind)
+          text = text.substring(splitind + 2)
+        }
+      }
+      const retobj = (
+        <ChatMessage
+          data={data}
+          latex={convertToLatex(text)}
+          resend={!!resend}
+          showSendername={!!showSendername}
+          senderName={senderName}
+          isEncrypted={isEncrypted}
+          noHideName
+          noBlockUser
+          noForensicReport
+        />
+      )
+      this.toast.show({ severity: 'info', content: retobj, sticky: true })
+    })
   }
 
   informDraw() {
@@ -236,41 +292,7 @@ export class FailsNotes extends FailsBasis {
   sendChatMessage() {
     const chattext = this.state.chattext
     const videoquestion = this.state.videoquestion ? true : undefined
-    const encoder = new TextEncoder()
-    const afunc = async () => {
-      console.log(
-        'Send chat message',
-        chattext,
-        this.state.videoquestion,
-        videoquestion
-      )
-      const iv = globalThis.crypto.getRandomValues(new Uint8Array(12))
-      console.log('Send chat message 1')
-      const keyindex = await this.keystore.getCurKeyId()
-      console.log('Send chat message 2')
-      const key = await this.keystore.getKey(keyindex)
-      console.log('Send chat message 3')
-      const encData = await globalThis.crypto.subtle.encrypt(
-        {
-          name: 'AES-GCM',
-          iv
-        },
-        key.e2e,
-        encoder.encode(chattext)
-      )
-      console.log('Send chat message 4')
-      this.netSendSocket('chatquestion', {
-        text: 'Encrypted',
-        encData,
-        keyindex,
-        iv,
-        videoquestion
-      })
-    }
-    afunc().catch((error) => {
-      console.log('Problem in sendChatMessage', error)
-    })
-
+    this.sendChatMessageInt({ chattext, videoquestion })
     this.setState({ chattext: '' })
     this.chatop.hide()
   }
@@ -546,10 +568,10 @@ export class FailsNotes extends FailsBasis {
         <OverlayPanel ref={(el) => (this.chatop = el)}>
           <div className='p-grid p-align-end'>
             <div className='p-col'>
-              {this.detectLatex(this.state.chattext) && (
+              {detectLatex(this.state.chattext) && (
                 <React.Fragment>
                   <h4>Preview: </h4>
-                  {this.convertToLatex(this.state.chattext)}
+                  {convertToLatex(this.state.chattext)}
                   <br></br>
                 </React.Fragment>
               )}
@@ -636,7 +658,7 @@ export class FailsNotes extends FailsBasis {
       pollanswers = pd.map((el, ind) => (
         <div key={ind + 'anw'}>
           {' '}
-          <b>{'A ' + (ind + 1) + ': '} </b> {this.maybeUseLatex(el.name)}{' '}
+          <b>{'A ' + (ind + 1) + ': '} </b> {maybeUseLatex(el.name)}{' '}
         </div>
       ))
     }
@@ -655,7 +677,7 @@ export class FailsNotes extends FailsBasis {
             }
           ></Checkbox>
           <label htmlFor='cb2' className='p-checkbox-label p-m-2'>
-            {this.maybeUseLatex(el.name)}
+            {maybeUseLatex(el.name)}
           </label>
         </div>
       ))
@@ -672,7 +694,7 @@ export class FailsNotes extends FailsBasis {
 
     return (
       <div>
-        <Toast ref={(el) => (this.toast = el)} position='top-left' />
+        <Toast ref={(el) => (this.toast = el)} position='bottom-left' />
         {!this.state.tokenexpired && this.loadDataDialog()}
         {this.expiredTokenDialog()}
         <OverlayPanel
@@ -856,7 +878,7 @@ export class FailsNotes extends FailsBasis {
               <h3>
                 {' '}
                 {this.state.curpoll
-                  ? this.maybeUseLatex(
+                  ? maybeUseLatex(
                       this.state.curpoll.name +
                         (this.state.curpoll.multi ? ' (multi)' : ' (single)')
                     )
@@ -881,7 +903,7 @@ export class FailsNotes extends FailsBasis {
               <h3>
                 {' '}
                 {this.state.curpoll
-                  ? this.maybeUseLatex(
+                  ? maybeUseLatex(
                       this.state.curpoll.name +
                         (this.state.curpoll.multi ? ' (multi)' : ' (single)')
                     )

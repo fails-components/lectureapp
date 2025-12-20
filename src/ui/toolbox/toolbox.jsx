@@ -69,6 +69,8 @@ import {
 } from '../icons/icons.jsx'
 import { UAParser } from 'ua-parser-js'
 import { ToolHandling } from './toolhandling.jsx'
+import { detectLatex, convertToLatex } from '../misc/latex.jsx'
+import { InputTextarea } from 'primereact/inputtextarea'
 
 export class ToolBox extends ToolHandling {
   constructor(props) {
@@ -104,6 +106,7 @@ export class ToolBox extends ToolHandling {
     this.scrollPointermove = this.scrollPointermove.bind(this)
     this.addRemoveTouchToolGuardian = this.addRemoveTouchToolGuardian.bind(this)
     this.addRemoveWristToolGuardian = this.addRemoveWristToolGuardian.bind(this)
+    this.sendChatMessage = this.sendChatMessage.bind(this)
 
     this.scrollButtonRef = React.createRef()
   }
@@ -369,6 +372,13 @@ export class ToolBox extends ToolHandling {
         {icon} {element.displayname} ({element.purpose})
       </span>
     )
+  }
+
+  sendChatMessage() {
+    const chattext = this.state.chattext
+    this.props.sendChatMessage({ chattext })
+    this.setState({ chattext: '' })
+    this.chatop.hide()
   }
 
   render() {
@@ -670,6 +680,19 @@ export class ToolBox extends ToolHandling {
       </div>
     )
 
+    const chatbutton = (
+      <Button
+        icon='pi pi-comment'
+        onClick={(e) => this.chatop.toggle(e)}
+        tooltip='Send comment to students'
+        tooltipOptions={ttopts}
+        className={setclass}
+        key={17}
+        aria-haspopup
+        aria-controls='overlay_panel'
+      />
+    )
+
     const infobutton = (
       <Button
         icon={fiFailsLogo}
@@ -855,6 +878,7 @@ export class ToolBox extends ToolHandling {
       }
     }
     if (idents.length > 0) settingswheel.push(identbutton)
+    settingswheel.push(chatbutton)
     if (this.props.startUpAVBroadcast) settingswheel.push(avstartupbutton)
     settingswheel.push(infobutton)
 
@@ -1098,6 +1122,43 @@ export class ToolBox extends ToolHandling {
               Compare these numbers to verify E2E encryption.
             </React.Fragment>
           )}
+        </OverlayPanel>
+        <OverlayPanel ref={(el) => (this.chatop = el)}>
+          <div className='p-grid p-align-end'>
+            <div className='p-col'>
+              {detectLatex(this.state.chattext) && (
+                <React.Fragment>
+                  <h4>Preview: </h4>
+                  {convertToLatex(this.state.chattext)}
+                  <br></br>
+                </React.Fragment>
+              )}
+              <h4>Message ($...$ for math):</h4>
+              <InputTextarea
+                rows={5}
+                cols={30}
+                value={this.state.chattext}
+                onChange={(e) => this.setState({ chattext: e.target.value })}
+                autoResize
+              />
+            </div>
+            <div className='p-col'>
+              <div className='p-d-flex p-flex-column p-jc-center'>
+                <div className='p-m-1' key='sendmessage'>
+                  <Button
+                    icon={'pi pi-send'}
+                    className={
+                      this.state.chattext !== ''
+                        ? 'p-button-raised p-button-rounded p-m-2'
+                        : 'p-button-raised p-button-rounded p-m-2 hiddenElement'
+                    }
+                    onClick={this.sendChatMessage}
+                    tooltip='Send chat message to notes'
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </OverlayPanel>
         {this.state.activated && (
           <Fragment>

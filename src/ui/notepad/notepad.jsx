@@ -540,6 +540,7 @@ export class NoteScreenBase extends Component {
             experimental={this.props.experimental}
             features={this.props.features}
             startUpAVBroadcast={this.props.startUpAVBroadcast}
+            sendChatMessage={this.props.sendChatMessage}
           />
         )}
         {this.props.isnotepad && (

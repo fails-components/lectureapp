@@ -37,6 +37,7 @@ import { ShortcutsMessage } from './widgets/shortcutsmessage'
 import Pica from 'pica'
 import ImageBlobReduce from 'image-blob-reduce'
 import { notebookEditPseudoAppid } from './blackboard/jupyterhublet'
+import { maybeUseLatex, convertToLatex } from './misc/latex'
 
 export class FailsBoard extends FailsBasis {
   constructor(props) {
@@ -169,7 +170,8 @@ export class FailsBoard extends FailsBasis {
         <ChatMessage
           data={data}
           blockChat={() => this.blockChat(userhash)}
-          latex={this.convertToLatex(text)}
+          latex={convertToLatex(text)}
+          text={text}
           isEncrypted={isEncrypted}
           allowVideoquestion={this.allowVideoquestion}
           videoQuestion={
@@ -178,6 +180,13 @@ export class FailsBoard extends FailsBasis {
             data?.videoquestion &&
             this.hasMediaSend
           }
+          sendMessageHandler={({ resend, sender, text }) => {
+            this.sendChatMessageInt({
+              chattext: text,
+              resendSender: resend && sender,
+              showSendername: true
+            })
+          }}
         />
       )
       this.toast.show({ severity: 'info', content: retobj, sticky: true })
@@ -558,15 +567,13 @@ export class FailsBoard extends FailsBasis {
     let childlist = []
     if (item.children)
       childlist = item.children.map((el, ind) => (
-        <li key={item.id + ind}>{this.maybeUseLatex(el.name)}</li>
+        <li key={item.id + ind}>{maybeUseLatex(el.name)}</li>
       ))
     return (
       <div key={item.id}>
         <h3>
           {' '}
-          {this.maybeUseLatex(
-            item.name + (item.multi ? ' (multi)' : ' (single)')
-          )}
+          {maybeUseLatex(item.name + (item.multi ? ' (multi)' : ' (single)'))}
           {item.note ? <small> {' ' + item.note} </small> : ''}
         </h3>
         <ol>{childlist}</ol>
@@ -683,7 +690,7 @@ export class FailsBoard extends FailsBasis {
         pollanswers.push(
           <div key={ind + 'anw'}>
             {' '}
-            <b>{'A ' + (ind + 1) + ': '} </b> {this.maybeUseLatex(mine.name)}{' '}
+            <b>{'A ' + (ind + 1) + ': '} </b> {maybeUseLatex(mine.name)}{' '}
           </div>
         )
         polldata.datasets[0].data.push(tpolldata[choice])
@@ -761,6 +768,12 @@ export class FailsBoard extends FailsBasis {
                   this.startUpAVinterface()
                 }
           }
+          sendChatMessage={({ chattext }) => {
+            this.sendChatMessageInt({
+              chattext,
+              showSendername: true
+            })
+          }}
         ></NoteScreenBase>
         {!this.state.casttoscreens && (
           <div
@@ -912,7 +925,7 @@ export class FailsBoard extends FailsBasis {
                   <h3>
                     {' '}
                     {this.state.curpoll
-                      ? this.maybeUseLatex(
+                      ? maybeUseLatex(
                           this.state.curpoll.name +
                             (this.state.curpoll.multi
                               ? ' (multi)'

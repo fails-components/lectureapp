@@ -19,7 +19,6 @@
 
 import { faDesktop, faWindowMaximize } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { Button } from 'primereact/button'
 import { confirmDialog } from 'primereact/confirmdialog'
@@ -457,6 +456,46 @@ export class FailsBasis extends Component {
     })
   }
 
+  sendChatMessageInt({
+    chattext,
+    videoquestion,
+    resendSender,
+    showSendername
+  }) {
+    const encoder = new TextEncoder()
+    const afunc = async () => {
+      console.log('Send chat message', chattext, videoquestion, videoquestion)
+      const iv = globalThis.crypto.getRandomValues(new Uint8Array(12))
+      console.log('Send chat message 1')
+      const keyindex = await this.keystore.getCurKeyId()
+      console.log('Send chat message 2')
+      const key = await this.keystore.getKey(keyindex)
+      console.log('Send chat message 3')
+      const message = resendSender ? resendSender + ':\n' + chattext : chattext
+      const encData = await globalThis.crypto.subtle.encrypt(
+        {
+          name: 'AES-GCM',
+          iv
+        },
+        key.e2e,
+        encoder.encode(message)
+      )
+      console.log('Send chat message 4')
+      this.netSendSocket('chatquestion', {
+        text: 'Encrypted',
+        encData,
+        keyindex,
+        iv,
+        videoquestion,
+        resend: !!resendSender,
+        showSendername
+      })
+    }
+    afunc().catch((error) => {
+      console.log('Problem in sendChatMessageInt', error)
+    })
+  }
+
   processAVoffers() {
     // avoffers have updated, now we may change everything
     const audio = this.avoffers.audio
@@ -879,57 +918,5 @@ export class FailsBasis extends Component {
       if (this.netSendSocket) this.netSendSocket('updatesizes', data)
     }
     this.setState(args)
-  }
-
-  maybeUseLatex(item) {
-    return this.detectLatex(item) ? this.convertToLatex(item) : item
-  }
-
-  detectLatex(string) {
-    return string.indexOf('$') !== -1
-  }
-
-  convertToLatex(string) {
-    const retarray = []
-    let secstart = 0
-    let seclatex = false
-    for (let curpos = 0; curpos < string.length; curpos++) {
-      const curchar = string.charAt(curpos)
-      if (curchar === '$') {
-        if (seclatex) {
-          const html = katex.renderToString(
-            string.substring(secstart, curpos),
-            {
-              throwOnError: false,
-              displayMode: false
-            }
-          )
-          retarray.push(
-            <span
-              key={'latex-' + retarray.length}
-              dangerouslySetInnerHTML={{ __html: html }}
-            ></span>
-          )
-          secstart = curpos + 1
-          seclatex = false
-        } else {
-          retarray.push(
-            <React.Fragment key={'latex-' + retarray.length}>
-              {string.substring(secstart, curpos - 1)}{' '}
-            </React.Fragment>
-          )
-          secstart = curpos + 1
-          seclatex = true
-        }
-      }
-    }
-
-    retarray.push(
-      <React.Fragment key={'latex-' + retarray.length}>
-        {string.substring(secstart, string.length)}{' '}
-      </React.Fragment>
-    )
-
-    return retarray
   }
 }
