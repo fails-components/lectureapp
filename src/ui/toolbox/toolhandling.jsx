@@ -302,7 +302,7 @@ export class ToolHandling extends Component {
           0.001 *
           bbwidth *
           (this.state.devicePixelRatio || this.props.devicePixelRatio) >=
-        1.5
+        0.75
       )
         break
     }
