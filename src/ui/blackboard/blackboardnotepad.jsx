@@ -374,7 +374,10 @@ export class BlackboardNotepad extends Component {
 
     this.rightmousescroll = false
 
-    if (this.magictool && this.addformpictmode === 0) {
+    if (
+      (this.magictool || event.button === 5) /* eraser */ &&
+      this.addformpictmode === 0
+    ) {
       console.log(
         'magic pointerdown pointerId:',
         event.pointerId,
@@ -393,6 +396,15 @@ export class BlackboardNotepad extends Component {
         'cY',
         event.clientY
       )
+      if (!this.magictool) {
+        this.magictooleraser = true
+        if (this.realblackboard && this.realblackboard.current)
+          this.realblackboard.current.setcursor({
+            mode: 'magic'
+          })
+      } else {
+        this.magictooleraser = false
+      }
       if (this.props.informDraw) this.props.informDraw()
       this.magicpointerid = event.pointerId
       if (this.copydeletebox()) this.copydeletebox().deactivate()
@@ -470,6 +482,19 @@ export class BlackboardNotepad extends Component {
             break
         }
       } else {
+        if (
+          event.isPrimary &&
+          this.realblackboard &&
+          this.realblackboard.current &&
+          this.addformpictmode === 0 &&
+          (this.toolsize || this.toolcolor)
+        ) {
+          this.realblackboard.current.setcursor({
+            mode: 'drawing',
+            size: this.toolsize,
+            color: this.toolcolor
+          })
+        }
         if (this.notetools()) {
           this.notetools().setCanTooltip(false)
         }
@@ -695,11 +720,15 @@ export class BlackboardNotepad extends Component {
     if (!this.rightmousescroll) {
       if (
         (event.pointerId in this.pointerdraw === true ||
-          (this.magictool && event.pointerId === this.magicpointerid)) &&
+          ((this.magictool || this.magictooleraser) &&
+            event.pointerId === this.magicpointerid)) &&
         !this.laserpointer
       ) {
         if (event.pointerType === 'touch') {
-          if (this.checkPalmReject(event) && !this.magictool) {
+          if (
+            this.checkPalmReject(event) &&
+            (!this.magictool || !this.magictooleraser)
+          ) {
             // dismiss object
             console.log('palm object dismissed')
             this.props.outgoingsink.deleteObject(
@@ -724,7 +753,10 @@ export class BlackboardNotepad extends Component {
         this.lastTouchTime = now
         this.lastTouchPointerId = event.pointerId
         // }
-        if (this.magictool) {
+        if (
+          (this.magictool || this.magictooleraser) &&
+          event.pointerId === this.magicpointerid
+        ) {
           const pos = { x: event.clientX, y: event.clientY }
           if (this.realblackboard && this.realblackboard.current)
             this.realblackboard.current.addToMagicPath(
@@ -803,7 +835,10 @@ export class BlackboardNotepad extends Component {
     }
     const pos = { x: event.clientX, y: event.clientY }
 
-    if (event.pointerId === this.magicpointerid && this.magictool) {
+    if (
+      event.pointerId === this.magicpointerid &&
+      (this.magictool || this.magictooleraser)
+    ) {
       console.log(
         'magic pointerup pointerId:',
         event.pointerId,
@@ -831,6 +866,23 @@ export class BlackboardNotepad extends Component {
         tb.reactivate()
       }
       delete this.magicpointerid
+      const cleanup = () => {
+        if (this.magictooleraser) {
+          this.magictooleraser = false
+          if (
+            event.isPrimary &&
+            this.realblackboard &&
+            this.realblackboard.current &&
+            this.addformpictmode === 0 &&
+            (this.toolsize || this.toolcolor)
+          )
+            this.realblackboard.current.setcursor({
+              mode: 'drawing',
+              size: this.toolsize,
+              color: this.toolcolor
+            })
+        }
+      }
       if (this.realblackboard && this.realblackboard.current) {
         await this.realblackboard.current.finishMagic((pos) => {
           if (this.copydeletebox())
@@ -838,7 +890,10 @@ export class BlackboardNotepad extends Component {
               x: pos.x,
               y: pos.y - this.calcCurpos()
             })
+          cleanup()
         })
+      } else {
+        cleanup()
       }
     } else if (event.pointerId in this.pointerdraw === true) {
       if (this.notetools()) {
