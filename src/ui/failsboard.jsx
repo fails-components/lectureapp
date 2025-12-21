@@ -20,6 +20,7 @@
 import { Button } from 'primereact/button'
 import { Chart } from 'primereact/chart'
 import { Dialog } from 'primereact/dialog'
+import { InputSwitch } from 'primereact/inputswitch'
 import { ListBox } from 'primereact/listbox'
 import { Steps } from 'primereact/steps'
 import { Toast } from 'primereact/toast'
@@ -38,6 +39,8 @@ import Pica from 'pica'
 import ImageBlobReduce from 'image-blob-reduce'
 import { notebookEditPseudoAppid } from './blackboard/jupyterhublet'
 import { maybeUseLatex, convertToLatex } from './misc/latex'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faUser } from '@fortawesome/free-solid-svg-icons'
 
 export class FailsBoard extends FailsBasis {
   constructor(props) {
@@ -57,6 +60,7 @@ export class FailsBoard extends FailsBasis {
     this.state.pictIndex = 0
     this.state.availscreens = []
     this.state.welcomeMessageSend = 0
+    this.state.pollLimitedGroup = false
 
     this.availscreensmenu = React.createRef()
 
@@ -82,6 +86,7 @@ export class FailsBoard extends FailsBasis {
     this.blockChat = this.blockChat.bind(this)
     this.allowVideoquestion = this.allowVideoquestion.bind(this)
     this.onStartPoll = this.onStartPoll.bind(this)
+    this.onSelParticipantsPoll = this.onSelParticipantsPoll.bind(this)
     this.onStartSelPoll = this.onStartSelPoll.bind(this)
     this.onFinishSelPoll = this.onFinishSelPoll.bind(this)
     this.ipynbTemplate = this.ipynbTemplate.bind(this)
@@ -201,14 +206,19 @@ export class FailsBoard extends FailsBasis {
         pollsel: undefined,
         pollshowres: false,
         pollvotes: {},
-        pollballots: []
+        pollballots: [],
+        pollparticipantsServer: undefined
       })
     })
 
     notepadsocket.on('finishPoll', (data) => {
       console.log('finishpoll incoming', data)
 
-      this.setState({ polltask: 2, pollsel: undefined })
+      this.setState({
+        polltask: 2,
+        pollsel: undefined,
+        pollparticipantsServer: data.participants
+      })
     })
 
     notepadsocket.on('castvote', (data) => {
@@ -530,13 +540,46 @@ export class FailsBoard extends FailsBasis {
     this.setState({ pollcoll: ret })
   }
 
+  onSelParticipantsPoll() {
+    // if there are no participants set, we set some
+    if (!this.state.pollparticipants) {
+      let pollparticipants = []
+      if (this.state.identobj?.idents) {
+        pollparticipants = this.state.identobj?.idents
+          .filter((el) => el.purpose === 'notes')
+          .map(({ userhash }) => userhash)
+      }
+      this.setState({ polltask: 0.5, pollparticipants })
+      return
+    } else {
+      // we should filter out unavailable userhashes
+      let pollparticipants = []
+      if (this.state.identobj?.idents) {
+        const hashes = this.state.identobj?.idents
+          .filter((el) => el.purpose === 'notes')
+          .map(({ userhash }) => userhash)
+
+        pollparticipants = this.state.pollparticipants.filter((el) =>
+          hashes.includes(el)
+        )
+        this.setState({ polltask: 0.5, pollparticipants })
+        return
+      }
+    }
+    this.setState({ polltask: 0.5 })
+  }
+
   onStartSelPoll() {
     if (!this.state.pollcoll) return
     const polfind = this.state.pollcoll.find(
       (el) => el.id === this.state.pollsel
     )
     this.socket.simpleEmit('startPoll', {
-      poll: polfind
+      poll: polfind,
+      limited: this.state.pollLimitedGroup,
+      participants: this.state.pollLimitedGroup
+        ? this.state.pollparticipants
+        : undefined
     })
   }
 
@@ -664,6 +707,25 @@ export class FailsBoard extends FailsBasis {
     const pollanswers = []
     let numballots = 0
 
+    let pollpotparticipants = []
+    if (this.state.polltask === 0.5) {
+      if (this.state.identobj?.idents) {
+        pollpotparticipants = this.state.identobj?.idents
+          .filter((el) => el.purpose === 'notes')
+          .map(({ displayname, userhash, purpose }) => ({
+            displayname,
+            userhash,
+            purpose
+          }))
+        pollpotparticipants = pollpotparticipants.filter(
+          (el, index) =>
+            pollpotparticipants.findIndex(
+              (el2) => el2.userhash === el.userhash
+            ) === index
+        )
+      }
+    }
+
     if (this.state.polltask === 1 || this.state.polltask === 2) {
       const tpollres = this.calcPollresults()
       const tpolldata = tpollres.data
@@ -705,6 +767,14 @@ export class FailsBoard extends FailsBasis {
       { label: 'Poll' },
       { label: 'Results' }
     ]
+    let pollActiveIndex = this.state.polltask
+    if (this.state.pollLimitedGroup) {
+      pollitems.splice(1, 0, { label: 'Select' })
+      if (pollActiveIndex > 0.5) {
+        pollActiveIndex++
+      }
+      if (pollActiveIndex === 0.5) pollActiveIndex = 1
+    }
     const blackbackground =
       typeof this.state.blackbackground === 'undefined'
         ? true
@@ -886,12 +956,16 @@ export class FailsBoard extends FailsBasis {
         <Dialog
           header='Poll'
           visible={typeof this.state.polltask !== 'undefined'}
-          closable={this.state.polltask === 2 || this.state.polltask === 0}
+          closable={
+            this.state.polltask === 2 ||
+            this.state.polltask === 0 ||
+            this.state.polltask === 0.5
+          }
           onHide={() => {
             this.setState({ polltask: undefined, pollsel: undefined })
           }}
         >
-          <Steps model={pollitems} activeIndex={this.state.polltask} />
+          <Steps model={pollitems} activeIndex={pollActiveIndex} />
           {this.state.polltask === 0 && (
             <React.Fragment>
               <ListBox
@@ -903,12 +977,88 @@ export class FailsBoard extends FailsBasis {
                     (el) => el.children && el.children.length > 1
                   )
                 }
+                style={{
+                  maxHeight: '60vh',
+                  minWidth: '30vw',
+                  overflow: 'auto'
+                }}
                 optionLabel='name'
                 optionValue='id'
                 itemTemplate={this.pollTemplate}
                 onChange={(e) => this.setState({ pollsel: e.value })}
               />
-              {this.state.pollsel && (
+              <div className='p-d-flex p-ai-center'>
+                <InputSwitch
+                  id='switchPollLG'
+                  checked={this.state.pollLimitedGroup}
+                  onChange={(e) => this.setState({ pollLimitedGroup: e.value })}
+                />
+                <div className='p-ml-2'>
+                  <label
+                    htmlFor='limitedGroupSwitch'
+                    className='p-d-block p-text-bold'
+                  >
+                    Limited Group Voting
+                  </label>
+                  {/* p-text-secondary uses the theme's standard muted color */}
+                  <small className='p-text-secondary'>
+                    {this.state.pollLimitedGroup
+                      ? 'Only selected participants.'
+                      : 'All participants.'}
+                  </small>
+                </div>
+              </div>
+              {this.state.pollsel && !this.state.pollLimitedGroup && (
+                <Button
+                  label='Start poll'
+                  icon='pi pi-chart-bar'
+                  className='p-m-2'
+                  onClick={this.onStartSelPoll}
+                />
+              )}
+              {this.state.pollsel && this.state.pollLimitedGroup && (
+                <Button
+                  label='Select participants'
+                  icon='pi pi-id-card'
+                  className='p-m-2'
+                  onClick={this.onSelParticipantsPoll}
+                />
+              )}
+            </React.Fragment>
+          )}
+          {this.state.polltask === 0.5 && (
+            <React.Fragment>
+              <div className='p-d-flex p-ai-center'>
+                <div className='p-mr-2'>
+                  <h3>Select voters</h3>
+                </div>
+              </div>
+              {pollpotparticipants.length === 0 && <b> No voters present!</b>}
+              {pollpotparticipants.length > 0 && (
+                <ListBox
+                  optionLabel='displayname'
+                  optionValue='userhash'
+                  options={pollpotparticipants}
+                  style={{
+                    maxHeight: '60vh',
+                    minHeight: '10vh',
+                    minWidth: '30vw',
+                    overflowY: 'auto'
+                  }}
+                  itemTemplate={(element) => (
+                    <span>
+                      <FontAwesomeIcon icon={faUser} /> {element.displayname}
+                    </span>
+                  )}
+                  multiple
+                  value={this.state.pollparticipants}
+                  onChange={(ev) =>
+                    this.setState({ pollparticipants: ev.value })
+                  }
+                />
+              )}
+              {(this.state.pollparticipants?.length > 0 ||
+                true) /* just for debugging */ && (
                 <Button
                   label='Start poll'
                   icon='pi pi-chart-bar'
@@ -987,7 +1137,10 @@ export class FailsBoard extends FailsBasis {
                           {
                             ballots: this.state.pollballots,
                             poll: this.state.curpoll,
-                            votes: this.state.pollvotes
+                            votes: this.state.pollvotes,
+                            eglibleVoters:
+                              this.state.pollparticipantsServer ||
+                              'unrestricted'
                           },
                           null,
                           2

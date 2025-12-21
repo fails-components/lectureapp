@@ -422,6 +422,14 @@ class SocketWorker {
       this.scheduleReauthor() // request renewal
     })
 
+    this.socket.on('userhash', (userhash) => {
+      this.userhash = userhash
+      globalThis.postMessage({
+        task: 'setUserhash',
+        userhash
+      })
+    })
+
     const toIden = async (iden, id) => {
       try {
         const toret = {

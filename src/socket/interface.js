@@ -149,6 +149,9 @@ export class SocketInterface {
         this.decodedtoken = event.data.decodedToken
         this.updateUserHash()
         break
+      case 'setUserhash': // Note this is a network userhash, and not a device userhash
+        this.networkUserhash = event.data.userhash
+        break
       case 'idinform':
         if (event.data.id) this.id = event.data.id
         break
@@ -195,6 +198,10 @@ export class SocketInterface {
 
   getUserHash() {
     return this.userhash
+  }
+
+  getNetworkUserHash() {
+    return this.networkUserhash
   }
 
   onMessageError(event) {}

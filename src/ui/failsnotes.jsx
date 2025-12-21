@@ -130,11 +130,19 @@ export class FailsNotes extends FailsBasis {
 
     notessocket.on('startPoll', (data) => {
       console.log('startpoll incoming', data)
+      let canVote = true
+      if (typeof data.canVote !== 'undefined') {
+        canVote = data.canVote
+      }
+      if (typeof data.participants !== 'undefined') {
+        canVote &&= data.participants.includes(this.socket.getNetworkUserHash())
+      }
 
       this.setState({
-        polltask: 1,
+        polltask: canVote ? 1 : 2,
         curpoll: data,
-        votesel: [],
+        votesel: canVote ? [] : undefined,
+        pollCanVote: canVote,
         pollvotes: {},
         polldata: undefined,
         pollballotid: undefined
@@ -325,7 +333,7 @@ export class FailsNotes extends FailsBasis {
     })
 
     console.log('cast vote incl ballot id', ret)
-    this.setState({ pollballotid: ret.ballot })
+    this.setState({ pollballotid: ret.ballot, pollerror: ret.error })
   }
 
   onNotesmodeEnterDialog({ persist, tryPersist, persistGranted }) {
@@ -848,8 +856,12 @@ export class FailsNotes extends FailsBasis {
               {this.state.reloading && <h1>Loading...</h1>}
               {!this.state.reloading && (
                 <React.Fragment>
-                  <h1>The screencast is currently deactivated!</h1>
-                  <h2>Ask the docent for activation, when ready!</h2>
+                  <h1 key='screendeact1'>
+                    The screencast is currently deactivated!
+                  </h1>
+                  <h2 key='screendeact2'>
+                    Ask the docent for activation, when ready!
+                  </h2>
                 </React.Fragment>
               )}
             </div>
@@ -913,6 +925,7 @@ export class FailsNotes extends FailsBasis {
                 <React.Fragment>
                   <Chart
                     type='bar'
+                    key='chart'
                     data={polldata}
                     options={{
                       indexAxis: 'x',
@@ -921,12 +934,16 @@ export class FailsNotes extends FailsBasis {
                     }}
                   />
                   {pollanswers}
-                  <h4> Voting is over!</h4>
+                  <h4 key='voteover'> Voting is over!</h4>
                 </React.Fragment>
               )}
               {!polldata && <h4> Votes are still casted! </h4>}
+              {!this.state.pollCanVote && <h4> Not eligible for voting. </h4>}
               {this.state.pollballotid && (
                 <h4>My ballot id: {this.state.pollballotid}</h4>
+              )}
+              {this.state.pollerror && (
+                <h4>Error while casting ballot: {this.state.pollerror}</h4>
               )}
             </React.Fragment>
           )}
