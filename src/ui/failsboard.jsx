@@ -1057,8 +1057,7 @@ export class FailsBoard extends FailsBasis {
                   }
                 />
               )}
-              {(this.state.pollparticipants?.length > 0 ||
-                true) /* just for debugging */ && (
+              {this.state.pollparticipants?.length > 0 && (
                 <Button
                   label='Start poll'
                   icon='pi pi-chart-bar'
