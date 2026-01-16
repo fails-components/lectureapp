@@ -40,7 +40,7 @@
     "katex": "^0.16.21",
     "libav.js": "=4.8.6",
     "libavjs-webcodecs-polyfill": "^0.4.4",
-    "pdfjs-dist": "^4.2.67",
+    "pdfjs-dist": "^4.10.38",
     "pica": "^7.1.0",
     "primeflex": "^2.0.0",
     "primeicons": "^4.1.0",
