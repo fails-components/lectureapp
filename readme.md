@@ -1,4 +1,8 @@
 !["FAILS logo"](failslogo.svg)
+# Migration warning
+This repository and its packages and container images is currently migrated to the new monorepo [https://github.com/fails-components/fancy-lectures](https://github.com/fails-components/fancy-lectures).
+It will be archived soon after the migration is completed.
+
 # Fancy automated internet lecture system (**FAILS**) - components
 
 This package is part of FAILS.
