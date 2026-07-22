@@ -1,7 +1,9 @@
 !["FAILS logo"](failslogo.svg)
-# Migration warning
-This repository and its packages and container images is currently migrated to the new monorepo [https://github.com/fails-components/fancy-lectures](https://github.com/fails-components/fancy-lectures).
-It will be archived soon after the migration is completed.
+# Deprecation warning
+This repository and its packages and container images was migrated to the new monorepo [https://github.com/fails-components/fancy-lectures](https://github.com/fails-components/fancy-lectures) with the release of version 2.0.
+This repository does not receive updates (incl. security updates) anymore
+ and will be archived soon.
+Please use the new monorepo instead.
 
 # Fancy automated internet lecture system (**FAILS**) - components
 
